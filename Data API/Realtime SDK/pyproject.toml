@@ -1,0 +1,13 @@
+[project]
+name = "realtime-sdk"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.8,<3.12"
+dependencies = [
+    "bctrealtimesdk-subscriber",
+]
+
+
+[tool.uv.sources]
+bctrealtimesdk-subscriber = { path = "bctRealtimeSDK_Subscriber-3.1.0-py3-none-any.whl" }
