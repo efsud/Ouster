@@ -1,0 +1,11 @@
+{
+  "sites": [
+    {"id":"OBC-AG-SA-C251068","name":"Renaissance Dr & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
+    {"id":"OBC-AG-SA-C257206","name":"Boston Ave & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
+    {"id":"OBC-AG-SA-C257222","name":"Cranes Roost & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
+    {"id":"OBC-AG-SA-C257223","name":"Hattaway Dr & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
+    {"id":"OBC-AG-SA-C257225","name":"Palm Springs Dr & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
+    {"id":"OBC-AG-SA-C257227","name":"Plaza Entrance & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
+    {"id":"OBC-AG-SA-C257236","name":"Essex Ave & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"}
+  ]
+}

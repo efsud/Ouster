@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ouster · Corridor Observatory</title>
+  <link rel="stylesheet" href="vendor/leaflet.css"><link rel="stylesheet" href="style.css">
+  <script defer src="vendor/leaflet.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="/" aria-label="Ouster Observatory home"><span class="brand-icon">◉</span> OUSTER<span class="brand-sub">CORRIDOR OBSERVATORY</span></a>
+  <div class="eyebrow">WORKSPACE</div>
+  <nav aria-label="Main sections">
+    <button data-tab="live" class="nav active"><span>◎</span> Live network</button>
+    <button data-tab="history" class="nav"><span>▥</span> Historical performance</button>
+    <button data-tab="ctm" class="nav"><span>▦</span> CTM explorer</button>
+    <button data-tab="optimization" class="nav"><span>◇</span> Optimization <small>SOON</small></button>
+    <button data-tab="guide" class="nav"><span>ⓘ</span> Methods & learning</button>
+  </nav>
+  <div class="sidebar-note"><span class="dot"></span> Read-only by design<p>Observe, understand, improve.<br>Site settings stay under your control.</p></div>
+  <footer>YORK × U OF T<br><span>Corridor Performance Analytics</span></footer>
+</aside>
+<main>
+  <header><div><span class="eyebrow">TRAFFIC INTELLIGENCE / PHASE 01</span><h1 id="page-title">Live network</h1></div><span class="pill" id="connection">Not connected</span></header>
+  <div class="notice" id="global-notice">Toronto first · Awaiting verified site access and sensor metadata. Florida inventory is available.</div>
+  <section id="live" class="page">
+    <div class="section-intro"><div><h2>A clearer view of every movement.</h2><p>Explore the corridor, then zoom into an intersection to inspect live road users.</p></div><div class="select-wrap"><label for="region">Network</label><select id="region"><option>Toronto</option><option>Florida</option></select></div></div>
+    <div class="stats"><article><span>REGISTERED SITES</span><strong id="site-count">0</strong><small id="region-label">Toronto network</small></article><article><span>VERIFIED LOCATIONS</span><strong id="mapped-count">0</strong><small>Sensor origins validated</small></article><article><span>VISIBLE OBJECTS</span><strong id="object-count">—</strong><small id="frame-status">Waiting for a live stream</small></article><article><span>DATA MODE</span><strong class="text-stat">Read only</strong><small>No signal-control commands</small></article></div>
+    <div class="network-grid"><article class="panel map-panel"><div class="panel-head"><h3>Network overview</h3><span class="subtle">Zoom 17+ for objects</span></div><div id="map"></div><div class="map-footer"><span><i class="legend-dot"></i> Verified site</span><span>● Vehicle &nbsp; <b class="teal">●</b> Other road user</span><span id="map-note">No calibrated sites loaded</span></div></article><article class="panel inventory"><div class="panel-head"><h3>Intersections</h3><span id="inventory-count" class="count">0</span></div><div id="sites-list"></div></article></div>
+    <div class="panel detail"><div><span class="eyebrow">SELECTED INTERSECTION</span><h3 id="selected-name">Choose an intersection</h3><p id="selected-detail">Verified sensor origins and read-only stream access are needed before live objects can appear.</p></div><span class="pill" id="site-state">Awaiting access</span></div>
+  </section>
+  <section id="history" class="page" hidden>
+    <div class="section-intro"><div><h2>Performance, with context.</h2><p>Filter saved windows, inspect quality, and export the same values you see.</p></div><button id="load-demo" class="secondary">Load learning dataset</button></div>
+    <div class="panel filters"><label>Dataset<select id="history-site"><option value="">Select a site</option></select></label><label>Approach<select id="approach"><option value="">All approaches</option></select></label><label>From (your local time)<input id="from" type="datetime-local"></label><label>To (your local time)<input id="to" type="datetime-local"></label><button id="apply-filter" class="primary">Apply</button><button id="export" class="secondary">Export CSV ↗</button></div>
+    <div id="history-source" class="notice">No dataset selected. Missing measurements are shown as unavailable, never as zero.</div>
+    <div id="kpi-cards" class="kpi-grid"></div>
+    <article class="panel chart-panel"><div class="panel-head"><div><h3 id="chart-title">Select a KPI to explore</h3><p class="subtle">Values shown per approach and reporting window · UTC timestamps</p></div><span class="pill" id="window-count">0 windows</span></div><div id="history-chart" class="chart"></div></article>
+    <div class="two-cols"><article class="panel padded"><h3>Collect vendor history</h3><p>Read-only cloud requests. Raw responses are saved locally for inspection; definitions are not assumed to match the paper.</p><label>Data type<select id="collect-kind"><option value="turning_counts">Turning movement counts</option><option value="phases">Phase metadata (including historical)</option></select></label><button id="collect" class="primary">Collect & save</button><p class="subtle">Uses the site and date range above. Counts: maximum 24 hours per request.</p></article><article class="panel padded"><h3>Import annotated KPI windows</h3><p>Import JSON that follows <code>docs/data-contract.md</code>. Every window is validated before the batch is saved.</p><label class="file-label">Choose JSON file<input id="import-file" type="file" accept=".json,application/json"></label><p class="subtle">Data remains in the local database. The learning dataset is always labelled synthetic.</p></article></div>
+    <article class="panel padded"><h3>Window quality & traceability</h3><div class="table-scroll"><table><thead><tr><th>Start (UTC)</th><th>Approach</th><th>Valid tracks</th><th>Coverage</th><th>Quality</th></tr></thead><tbody id="quality-rows"></tbody></table></div></article>
+  </section>
+  <section id="ctm" class="page" hidden>
+    <div class="section-intro"><div><h2>See how a queue travels.</h2><p>Explore traffic propagation through connected cells and signalized boundaries.</p></div><span class="pill amber">Uncalibrated simulation</span></div>
+    <div class="notice">CTM is a macroscopic model. These scenarios are educational estimates, separate from measured LiDAR KPIs.</div>
+    <div class="simulation-grid"><article class="panel padded controls"><h3>Scenario inputs</h3><label>Scale<select id="ctm-scale"><option value="3">Corridor · 3 intersections</option><option value="1">Single intersection</option><option value="7">Corridor · 7 intersections</option></select></label><label>Demand <output id="demand-out">900 veh/h</output><input id="demand" type="range" min="0" max="2400" step="50" value="900"></label><label>Green duration <output id="green-out">45 s</output><input id="green" type="range" min="0" max="90" step="5" value="45"></label><label>Offset per intersection <output id="offset-out">15 s</output><input id="offset" type="range" min="0" max="90" step="5" value="15"></label><button id="run-ctm" class="primary">Run scenario →</button><p>15-minute horizon<br>90-second cycle · 1 lane<br>50 m cells · 2-second time step<br>Free-flow speed: 13.89 m/s<br>Jam density: 150 veh/km</p></article><article class="panel padded"><div class="panel-head"><h3>Space–time density</h3><span class="subtle">veh/km · direction of travel ↓</span></div><div id="heatmap"></div><div class="gradient-legend"><span>Free flow · 0</span><i></i><span>Congested · 150</span></div><p class="subtle">Each row is a road cell. Columns advance in time. Signal boundaries occur every six cells.</p></article></div>
+    <div class="stats" id="ctm-stats"></div><article class="panel padded"><h3>How the model works</h3><p>Each cell can send vehicles downstream only when the next cell has space. Red signals stop flow across the intersection boundary. Unserved demand stays in an upstream waiting queue, so vehicles are conserved.</p><div class="formula">flow = min(sending capacity, receiving capacity)<br>vehicles next = vehicles now + inflow − outflow</div><p class="subtle">This first model has one through lane and no turning movements. Calibration, turning flows, lane groups, and observed signal plans are required before field validation.</p></article>
+  </section>
+  <section id="optimization" class="page" hidden><div class="panel coming-soon"><span class="eyebrow">PHASE 03 / RESERVED</span><div class="orb">◇</div><h2>From observation to optimization.</h2><p>This space is reserved for reinforcement learning experiments with coordination, offsets, and other regulators.</p><div class="pill">Awaiting model development</div><p class="subtle">No training model, live controller, or configuration changes are enabled.</p></div></section>
+  <section id="guide" class="page" hidden><div class="section-intro"><div><h2>Understand every number.</h2><p>The implementation follows your LaTeX specification, with assumptions made explicit.</p></div></div><div id="methods" class="two-cols"></div><article class="panel padded"><h3>Your project, file by file</h3><p><code>dashboard/analytics.py</code> contains KPI formulas, coordinate conversion, and CTM. <code>storage.py</code> saves local observations. <code>collector.py</code> records the read-only BlueCity stream. <code>bluecity.py</code> limits cloud requests to documented endpoints. <code>server.py</code> connects these functions to the dashboard.</p><p><code>docs/learning-guide.md</code> explains the architecture, exercises, validation steps, and current limitations. <code>docs/change-log.md</code> records what was added and why. <code>docs/kpi-specification.tex</code> preserves your source document.</p><h3>Before publishing a field KPI</h3><p>Verify sensor origin and rotation, lane and queue geometry, timestamps, physical-track deduplication, and signal phase mapping. Require at least 15 valid traversals and 80% coverage per reporting window. Validate against independent counts and controller logs.</p></article></section>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</main>
+</body></html>
