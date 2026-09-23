@@ -31,6 +31,7 @@ documentation; `data/` is deliberately ignored.
 | `dashboard/static/app.js` | Filter interactions, maps, SVG charts, API requests | Turns inputs and results into an interactive dashboard |
 | `dashboard/static/vendor/` | Unmodified Leaflet assets and license | Local, version-pinned map rendering |
 | `scripts/start_connected.py` | Hidden password prompt and process launch | Enter credentials locally without saving them |
+| `scripts/connect_florida.command` | macOS Terminal launcher for all seven Florida UDIDs | Opens the credential prompt directly, using port 8766 |
 | `scripts/vendor_map.py` | Copy npm's pinned Leaflet files | Reproducible dependency refresh |
 | `scripts/browser_check.cjs` | Exercise the UI in a real headless browser | Verify controls, exports, CTM behavior, and mobile layout |
 | `dashboard/tests/` | Known numerical cases, failure cases, conservation | Catch scientific/data errors before using field data |

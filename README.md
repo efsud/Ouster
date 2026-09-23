@@ -37,6 +37,12 @@ The launcher asks for:
 2. BlueCity API password (hidden while typing).
 3. Florida sensor UDIDs, separated by commas (leave blank for cloud history only).
 
+For the seven supplied Florida sites, double-click
+`scripts/connect_florida.command` on macOS. It opens Terminal, selects all seven
+UDIDs automatically, and asks only for your API username and hidden password.
+It starts the connected dashboard on port 8766, alongside the preview on 8765.
+Equivalent command: `.venv/bin/python scripts/start_connected.py --port 8766 --florida`.
+
 Credentials stay in process memory and are passed to the child processes through
 their environment. They are never written to files or command-line arguments.
 Ctrl+C stops the server and all recorders. Use `--port 8766` if the preview already

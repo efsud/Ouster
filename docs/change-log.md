@@ -65,3 +65,12 @@ Florida / SR-436, Altamonte Springs. The seven supplied UDIDs remain exactly as
 provided in config/sites.json. Updated the dashboard banner, initial label,
 credential prompt, and README to match the current Florida focus. Toronto remains
 an optional network. No sensor coordinates or live data were invented.
+
+## 2026-09-23 — Open the Python credential prompt
+
+Rechecked the vendor main.py and SDK authentication guidance: BCTWSConnection
+requires UDID, username and password and obtains its JWT internally. Added a
+macOS Terminal launcher so the user is actually presented with the username and
+hidden-password prompts. The --florida flag selects the seven existing UDIDs
+automatically. The connected server uses 8766 while the preview remains on 8765.
+Credentials remain in memory and are never added to project files or GitHub.
