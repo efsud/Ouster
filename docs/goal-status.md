@@ -47,3 +47,12 @@ requested the Florida map. Florida is now the default network. A Toronto UDID
 is no longer a prerequisite for the current Florida work. API credentials,
 verified Florida sensor origins/geometry, and the conversion script remain needed
 for live object georeferencing and field KPI validation.
+
+
+## Latest scope update — Toronto Finch West
+
+The user supplied all ten Toronto UDIDs and requested focus on those sensors.
+They are now in config/sites.json and Toronto is the default map network.
+The missing-Toronto-UDID blocker is resolved. Authenticated Toronto stream access,
+verified georeferencing/scene geometry, the original conversion script, and field
+KPI validation still require verification.

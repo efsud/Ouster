@@ -18,7 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8765)
-    parser.add_argument('--florida',action='store_true',help='Record all seven Florida UDIDs from config/sites.json')
+    network=parser.add_mutually_exclusive_group()
+    network.add_argument('--florida',action='store_true',help='Record all seven Florida UDIDs from config/sites.json')
+    network.add_argument('--toronto',action='store_true',help='Record all ten Toronto UDIDs from config/sites.json')
     args=parser.parse_args()
     if not 1<=args.port<=65535: raise SystemExit('Port must be between 1 and 65535.')
     with socket.socket() as probe:
@@ -30,13 +32,14 @@ def main():
     if importlib.util.find_spec('realtime_subscriber') is None:
         raise SystemExit('Install the bundled SDK first. See README.md, Connected mode.')
     udids=[]
-    if args.florida:
-        udids=[s['id'] for s in json.loads((ROOT/'config/sites.json').read_text())['sites'] if s['region']=='Florida']
-        print(f'Florida / SR-436: {len(udids)} configured sensor UDIDs selected.')
+    if args.florida or args.toronto:
+        region='Toronto' if args.toronto else 'Florida'
+        udids=[s['id'] for s in json.loads((ROOT/'config/sites.json').read_text())['sites'] if s['region']==region]
+        print(f'{region}: {len(udids)} configured sensor UDIDs selected.')
     print('BlueCity read-only access — credentials remain in process memory.')
     username = input('BlueCity API username: ').strip()
     password = getpass.getpass('BlueCity API password (hidden): ')
-    if not args.florida:
+    if not (args.florida or args.toronto):
         udids = list(dict.fromkeys(s.strip() for s in input('Sensor UDIDs, comma separated (blank for historical only): ').split(',') if s.strip()))
     if not username or not password:
         raise SystemExit('Username and password are required.')

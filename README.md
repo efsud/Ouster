@@ -13,8 +13,9 @@ Leaflet map library is included locally with its license.
 python3 -m dashboard.server
 ```
 
-Open **http://127.0.0.1:8765**. The dashboard opens on Florida, centered on the SR-436 corridor in Altamonte
-Springs, with the seven supplied UDIDs in the intersection list. Sensor locations
+Open **http://127.0.0.1:8765**. The dashboard opens on Toronto, centered on the Finch West LRT corridor,
+with the ten supplied Toronto UDIDs in the intersection list. Florida remains
+available in the network selector. Sensor locations
 and live measurements remain unavailable until verified. In Historical performance, **Load learning dataset** creates
 explicitly synthetic examples. The CTM explorer works without credentials.
 
@@ -35,7 +36,12 @@ The launcher asks for:
 
 1. BlueCity API username.
 2. BlueCity API password (hidden while typing).
-3. Florida sensor UDIDs, separated by commas (leave blank for cloud history only).
+3. Sensor UDIDs, separated by commas (leave blank for cloud history only).
+
+For the ten Toronto sensors, double-click `scripts/connect_toronto.command`.
+It selects all ten Finch West UDIDs, prompts privately for credentials, and uses
+port 8767 so it can run alongside an existing session. Equivalent command:
+`.venv/bin/python scripts/start_connected.py --port 8767 --toronto`.
 
 For the seven supplied Florida sites, double-click
 `scripts/connect_florida.command` on macOS. It opens Terminal, selects all seven

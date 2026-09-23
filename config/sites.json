@@ -1,11 +1,123 @@
 {
   "sites": [
-    {"id":"OBC-AG-SA-C251068","name":"Renaissance Dr & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
-    {"id":"OBC-AG-SA-C257206","name":"Boston Ave & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
-    {"id":"OBC-AG-SA-C257222","name":"Cranes Roost & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
-    {"id":"OBC-AG-SA-C257223","name":"Hattaway Dr & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
-    {"id":"OBC-AG-SA-C257225","name":"Palm Springs Dr & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
-    {"id":"OBC-AG-SA-C257227","name":"Plaza Entrance & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"},
-    {"id":"OBC-AG-SA-C257236","name":"Essex Ave & SR-436","region":"Florida","corridor":"SR-436","timezone":"America/New_York"}
+    {
+      "id": "OBC-AG-SA-C251068",
+      "name": "Renaissance Dr & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York"
+    },
+    {
+      "id": "OBC-AG-SA-C257206",
+      "name": "Boston Ave & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York"
+    },
+    {
+      "id": "OBC-AG-SA-C257222",
+      "name": "Cranes Roost & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York"
+    },
+    {
+      "id": "OBC-AG-SA-C257223",
+      "name": "Hattaway Dr & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York"
+    },
+    {
+      "id": "OBC-AG-SA-C257225",
+      "name": "Palm Springs Dr & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York"
+    },
+    {
+      "id": "OBC-AG-SA-C257227",
+      "name": "Plaza Entrance & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York"
+    },
+    {
+      "id": "OBC-AG-SA-C257236",
+      "name": "Essex Ave & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York"
+    },
+    {
+      "id": "OBC-AG-SA-C618857",
+      "name": "Finch W & Norfinch (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto"
+    },
+    {
+      "id": "OBC-AG-SA-C618861",
+      "name": "Finch W & Driftwood (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto"
+    },
+    {
+      "id": "OBC-AG-SA-C251071",
+      "name": "Finch W & Signet (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto"
+    },
+    {
+      "id": "OBC-AG-SA-C351163",
+      "name": "Finch W & Jane (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto"
+    },
+    {
+      "id": "OBC-AG-SA-C251052",
+      "name": "Finch W & Albion (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto"
+    },
+    {
+      "id": "OBC-AG-SA-C257220",
+      "name": "Finch W & Weston (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto"
+    },
+    {
+      "id": "OBC-AG-SA-C257238",
+      "name": "Finch W & Kipling (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto"
+    },
+    {
+      "id": "OBC-AG-SA-C257208",
+      "name": "Finch W & Martin Grove (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto"
+    },
+    {
+      "id": "OBC-AG-SA-C251055",
+      "name": "Finch W & York Gate (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto"
+    },
+    {
+      "id": "OBC-AG-SA-C251064",
+      "name": "Finch W & Islington (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto"
+    }
   ]
 }

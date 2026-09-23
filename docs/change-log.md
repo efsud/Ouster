@@ -74,3 +74,13 @@ macOS Terminal launcher so the user is actually presented with the username and
 hidden-password prompts. The --florida flag selects the seven existing UDIDs
 automatically. The connected server uses 8766 while the preview remains on 8765.
 Credentials remain in memory and are never added to project files or GitHub.
+
+
+## 2026-09-23 — Toronto Finch West sensor inventory supplied
+
+Added the ten exact Toronto UDIDs and intersection names provided by the user.
+Changed the initial map to the Finch West corridor overview and Toronto network.
+Added a --toronto SDK launcher option and connect_toronto.command for a private
+credential prompt on port 8767. Florida remains available. The overview center
+is a navigation aid, not a sensor georeference; no exact sensor origins or
+rotations are assumed.

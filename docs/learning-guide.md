@@ -17,7 +17,7 @@ documentation; `data/` is deliberately ignored.
 
 | File | What you would write here | Why it exists |
 | --- | --- | --- |
-| `config/sites.json` | Known Florida names, IDs, corridor and timezone | Inventory without guessed map coordinates |
+| `config/sites.json` | Ten Toronto and seven Florida names, IDs, corridors and timezones | Inventory without guessed map coordinates |
 | `config/sites.local.json` (you supply) | Verified Toronto metadata and calibration | Keeps local scene details separate from shared code |
 | `dashboard/analytics.py` | KPI functions, coordinate rotation, CTM equations | One testable place for scientific calculations |
 | `dashboard/storage.py` | Tables and parameterized SQL | Persistent records with source and quality metadata |
@@ -86,3 +86,7 @@ be recalculated from raw samples. Do not average intersection P95s or rate value
 to manufacture corridor KPIs. Cross-sensor identity matching needs validation.
 The dashboard currently shows per-approach observed windows and a separate
 corridor CTM scenario, not a validated corridor travel-time estimator.
+
+The current Toronto entry point is `scripts/connect_toronto.command`. It calls the
+same SDK launcher with `--toronto`, selecting the ten supplied Finch West sensor
+IDs from configuration. Port 8767 avoids replacing an existing Florida session.
