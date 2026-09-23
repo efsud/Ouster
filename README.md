@@ -35,11 +35,12 @@ The launcher asks for:
 
 1. BlueCity API username.
 2. BlueCity API password (hidden while typing).
-3. A Toronto sensor UDID (leave blank for cloud history only).
+3. Toronto sensor UDIDs, separated by commas (leave blank for cloud history only).
 
 Credentials stay in process memory and are passed to the child processes through
 their environment. They are never written to files or command-line arguments.
-Ctrl+C stops both processes. Never put passwords or activation tokens in Git.
+Ctrl+C stops the server and all recorders. Use `--port 8766` if the preview already
+occupies port 8765. Never put passwords or activation tokens in Git.
 
 The recorder uses `BCTWSConnection` with FRAME, PHASE_CHANGE, and LOOP_CHANGE
 subscriptions. The SDK owns authentication, routing, and reconnect behavior.
@@ -73,8 +74,14 @@ sensor origin, axis convention, and rotation against known road features before
 setting `calibration_verified` to true. The supplied coordinate script has not
 yet been received. The independent local tangent-plane converter supports a
 configurable rotation; 180° must be verified per sensor. Refresh the browser
-after metadata changes. Objects appear at zoom 17+; frames older than 5 seconds
+after metadata changes. All calibrated site streams in the selected network are
+shown at zoom 17+, with objects restricted to the map viewport; frames older than 5 seconds
 are hidden and labelled stale.
+
+For corridor lines, add a `corridors` array alongside `sites` in the local JSON.
+Each item needs `name`, `region`, `geometry_verified:true`, and `coordinates` as
+an ordered array of `[longitude, latitude]` points following the actual roadway.
+Unverified paths are ignored. Site inventory order is never used to guess a corridor.
 
 ## Features and honest boundaries
 

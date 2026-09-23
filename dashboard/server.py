@@ -14,6 +14,7 @@ from .analytics import METRICS, calculate, finite, local_to_geo, simulate
 from .bluecity import BlueCity
 from .storage import Store
 from .demo import generate
+from .live import snapshot
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT/'dashboard/static'
@@ -27,6 +28,26 @@ def sites():
         for s in overrides: mapping[s['id']] = {**mapping.get(s['id'],{}),**s}
         entries = list(mapping.values())
     return entries
+
+def corridors():
+    """Only locally supplied, verified GeoJSON-style LineStrings are exposed."""
+    local=ROOT/'config/sites.local.json'
+    if not local.exists(): return []
+    result=[]
+    for corridor in json.loads(local.read_text()).get('corridors',[]):
+        if corridor.get('geometry_verified') is not True: continue
+        points=corridor.get('coordinates',[])
+        if not isinstance(points,list) or len(points)<2:
+            raise ValueError('A verified corridor needs at least two [longitude,latitude] points')
+        for point in points:
+            if not isinstance(point,list) or len(point)!=2:
+                raise ValueError('Corridor points must be [longitude,latitude] pairs')
+            lng,lat=point
+            finite(lng,'corridor longitude');finite(lat,'corridor latitude')
+            if not -180<=lng<=180 or not -85<lat<85:
+                raise ValueError('Corridor coordinates outside supported range')
+        result.append({'name':str(corridor['name']),'region':str(corridor['region']),'coordinates':points})
+    return result
 
 def validate_window(w):
     if not isinstance(w,dict): raise ValueError('Each window must be an object')
@@ -62,22 +83,15 @@ class Handler(BaseHTTPRequestHandler):
             parsed = urlparse(self.path)
             q = {k:v[0] for k,v in parse_qs(parsed.query).items()}
             if parsed.path == '/api/status':
-                return self.send({'sites':sites(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_verified':any(s.get('region')=='Toronto' for s in sites())})
+                return self.send({'sites':sites(),'corridors':corridors(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_configured':any(s.get('region')=='Toronto' for s in sites())})
+            if parsed.path == '/api/network-live':
+                entries=[s for s in sites() if s.get('region')==q.get('region')]
+                now=time.time()
+                return self.send({'snapshots':[snapshot(self.server.store,s,now) for s in entries]})
             if parsed.path == '/api/live':
                 site = next((s for s in sites() if s['id']==q.get('site')),None)
                 if not site: raise ValueError('Select a configured site')
-                latest = self.server.store.latest(site['id'])
-                if not latest: return self.send({'state':'unavailable','objects':[],'reason':'No frames recorded for this site'})
-                age = time.time()-latest['timestamp']
-                if age > 5 or age < -5: return self.send({'state':'stale','timestamp':latest['timestamp'],'objects':[],'reason':'No current frames within 5 seconds of this computer clock'})
-                origin = site.get('origin')
-                if not origin or site.get('calibration_verified') is not True:
-                    return self.send({'state':'uncalibrated','timestamp':latest['timestamp'],'objects':[],'reason':'Frames received; origin and rotation require verification'})
-                objects = []
-                for obj in latest['frame'].get('objects',[]):
-                    lat,lng = local_to_geo(obj.get('centerX',0),obj.get('centerY',0),origin['lat'],origin['lng'],site['rotation_deg'])
-                    objects.append({'id':obj['id'],'lat':lat,'lng':lng,'class':obj.get('classType','unknown')})
-                return self.send({'state':'live','timestamp':latest['timestamp'],'objects':objects})
+                return self.send(snapshot(self.server.store,site))
             if parsed.path in ['/api/history','/api/export.csv']:
                 rows = self.server.store.history(q.get('site'),float(q['start']) if q.get('start') else None,float(q['end']) if q.get('end') else None,q.get('source'),q.get('approach'))
                 if parsed.path.endswith('.csv'):

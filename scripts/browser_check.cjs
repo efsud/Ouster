@@ -38,7 +38,18 @@ const fs = require('node:fs');
     await page.locator('[data-tab=live]').click();
     await page.screenshot({path:'data/qa/live-mobile.png',fullPage:true});
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Mobile horizontal overflow');
+    // Browser-only synthetic stream responses exercise network mapping; no field data is saved.
+    await page.route('**/api/network-live?*',route=>route.fulfill({json:{snapshots:[
+      {site:'OBC-AG-SA-C251068',state:'live',timestamp:Date.now()/1000,objects:[{id:'fixture-a',lat:28.661,lng:-81.386,class:'2'}]},
+      {site:'OBC-AG-SA-C257206',state:'live',timestamp:Date.now()/1000,objects:[{id:'fixture-b',lat:28.6611,lng:-81.3861,class:'10'}]},
+      {site:'OBC-AG-SA-C257222',state:'stale',objects:[]}
+    ]}}));
+    await page.evaluate(()=>map.setView([28.661,-81.386],18,{animate:false}));
+    await page.waitForFunction(()=>document.getElementById('object-count').textContent==='2');
+    assert.match(await page.locator('#connection').textContent(),/2 \/ 3 sites live/);
+    await page.evaluate(()=>map.setView([43.6532,-79.3832],18,{animate:false}));
+    await page.waitForFunction(()=>document.getElementById('object-count').textContent==='0');
     assert.deepEqual(errors,[]);
-    console.log('PASS: map inventory, stale/empty state, demo history, KPI selection, CSV export, CTM red/green, optimization placeholder, mobile fit, no JS errors.');
+    console.log('PASS: map inventory, stale/empty state, demo history, KPI selection, CSV export, CTM red/green, optimization placeholder, mobile fit, multiple live sites and viewport filtering, no JS errors.');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

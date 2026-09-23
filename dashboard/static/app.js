@@ -1,10 +1,10 @@
 'use strict';
 const $ = id => document.getElementById(id);
-const state = {sites:[],metrics:{},site:null,metric:'control_delay',rows:[],tab:'live'};
+const state = {sites:[],corridors:[],metrics:{},site:null,metric:'control_delay',rows:[],tab:'live'};
 const titles = {live:'Live network',history:'Historical performance',ctm:'CTM explorer',optimization:'Optimization',guide:'Methods & learning'};
 const escapeHTML = value => String(value).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number = v => v===null || v===undefined ? '—' : Number(v).toLocaleString(undefined,{maximumFractionDigits:1});
-let map, sitesLayer, objectLayer, toastTimer;
+let map, sitesLayer, objectLayer, toastTimer, liveRequest=0;
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,9000);}
 async function api(path, data){
   const response=await fetch(path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
@@ -16,7 +16,7 @@ document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener(
   document.querySelectorAll('.page').forEach(p=>p.hidden=p.id!==state.tab);
   document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b===button));
   $('page-title').textContent=titles[state.tab];
-  if(state.tab==='live')setTimeout(()=>map?.invalidateSize(),0);
+  if(state.tab==='live')setTimeout(()=>{map?.invalidateSize();action(refreshLive);},0);
   if(state.tab==='ctm'&&!$('heatmap').children.length)action(runCTM);
 }));
 function initMap(){
@@ -25,7 +25,7 @@ function initMap(){
   let tileErrorShown=false;
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).on('tileerror',()=>{if(!tileErrorShown){$('map-note').textContent='Basemap unavailable; check network';tileErrorShown=true;}}).addTo(map);
   sitesLayer=L.layerGroup().addTo(map);objectLayer=L.layerGroup().addTo(map);
-  map.on('zoomend',()=>action(refreshLive));
+  map.on('moveend',()=>action(refreshLive));
 }
 function renderNetwork(){
   const region=$('region').value;
@@ -39,9 +39,9 @@ function renderNetwork(){
   $('site-state').textContent='Awaiting access';$('connection').textContent='Not connected';
   if(map)map.setView(region==='Florida'?[28.661,-81.386]:[43.6532,-79.3832],13,{animate:false});
   $('sites-list').replaceChildren();
-  if(!list.length)$('sites-list').innerHTML='<div class="empty"><strong>Toronto comes first.</strong>Sign in to BlueCity and add the verified Toronto site IDs and sensor origins. No sites have been inferred.</div>';
+  if(!list.length)$('sites-list').innerHTML='<div class="empty"><strong>Toronto comes first.</strong>Use the Python launcher to enter API credentials, then add verified Toronto site IDs and sensor origins. No sites have been inferred.</div>';
   for(const site of list){
-    const button=document.createElement('button');button.className='site';
+    const button=document.createElement('button');button.className='site';button.dataset.siteId=site.id;
     button.innerHTML=`<strong>${escapeHTML(site.name)}</strong><small>${escapeHTML(site.id)}</small><span class="status">${site.origin&&site.calibration_verified?'Location verified':'Location / access pending'}</span>`;
     button.onclick=()=>selectSite(site,button);$('sites-list').append(button);
     if(site.origin&&site.calibration_verified&&map){
@@ -50,8 +50,14 @@ function renderNetwork(){
       L.circleMarker(point,{radius:7,color:'#fff',weight:3,fillColor:'#197d79',fillOpacity:1}).bindTooltip(label).on('click',()=>selectSite(site,button)).addTo(sitesLayer);
     }
   }
-  // Corridor lines require a verified path/order, not inventory order.
-  $('map-note').textContent='Origins and corridor geometry must be verified';
+  const paths=state.corridors.filter(c=>c.region===region);
+  for(const corridor of paths){
+    if(!map)break;
+    const label=document.createElement('span');label.textContent=corridor.name+' · verified corridor';
+    L.polyline(corridor.coordinates.map(([lng,lat])=>[lat,lng]),{color:'#197d79',weight:4,opacity:.6}).bindTooltip(label).addTo(sitesLayer);
+  }
+  $('map-note').textContent=paths.length?paths.length+' verified corridor paths':'Origins and corridor geometry must be verified';
+  action(refreshLive);
 }
 function selectSite(site,button){
   state.site=site;document.querySelectorAll('.site').forEach(b=>b.classList.toggle('selected',b===button));
@@ -60,19 +66,30 @@ function selectSite(site,button){
   action(refreshLive);
 }
 async function refreshLive(){
-  if(!state.site||state.tab!=='live')return;
-  const selected=state.site.id;
-  const data=await api('/api/live?site='+encodeURIComponent(selected));
-  if(state.site?.id!==selected)return;
+  if(state.tab!=='live')return;
+  const region=$('region').value,request=++liveRequest;
+  const result=await api('/api/network-live?region='+encodeURIComponent(region));
+  if(request!==liveRequest||$('region').value!==region||state.tab!=='live')return;
   objectLayer?.clearLayers();
-  $('site-state').textContent=data.state;$('connection').textContent=data.state==='live'?'Live stream connected':'No verified live stream';
-  $('frame-status').textContent=data.timestamp?new Date(data.timestamp*1000).toLocaleTimeString()+' · '+data.state:'Waiting for a live stream';
-  $('object-count').textContent=data.state==='live'?data.objects.length:'—';
-  if(data.reason)$('selected-detail').textContent=data.reason;
-  if(map&&map.getZoom()>=17){for(const o of data.objects){
-    const label=document.createElement('span');label.textContent=`Object ${o.id} · class ${o.class}`;
-    L.circleMarker([o.lat,o.lng],{radius:4,color:['1','2','3','4','5','6','7','8','9','15'].includes(o.class)?'#426fba':'#17a990',weight:1,fillOpacity:.9}).bindTooltip(label).addTo(objectLayer);
-  }}
+  const fresh=result.snapshots.filter(s=>s.state==='live');
+  $('connection').textContent=fresh.length?`${fresh.length} / ${result.snapshots.length} sites live`:'No verified live stream';
+  let visible=0;
+  for(const data of result.snapshots){
+    const button=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===data.site);
+    if(button)button.querySelector('.status').textContent=data.state;
+    if(state.site?.id===data.site){
+      $('site-state').textContent=data.state;
+      $('selected-detail').textContent=data.reason||`${data.site} · ${data.objects.length} objects · ${data.rejected_objects||0} invalid objects excluded`;
+    }
+    if(map&&map.getZoom()>=17&&data.state==='live')for(const o of data.objects){
+      if(!map.getBounds().contains([o.lat,o.lng]))continue;
+      visible++;
+      const label=document.createElement('span');label.textContent=`${data.site} · Object ${o.id} · class ${o.class}`;
+      L.circleMarker([o.lat,o.lng],{radius:4,color:['1','2','3','4','5','6','7','8','9','15'].includes(String(o.class))?'#426fba':'#17a990',weight:1,fillOpacity:.9}).bindTooltip(label).addTo(objectLayer);
+    }
+  }
+  $('object-count').textContent=fresh.length?visible:'—';
+  $('frame-status').textContent=fresh.length?(map?.getZoom()<17?'Zoom to 17+ to view objects':`${fresh.length} fresh site streams`):'Waiting for a live stream';
 }
 function filters(){
   const q=new URLSearchParams();
@@ -179,10 +196,10 @@ $('collect').onclick=()=>action(async()=>{
 for(const [id,unit] of [['demand','veh/h'],['green','s'],['offset','s']])$(id).oninput=()=>$(id+'-out').textContent=$(id).value+' '+unit;
 $('run-ctm').onclick=()=>action(runCTM);
 action(async()=>{
-  const status=await api('/api/status');state.sites=status.sites;state.metrics=status.metrics;
+  const status=await api('/api/status');state.sites=status.sites;state.corridors=status.corridors||[];state.metrics=status.metrics;
   initMap();renderNetwork();renderCards();renderChart();
   state.sites.forEach(s=>$('history-site').add(new Option(s.name,s.id)));
   $('history-site').add(new Option('Learning dataset · SYNTHETIC','DEMO-001'));
-  if(status.toronto_verified)$('global-notice').textContent='Read-only monitoring · Verify calibration and data quality before interpreting field KPIs.';
+  if(status.toronto_configured)$('global-notice').textContent='Toronto metadata loaded · Verify access, calibration and data quality before interpreting field KPIs.';
   setInterval(()=>refreshLive().catch(()=>{objectLayer?.clearLayers();$('connection').textContent='Connection lost';$('object-count').textContent='—';}),2000);
 });

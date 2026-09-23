@@ -4,15 +4,25 @@ Run from the repository root: .venv/bin/python scripts/start_connected.py
 No credentials are written to disk, URLs, Git, or command-line arguments.
 """
 import getpass
+import argparse
 import importlib.util
 import os
 from pathlib import Path
 import subprocess
 import sys
+import socket
 
 ROOT = Path(__file__).resolve().parents[1]
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--port',type=int,default=8765)
+    args=parser.parse_args()
+    if not 1<=args.port<=65535: raise SystemExit('Port must be between 1 and 65535.')
+    with socket.socket() as probe:
+        try: probe.bind(('127.0.0.1',args.port))
+        except OSError:
+            raise SystemExit(f'Port {args.port} is occupied. Stop the preview or use --port {args.port+1}.')
     if not sys.stdin.isatty():
         raise SystemExit('Run this launcher in an interactive terminal so your password stays hidden.')
     if importlib.util.find_spec('realtime_subscriber') is None:
@@ -20,16 +30,16 @@ def main():
     print('BlueCity read-only access — credentials remain in process memory.')
     username = input('BlueCity API username: ').strip()
     password = getpass.getpass('BlueCity API password (hidden): ')
-    udid = input('Toronto sensor UDID (blank starts historical access only): ').strip()
+    udids = list(dict.fromkeys(s.strip() for s in input('Toronto sensor UDIDs, comma separated (blank for historical only): ').split(',') if s.strip()))
     if not username or not password:
         raise SystemExit('Username and password are required.')
     env = dict(os.environ,BLUECITY_USERNAME=username,BLUECITY_PASSWORD=password)
     children = []
     try:
-        children.append(subprocess.Popen([sys.executable,'-m','dashboard.server'],cwd=ROOT,env=env))
-        if udid:
+        children.append(subprocess.Popen([sys.executable,'-m','dashboard.server','--port',str(args.port)],cwd=ROOT,env=env))
+        for udid in udids:
             children.append(subprocess.Popen([sys.executable,'-m','dashboard.collector','--site',udid],cwd=ROOT,env=env))
-        print('Open http://127.0.0.1:8765. Ctrl+C stops both processes.')
+        print(f'Open http://127.0.0.1:{args.port}. Ctrl+C stops the server and recorders.')
         print('Add verified site metadata to config/sites.local.json before mapping this stream.')
         children[0].wait()
     except KeyboardInterrupt:

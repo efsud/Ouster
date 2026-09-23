@@ -36,3 +36,23 @@ Pending: user-entered API credentials, Toronto UDID and scene metadata, original
 coordinate script, field validation, raw-frame-to-KPI annotation, corridor
 geometry/identity matching, retention policy, and authenticated multi-user deployment
 if desired. Optimization remains intentionally deferred.
+
+## 2026-09-23 — Network-wide live view
+
+Extended live mapping from a single selected site to every calibrated stream in
+the selected network. Objects are displayed within the viewport at zoom 17+;
+site-specific freshness and calibration states remain visible. The backend takes
+one shared timestamp for a network snapshot. Malformed objects are counted and
+excluded without discarding valid objects in the frame.
+
+Added verified corridor path rendering from local metadata, using explicit
+[longitude,latitude] coordinates rather than assuming the site inventory order
+is a roadway path. The private launcher can record multiple comma-separated
+UDIDs and checks its port before asking for credentials.
+
+Five additional tests cover empty versus missing frames, stale/future timestamps,
+required calibration, malformed objects, sensor isolation, and protobuf defaults.
+Live access and field geometry remain pending; these tests use synthetic fixtures.
+Browser tests also pass with two simultaneous synthetic site snapshots and verify
+that objects outside the viewport are not displayed. `docs/goal-status.md` records
+the requirement-by-requirement completion audit and required field inputs.

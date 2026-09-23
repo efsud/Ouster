@@ -23,6 +23,7 @@ documentation; `data/` is deliberately ignored.
 | `dashboard/storage.py` | Tables and parameterized SQL | Persistent records with source and quality metadata |
 | `dashboard/bluecity.py` | Token acquisition and allowlisted historical reads | Clearly limits external API capabilities |
 | `dashboard/collector.py` | SDK subscription and event recording | Saves original frames and phase events |
+| `dashboard/live.py` | Freshness checks and calibrated map projection | Rejects stale streams and invalid objects per site |
 | `dashboard/server.py` | Local HTTP routes and input checks | Connects the browser to calculations and data |
 | `dashboard/demo.py` | Fixed synthetic annotated windows | Learn the features without confusing demo and field data |
 | `dashboard/static/index.html` | Page structure and labelled controls | Defines the five dashboard sections |
