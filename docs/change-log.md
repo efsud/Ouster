@@ -56,3 +56,12 @@ Live access and field geometry remain pending; these tests use synthetic fixture
 Browser tests also pass with two simultaneous synthetic site snapshots and verify
 that objects outside the viewport are not displayed. `docs/goal-status.md` records
 the requirement-by-requirement completion audit and required field inputs.
+
+
+## 2026-09-23 — Florida selected as the current working network
+
+At the user's request, changed the initial map center and default network to
+Florida / SR-436, Altamonte Springs. The seven supplied UDIDs remain exactly as
+provided in config/sites.json. Updated the dashboard banner, initial label,
+credential prompt, and README to match the current Florida focus. Toronto remains
+an optional network. No sensor coordinates or live data were invented.

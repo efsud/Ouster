@@ -13,9 +13,9 @@ Leaflet map library is included locally with its license.
 python3 -m dashboard.server
 ```
 
-Open **http://127.0.0.1:8765**. The initial Toronto view intentionally shows no
-invented sites or measurements. Select Florida to inspect the seven supplied
-SR-436 hostnames. In Historical performance, **Load learning dataset** creates
+Open **http://127.0.0.1:8765**. The dashboard opens on Florida, centered on the SR-436 corridor in Altamonte
+Springs, with the seven supplied UDIDs in the intersection list. Sensor locations
+and live measurements remain unavailable until verified. In Historical performance, **Load learning dataset** creates
 explicitly synthetic examples. The CTM explorer works without credentials.
 
 ## Connected mode: enter credentials privately
@@ -35,7 +35,7 @@ The launcher asks for:
 
 1. BlueCity API username.
 2. BlueCity API password (hidden while typing).
-3. Toronto sensor UDIDs, separated by commas (leave blank for cloud history only).
+3. Florida sensor UDIDs, separated by commas (leave blank for cloud history only).
 
 Credentials stay in process memory and are passed to the child processes through
 their environment. They are never written to files or command-line arguments.

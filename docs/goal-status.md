@@ -38,3 +38,12 @@ Once those are available, inspect actual SDK events, validate coordinates agains
 the scene, implement scene-specific track/crossing/queue annotation, compare KPIs
 against independent counts and controller data, and calibrate corridor CTM.
 Do not substitute invented metadata or synthetic fixtures for those steps.
+
+
+## Scope update — Florida first for now
+
+The user subsequently directed work to the seven supplied Florida UDIDs and
+requested the Florida map. Florida is now the default network. A Toronto UDID
+is no longer a prerequisite for the current Florida work. API credentials,
+verified Florida sensor origins/geometry, and the conversion script remain needed
+for live object georeferencing and field KPI validation.

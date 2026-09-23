@@ -21,7 +21,7 @@ document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener(
 }));
 function initMap(){
   if(!window.L){$('map').innerHTML='<div class="empty">Map library is unavailable. Run the vendor setup in README.md.</div>';return;}
-  map=L.map('map').setView([43.6532,-79.3832],12);
+  map=L.map('map').setView([28.661,-81.386],13);
   let tileErrorShown=false;
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).on('tileerror',()=>{if(!tileErrorShown){$('map-note').textContent='Basemap unavailable; check network';tileErrorShown=true;}}).addTo(map);
   sitesLayer=L.layerGroup().addTo(map);objectLayer=L.layerGroup().addTo(map);
@@ -29,6 +29,7 @@ function initMap(){
 }
 function renderNetwork(){
   const region=$('region').value;
+  $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven intersections selected. Live data awaits API access and sensor calibration.':'Toronto · Add verified site metadata to explore this network.';
   const list=state.sites.filter(s=>s.region===region);
   state.site=null;objectLayer?.clearLayers();sitesLayer?.clearLayers();
   $('site-count').textContent=list.length;$('inventory-count').textContent=list.length;
@@ -39,7 +40,7 @@ function renderNetwork(){
   $('site-state').textContent='Awaiting access';$('connection').textContent='Not connected';
   if(map)map.setView(region==='Florida'?[28.661,-81.386]:[43.6532,-79.3832],13,{animate:false});
   $('sites-list').replaceChildren();
-  if(!list.length)$('sites-list').innerHTML='<div class="empty"><strong>Toronto comes first.</strong>Use the Python launcher to enter API credentials, then add verified Toronto site IDs and sensor origins. No sites have been inferred.</div>';
+  if(!list.length)$('sites-list').innerHTML='<div class="empty"><strong>No sites configured.</strong>Use the Python launcher to enter API credentials, then add verified Toronto site IDs and sensor origins. No sites have been inferred.</div>';
   for(const site of list){
     const button=document.createElement('button');button.className='site';button.dataset.siteId=site.id;
     button.innerHTML=`<strong>${escapeHTML(site.name)}</strong><small>${escapeHTML(site.id)}</small><span class="status">${site.origin&&site.calibration_verified?'Location verified':'Location / access pending'}</span>`;
@@ -200,6 +201,5 @@ action(async()=>{
   initMap();renderNetwork();renderCards();renderChart();
   state.sites.forEach(s=>$('history-site').add(new Option(s.name,s.id)));
   $('history-site').add(new Option('Learning dataset · SYNTHETIC','DEMO-001'));
-  if(status.toronto_configured)$('global-notice').textContent='Toronto metadata loaded · Verify access, calibration and data quality before interpreting field KPIs.';
   setInterval(()=>refreshLive().catch(()=>{objectLayer?.clearLayers();$('connection').textContent='Connection lost';$('object-count').textContent='—';}),2000);
 });

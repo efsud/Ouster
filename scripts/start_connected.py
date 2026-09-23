@@ -30,7 +30,7 @@ def main():
     print('BlueCity read-only access — credentials remain in process memory.')
     username = input('BlueCity API username: ').strip()
     password = getpass.getpass('BlueCity API password (hidden): ')
-    udids = list(dict.fromkeys(s.strip() for s in input('Toronto sensor UDIDs, comma separated (blank for historical only): ').split(',') if s.strip()))
+    udids = list(dict.fromkeys(s.strip() for s in input('Florida sensor UDIDs, comma separated (blank for historical only): ').split(',') if s.strip()))
     if not username or not password:
         raise SystemExit('Username and password are required.')
     env = dict(os.environ,BLUECITY_USERNAME=username,BLUECITY_PASSWORD=password)
