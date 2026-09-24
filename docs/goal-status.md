@@ -1,3 +1,9 @@
+# Current goal status — 2026-09-24
+
+See [Toronto implementation and validation](toronto-implementation.md) for the current task-by-task evidence. Ten Toronto IDs are configured; sensor coordinates and actual access remain unverified. Latest audit: zero raw events, zero real KPI windows, 36 synthetic windows. 40 Python tests and browser checks pass.
+
+The historical entries below record earlier scope decisions; the Toronto report supersedes their implementation status.
+
 # Goal audit — 2026-09-23
 
 This records actual completion evidence rather than equating a working demo with

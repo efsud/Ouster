@@ -3,7 +3,8 @@
 ## 1. Follow a piece of data
 
 ```text
-BlueCity Python SDK → collector.py → local SQLite frames/events → server.py → live map
+BlueCity Python SDK → collector/reception → SQLite raw_events → live map
+Verified scene + raw_events → processing → seven KPI formulas → windows → anomalies
 Annotated KPI windows → analytics.py → SQLite windows → filters/charts/CSV
 CTM controls → analytics.simulate → density heatmap (separate from observations)
 ```
@@ -74,9 +75,7 @@ The heatmap is aggregate density; fractional vehicle values are normal in this m
 
 ## 6. What remains before real Toronto KPIs
 
-Enter API credentials locally, provide a Toronto UDID and the original conversion
-script, verify geometry and stream samples, then implement and validate the
-scene-specific raw-frame annotator. It must assign lane groups, detect directional
+The ten Toronto UDIDs are configured. Enter credentials locally and supply the original conversion script; verify geometry and stream samples, then field-validate the implemented raw-frame annotator. It must assign lane groups, detect directional
 crossings, compute stopped-time integrals, identify connected queues, handle
 occlusion/identity switches, and map signal phases. These cannot be inferred safely
 from an intersection name alone.
@@ -90,3 +89,27 @@ corridor CTM scenario, not a validated corridor travel-time estimator.
 The current Toronto entry point is `scripts/connect_toronto.command`. It calls the
 same SDK launcher with `--toronto`, selecting the ten supplied Finch West sensor
 IDs from configuration. Port 8767 avoids replacing an existing Florida session.
+
+
+## 7. Toronto implementation: new components and examples
+
+Read [the acceptance report](toronto-implementation.md) alongside these files.
+Each task links to its GitHub issue there; software tests and field evidence are separate.
+
+| Changed/new component | Purpose and small worked example | Validation |
+| --- | --- | --- |
+| `sdk_client.py`, `collector.py`, `reception.py` (F1) | HTTP 401 becomes `auth_http_401`; a timestamp without timezone is retained as quarantined, not guessed UTC. Batches flush after 0.25 s or 100 messages. | Mock authentication success/failure and timestamp tests; no real reception verified |
+| `calibration.py` (L1) | Compare a projected landmark with its independently surveyed latitude/longitude; reject a residual above the configured 2 m default tolerance. | Known synthetic landmarks and deliberately wrong origin |
+| `live.py`, `app.js` (L2/L3) | Two sensors can both have object ID `7`; they remain separate site observations. Hide a frame at age 5.1 s. Poll every second. Record display latency only when an object is rendered in the viewport. | Live unit tests and browser multiple-site/viewport checks |
+| `storage.py`, `start_connected.py` (H1) | Replaying an identical event in a new collector session inserts zero new rows. Receipt at the exact 30-day cutoff is retained; an earlier receipt expires. | Restart, deduplication, atomic rollback, retention and migration backup tests |
+| `processing.py` (H2/H3) | Twenty complete traversals of 100 m at 10 m/s produce 0 s mean excess time and 240 veh/h. A gap over 3 s splits/censors a track; it is never silently merged. | Geometry/count/conservation, censored gaps, session reset and DST tests |
+| Signal processing (H3) | Arrivals at 20,32,...,248 seconds with green ending at 150 yield 11/20 = 55% AOG. Missing synchronization leaves signal KPIs unavailable. | Hand-calculated phase transition test |
+| `worker.py` (H1/H3) | An independent background worker closes five-minute windows, purges expired raw data hourly, and computes yesterday from observations. Missing geometry exposes `blocked_metadata`. | Uses tested storage/processor; sustained operation needs field testing |
+| `server.py`, HTML/JS/CSS (H4/A2) | Select a history row to inspect its inputs, source event keys and versions; inspect raw pages; export matching windows. Anomaly evidence links back to its window. | Browser history/chart/export checks; anomaly API tests described in report |
+| `anomalies.py` (A1/A2) | A median 12, MAD 2 baseline has an upper bound 22.378 at 3.5 scaled MAD. Two consecutive good-quality windows above it form one alert. Nine valid baseline days produce no statistical alert. | Warmup, zero-MAD, persistence, deduplication, acknowledgement and recovery tests |
+| `validate_live.py`, `review_anomalies.py` (L3/A3) | Compute observed latency separately from upstream clock difference. Manual review with 3 true positives, 1 false positive and 1 miss gives precision 75%, recall 75%. | Tools do not certify field validity; real session and labelled evidence still missing |
+
+The original seven-formula calculator and Optimization placeholder are unchanged.
+The CTM remains an educational simulation and is never anomaly ground truth.
+Private credentials, scene metadata, raw observations and generated reports stay
+outside Git. Share only reviewed, sanitized field evidence in acceptance issues.

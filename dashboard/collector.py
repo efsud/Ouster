@@ -1,39 +1,56 @@
-"""Run a read-only stream recorder with the provided BlueCity SDK.
-
-python -m dashboard.collector --site SENSOR_UDID
-Credentials come from environment variables or an interactive password prompt.
-"""
+"""Read-only SDK recorder with observable errors and durable batch writes."""
 import argparse
-from datetime import datetime, timezone
 import getpass
 import os
+import queue
 import time
+import uuid
+import sqlite3
+from pathlib import Path
 from .storage import Store
+from .reception import normalize_event
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--site', required=True)
-    args = parser.parse_args()
-    from realtime_subscriber.Realtime_subscriber_api import BCTWSConnection
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--site',required=True);args=parser.parse_args()
+    from .sdk_client import ObservableConnection
     from google.protobuf.json_format import MessageToDict
-    username = os.getenv('BLUECITY_USERNAME') or input('BlueCity username: ')
-    password = os.getenv('BLUECITY_PASSWORD') or getpass.getpass('BlueCity password: ')
-    db = Store(os.getenv('OUSTER_DB','data/ouster.sqlite3'))
-    stream = BCTWSConnection(UDID=args.site,username=username,password=password,singleton=True,
-        subscriptions=[BCTWSConnection.subscriptionOption.FRAME,BCTWSConnection.subscriptionOption.PHASE_CHANGE,BCTWSConnection.subscriptionOption.LOOP_CHANGE],semantic_abs=False)
-    print('Recording read-only frames and phase events. Ctrl+C stops collection.')
+    username=os.getenv('BLUECITY_USERNAME') or input('BlueCity username: ')
+    password=os.getenv('BLUECITY_PASSWORD') or getpass.getpass('BlueCity password: ')
+    path=os.getenv('OUSTER_DB',str(Path(__file__).resolve().parent.parent/'data/ouster.sqlite3'))
+    db=Store(path);session=uuid.uuid4().hex
+    db.set_health(args.site,state='starting',session=session,error=None,received_count=0,saved_count=0,last_receipt=None,last_sensor_time=None)
+    batch=[];last_flush=time.monotonic();last_retention=0;received=0;saved=0;stream=None
+    def flush():
+        nonlocal saved,last_flush
+        if batch:
+            saved+=db.save_batch(batch);last=batch[-1]
+            db.set_health(args.site,state='receiving' if last['status']=='received' else 'timestamp_error',last_receipt=last['received_at'],last_sensor_time=last['sensor_time'],error=last['reason'],received_count=received,saved_count=saved)
+            batch.clear()
+        last_flush=time.monotonic()
     try:
+        stream=ObservableConnection(UDID=args.site,username=username,password=password,singleton=True,store_path=path,site_id=args.site,
+            subscriptions=[ObservableConnection.subscriptionOption.FRAME,ObservableConnection.subscriptionOption.PHASE_CHANGE,ObservableConnection.subscriptionOption.LOOP_CHANGE],semantic_abs=False)
         while True:
-            event = MessageToDict(stream.get_hyperparameter())
-            stamp = event.get('frame',{}).get('timestamp') or event.get('timestamp')
-            if not stamp:
-                continue  # Receipt time must not masquerade as sensor time.
-            timestamp = datetime.fromisoformat(stamp.replace('Z','+00:00'))
-            if timestamp.tzinfo is None:
-                continue  # Require a verified timezone instead of assuming one.
-            db.save_event(args.site,timestamp.timestamp(),event)
+            try:
+                # SDK 3.1.0 getter blocks indefinitely; its singleton queue permits a timeout.
+                message=stream.queue.get(timeout=.25)
+                event=MessageToDict(message);received+=1
+                batch.append(normalize_event(args.site,session,event,time.time()))
+            except queue.Empty:pass
+            if len(batch)>=100 or time.monotonic()-last_flush>=.25:flush()
+            if time.time()-last_retention>=3600:
+                db.purge_raw();last_retention=time.time()
+            if not stream.p.is_alive():
+                db.set_health(args.site,state='stopped',error='sdk_process_exited');break
     except KeyboardInterrupt:
-        print('\nRecording stopped; local data retained.')
+        flush();db.set_health(args.site,state='stopped',error=None)
+    except sqlite3.Error:
+        print(f'{args.site}: storage failure; recorder stopped. Check disk capacity and database access.',flush=True)
+        raise SystemExit(1)
+    except Exception as exc:
+        db.set_health(args.site,state='stopped',error='collector_'+type(exc).__name__)
+        print(f'{args.site}: recorder stopped; see collection health.',flush=True)
+    finally:
+        if stream is not None and stream.p.is_alive():stream.p.terminate();stream.p.join(timeout=5)
 
-if __name__ == '__main__':
-    main()
+if __name__=='__main__':main()

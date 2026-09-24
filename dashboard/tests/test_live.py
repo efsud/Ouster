@@ -8,7 +8,7 @@ class LiveTest(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory()
         self.store=Store(Path(self.tmp.name)/'live.sqlite')
-        self.site={'id':'TEST','origin':{'lat':43,'lng':-79},'rotation_deg':180,'calibration_verified':True}
+        self.site={'id':'TEST','origin':{'lat':43,'lng':-79},'rotation_deg':180,'calibration_verified':True,'calibration':{'version':'fixture-1','reference':'Synthetic independent landmarks','landmarks':[{'x':0,'y':0,'lat':43,'lng':-79},{'x':10,'y':0,'lat':43,'lng':-79.00012284},{'x':0,'y':10,'lat':42.99991017,'lng':-79}]}}
 
     def tearDown(self): self.tmp.cleanup()
 

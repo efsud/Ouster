@@ -8,8 +8,7 @@ that window. Record source lineage outside the dashboard if revisions must be au
 Every timestamp is Unix seconds in UTC. Windows are half-open `[start,end)`.
 The UI selects a local date/time and converts it to UTC. Windows must fit fully
 inside the selected range; partial windows are not rescaled. Charts use UTC.
-Daily timezone/DST aggregation is not yet implemented; do not average windows
-to approximate a daily P95 or daily rate.
+Daily processing uses local calendar boundaries in America/Toronto (23/24/25 hours) and recomputes from archived observations. Never average five-minute percentiles or rates.
 
 ```json
 [
@@ -78,7 +77,7 @@ provisional because only one complete traversal is included.
   or invisible cycles are excluded from split failure.
 - `green_seconds`: effective-green duration within this window for this lane group.
 - Merge counts/merge audit logs, spatial calibration versions, phase mapping, and
-  visibility assessment must be retained by the future scene annotation pipeline.
+  visibility assessment must be retained by the scene annotation pipeline.
 
 The current calculator checks numbers, temporal ordering, duplicate IDs, basic
 queue sampling, cycles, counts, and coverage. It cannot independently verify the
@@ -89,4 +88,4 @@ truth of imported scene annotations. `passes-input-checks` is not field validati
 `data/ouster.sqlite3` stores raw frames/events and normalized windows plus results.
 `data/cloud/` stores raw vendor JSON responses from allowlisted GET requests.
 Neither is included in Git. Cloud responses are not yet converted into paper KPIs.
-The current query/export limit is 10,000 windows; narrow the date range if needed.
+History supports pagination; CSV exports all matching rows. The legacy unpaged JSON response remains limited to 10,000 windows. See toronto-implementation.md for raw retention and new interfaces.

@@ -31,6 +31,9 @@ def main():
         raise SystemExit('Run this launcher in an interactive terminal so your password stays hidden.')
     if importlib.util.find_spec('realtime_subscriber') is None:
         raise SystemExit('Install the bundled SDK first. See README.md, Connected mode.')
+    sys.path.insert(0,str(ROOT))
+    from dashboard.storage import Store
+    Store(os.getenv('OUSTER_DB',str(ROOT/'data/ouster.sqlite3')))
     udids=[]
     if args.florida or args.toronto:
         region='Toronto' if args.toronto else 'Florida'

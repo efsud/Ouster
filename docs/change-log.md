@@ -1,3 +1,7 @@
+# Toronto pipeline update — 2026-09-24
+
+Added reception diagnostics, clock quarantine, batched/deduplicated storage, migration backup and 30-day raw retention; versioned calibration gates; geometric trajectory processing and calendar-day summaries; paginated received/history inspection; provisional anomaly rules, evidence and local review; live latency/manual review tools. Updated launcher, live status, UI, tests and learning documentation. Optimization and CTM unchanged. See [acceptance evidence](toronto-implementation.md).
+
 # Development record
 
 ## 2026-09-23 — Initial dashboard and scientific foundation

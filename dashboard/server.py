@@ -15,6 +15,10 @@ from .bluecity import BlueCity
 from .storage import Store
 from .demo import generate
 from .live import snapshot
+from .calibration import report as calibration_report
+from .processing import process_range, calendar_bounds
+from .anomalies import evaluate_traffic, evaluate_health
+from .worker import start_worker
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT/'dashboard/static'
@@ -83,7 +87,25 @@ class Handler(BaseHTTPRequestHandler):
             parsed = urlparse(self.path)
             q = {k:v[0] for k,v in parse_qs(parsed.query).items()}
             if parsed.path == '/api/status':
-                return self.send({'sites':sites(),'corridors':corridors(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_configured':any(s.get('region')=='Toronto' for s in sites())})
+                entries=[dict(s,calibration_status=calibration_report(s)) for s in sites()]
+                return self.send({'sites':entries,'corridors':corridors(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_configured':any(s.get('region')=='Toronto' for s in entries)})
+            if parsed.path == '/api/received':
+                return self.send(self.server.store.raw_page(q.get('site'),float(q['start']) if q.get('start') else None,float(q['end']) if q.get('end') else None,int(q.get('cursor',0)),max(1,min(1000,int(q.get('limit',100))))))
+            if parsed.path == '/api/availability':
+                return self.send(self.server.store.availability(q.get('site')))
+            if parsed.path == '/api/window':
+                result=self.server.store.window_input(q['site'],q['approach'],float(q['start']),float(q['end']),q['source'])
+                return self.send(result if result else {'error':'Window not found'},200 if result else 404)
+            if parsed.path == '/api/anomaly':
+                with self.server.store.connect() as db:
+                    row=db.execute('SELECT * FROM anomalies WHERE id=?',(q['id'],)).fetchone()
+                return self.send({**dict(row),'evidence':json.loads(row['evidence'])} if row else {'error':'Anomaly not found'},200 if row else 404)
+            if parsed.path == '/api/anomalies':
+                return self.send(self.server.store.anomaly_page(q.get('site'),q.get('category'),max(0,int(q.get('offset',0))),max(1,min(500,int(q.get('limit',100))))))
+            if parsed.path == '/api/anomaly-evaluations':
+                with self.server.store.connect() as db:
+                    rows=db.execute('SELECT * FROM evaluations WHERE site=? ORDER BY start DESC LIMIT 100',(q.get('site'),)).fetchall()
+                return self.send([{**dict(r),'evidence':json.loads(r['evidence'])} for r in rows])
             if parsed.path == '/api/network-live':
                 entries=[s for s in sites() if s.get('region')==q.get('region')]
                 now=time.time()
@@ -93,7 +115,8 @@ class Handler(BaseHTTPRequestHandler):
                 if not site: raise ValueError('Select a configured site')
                 return self.send(snapshot(self.server.store,site))
             if parsed.path in ['/api/history','/api/export.csv']:
-                rows = self.server.store.history(q.get('site'),float(q['start']) if q.get('start') else None,float(q['end']) if q.get('end') else None,q.get('source'),q.get('approach'))
+                page_limit=max(1,min(1000,int(q.get('limit',1000))));offset=max(0,int(q.get('offset',0)))
+                rows = self.server.store.history(q.get('site'),float(q['start']) if q.get('start') else None,float(q['end']) if q.get('end') else None,q.get('source'),q.get('approach'),limit=-1 if parsed.path.endswith('.csv') else page_limit+1 if q.get('paged')=='true' else 10000,offset=0 if parsed.path.endswith('.csv') else offset,cadence=q.get('cadence'))
                 if parsed.path.endswith('.csv'):
                     buf=io.StringIO(); writer=csv.writer(buf)
                     writer.writerow(['site','approach','start_utc','end_utc','source',*METRICS,'quality','valid_tracks','coverage','flags'])
@@ -101,7 +124,7 @@ class Handler(BaseHTTPRequestHandler):
                     for r in rows:
                         writer.writerow([safe(r['site']),safe(r['approach']),r['start'],r['end'],r['source'],*[r['values'][k] for k in METRICS],r['quality']['status'],r['quality']['valid_tracks'],r['quality']['coverage'],'; '.join(r['quality']['flags'])])
                     return self.send(buf.getvalue(),mime='text/csv',attachment='ouster-kpis.csv')
-                return self.send(rows)
+                return self.send({'items':rows[:page_limit],'next_offset':offset+page_limit if len(rows)>page_limit else None} if q.get('paged')=='true' else rows)
             if parsed.path == '/api/ctm':
                 params = {k:float(v) for k,v in q.items() if k in ['demand','green','cycle','offset']}
                 if 'intersections' in q: params['intersections']=int(q['intersections'])
@@ -125,6 +148,27 @@ class Handler(BaseHTTPRequestHandler):
             body=json.loads(self.rfile.read(length))
             if self.path != '/api/import' and not isinstance(body,dict):
                 raise ValueError('Expected a JSON object')
+            if self.path == '/api/latency':
+                finite(body['displayed_at'],'displayed_at')
+                return self.send({'saved':self.server.store.record_latency(body['event_key'],body['displayed_at'])})
+            if self.path == '/api/anomalies/acknowledge':
+                note=body.get('note','')
+                if not isinstance(note,str) or len(note)>2000:raise ValueError('Review note limit is 2000 characters')
+                ok=self.server.store.acknowledge(body['id'],note)
+                return self.send({'acknowledged':ok},200 if ok else 404)
+            if self.path == '/api/process':
+                site=next((s for s in sites() if s['id']==body.get('site')),None)
+                if not site:raise ValueError('Select a configured site')
+                if body.get('cadence')=='daily':a,b=calendar_bounds(body['day'],site.get('timezone','America/Toronto'))
+                else:a,b=float(body['start']),float(body['end'])
+                result=process_range(self.server.store,site,a,b,body.get('cadence','five_minute'))
+                evaluate_traffic(self.server.store,site)
+                return self.send(result)
+            if self.path == '/api/anomalies/evaluate':
+                site=next((s for s in sites() if s['id']==body.get('site')),None)
+                if not site:raise ValueError('Select a configured site')
+                evaluate_health(self.server.store,site);result=evaluate_traffic(self.server.store,site)
+                return self.send({'traffic_events':len(result),'validation':'provisional'})
             if self.path == '/api/demo':
                 self.server.store.save_windows(generate())
                 return self.send({'saved':36,'source':'synthetic'})
@@ -165,8 +209,10 @@ def main():
     server=ThreadingHTTPServer(('127.0.0.1',args.port),Handler)
     server.store=Store(os.getenv('OUSTER_DB',str(ROOT/'data/ouster.sqlite3')))
     server.bluecity=BlueCity()
+    stop_worker=start_worker(server.store,sites)
     print(f'Ouster dashboard: http://127.0.0.1:{args.port}',flush=True)
     try: server.serve_forever()
-    except KeyboardInterrupt: server.server_close()
+    except KeyboardInterrupt: pass
+    finally:stop_worker.set();server.server_close()
 
 if __name__=='__main__': main()

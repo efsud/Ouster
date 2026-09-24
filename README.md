@@ -55,14 +55,14 @@ Ctrl+C stops the server and all recorders. Use `--port 8766` if the preview alre
 occupies port 8765. Never put passwords or activation tokens in Git.
 
 The recorder uses `BCTWSConnection` with FRAME, PHASE_CHANGE, and LOOP_CHANGE
-subscriptions. The SDK owns authentication, routing, and reconnect behavior.
+subscriptions. The supplied SDK owns streaming and reconnect behavior. A local wrapper adds bounded HTTP calls and sanitized authentication/routing diagnostics.
 If authentication repeatedly fails, stop and verify API credentials and access
 with Ouster. The SDK has no bounded authentication retry loop.
 
 ### Site metadata
 
 Create `config/sites.local.json` (ignored by Git) with metadata verified by Ouster.
-This merges with the Florida inventory by ID:
+This merges with the configured Toronto/Florida inventory by ID:
 
 ```json
 {
@@ -99,14 +99,14 @@ Unverified paths are ignored. Site inventory order is never used to guess a corr
 
 | Section | Available now | Still needs verified site data |
 | --- | --- | --- |
-| Live network | Zoomable map, site inventory, read-only recorder, latest-frame display, freshness check | Toronto UDIDs, credentials, georeferencing, corridor geometry |
-| Historical performance | Persistent SQLite windows, seven KPI formulas, quality flags, date/approach selection, charts, JSON import, CSV export | Annotated trajectories and verified geometry; live-to-KPI scene processing |
+| Live network | Zoomable map, site inventory, read-only recorder, latest-frame display, freshness check | Authorized SDK access, verified georeferencing and corridor geometry |
+| Historical performance | Persistent SQLite windows, seven KPI formulas, quality flags, date/approach selection, charts, JSON import, CSV export | Verified scene geometry, real trajectory samples and independent field comparisons |
+| Anomalies | Explainable traffic/data-quality rules, baseline readiness, evidence, local acknowledgement | Ten valid baseline days and independent manual review |
 | Cloud history | Allowlisted TMC and phase GET requests; raw JSON saved locally | API entitlement and live response validation |
 | CTM explorer | Single-intersection / 3- or 7-intersection through-lane scenarios, signal gates, density heatmap, conserved upstream backlog | Calibration, turning flows, lane groups, observed signal plans |
 | Optimization | Reserved tab | Reinforcement learning model; intentionally deferred |
 
-The raw frame recorder **does not yet turn unannotated detections into production
-KPIs**. Lane assignment, entry/stop-line crossing, queue membership, physical-track
+The geometry-gated processor now turns received frames into provisional five-minute and Toronto calendar-day KPIs. It **does not establish field validity**. Lane assignment, entry/stop-line crossing, queue membership, physical-track
 deduplication, and signal-phase mapping require real scene geometry and sample
 data. Import validated annotated windows using [the data contract](docs/data-contract.md).
 No cloud aggregate is silently substituted for the LaTeX definitions.
@@ -114,7 +114,7 @@ No cloud aggregate is silently substituted for the LaTeX definitions.
 No site configuration or controller-writing endpoint is implemented. The server
 binds to loopback only; it is not a multi-user internet deployment. Basemap tiles
 are requested from OpenStreetMap and need an internet connection. Data is stored
-under ignored `data/`; retention/backup must be chosen before long-running collection.
+under ignored `data/`; raw SDK events expire 30 days after receipt. Derived KPI/anomaly evidence remains indefinitely. SQLite is backed up before migration. See [implementation and validation](docs/toronto-implementation.md).
 
 ## Learn and verify
 
@@ -134,3 +134,7 @@ To refresh the map library reproducibly: `npm ci --ignore-scripts`, then
 Development branch: `codex/corridor-dashboard`. Existing vendor documents and SDK
 are preserved. Measured datasets, local configuration, and credentials are not
 published to GitHub.
+
+## Toronto implementation and acceptance
+
+Read [the task-by-task report](docs/toronto-implementation.md) for implemented behavior, tests, remaining field gates, local metadata schema and API interfaces. Calibration now requires versioned reference metadata and at least three independent landmark checks; setting the boolean alone is insufficient.
