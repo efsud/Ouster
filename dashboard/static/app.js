@@ -36,10 +36,7 @@ function renderNetwork(){
   state.site=null;objectLayer?.clearLayers();sitesLayer?.clearLayers();sensorMarkers.clear();
   $('site-count').textContent=list.length;$('inventory-count').textContent=list.length;
   $('mapped-count').textContent=list.filter(s=>s.calibration_status?.valid).length;
-  $('region-label').textContent=region==='Florida'?'SR-436 · Altamonte Springs':'Finch West LRT · Toronto';    if(visible>beforeVisible&&data.event_key&&displayedFrames.get(data.site)!==data.event_key){
-      displayedFrames.set(data.site,data.event_key);requestAnimationFrame(()=>api('/api/latency',{event_key:data.event_key,displayed_at:Date.now()/1000}).catch(()=>{}));
-    }
-
+  $('region-label').textContent=region==='Florida'?'SR-436 · Altamonte Springs':'Finch West LRT · Toronto';
   $('object-count').textContent='—';$('frame-status').textContent='Waiting for a live stream';
   $('selected-name').textContent='Choose an intersection';$('selected-detail').textContent='Verified sensor origins and read-only stream access are needed before live objects can appear.';
   $('site-state').textContent='Awaiting access';$('connection').textContent='Not connected';
@@ -95,6 +92,9 @@ async function refreshLive(){
       visible++;
       const label=document.createElement('span');label.textContent=`${data.site} · ${o.kind||o.class} ${o.id} · ${utcTime(o.timestamp)} · age ${number(o.age_s)} s`;
       L.circleMarker([o.lat,o.lng],{radius:4,color:o.kind==='cyclist'?'#a46eab':o.kind==='vehicle'?'#426fba':'#17a990',weight:1,fillOpacity:.9}).bindTooltip(label).addTo(objectLayer);
+    }
+    if(visible>beforeVisible&&data.event_key&&displayedFrames.get(data.site)!==data.event_key){
+      displayedFrames.set(data.site,data.event_key);requestAnimationFrame(()=>api('/api/latency',{event_key:data.event_key,displayed_at:Date.now()/1000}).catch(()=>{}));
     }
   }
   $('object-count').textContent=fresh.length?visible:'—';
