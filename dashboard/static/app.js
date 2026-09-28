@@ -17,7 +17,7 @@ function objectSymbol(kind){
   const style=objectStyles[kind]||objectStyles.unknown;
   return `<svg viewBox="0 0 24 24" aria-hidden="true" color="${style.color}" fill="none" stroke="${style.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${objectShapes[kind]||objectShapes.unknown}</svg>`;
 }
-function objectIcon(kind){return L.divIcon({className:'road-user-icon',html:objectSymbol(kind),iconSize:[16,16],iconAnchor:[8,8],tooltipAnchor:[0,-10]});}
+function objectIcon(kind){return L.divIcon({className:'road-user-icon',html:objectSymbol(kind),iconSize:[20,20],iconAnchor:[10,10],tooltipAnchor:[0,-12]});}
 for(const [kind,style] of Object.entries(objectStyles)){
   const item=document.createElement('span');item.className='object-legend-item';
   const swatch=document.createElement('i');swatch.className='object-legend-symbol';swatch.innerHTML=objectSymbol(kind);

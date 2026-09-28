@@ -169,3 +169,5 @@ Map objects now use matching vector pictograms: car for vehicles, walking person
 ### Smaller, more detailed silhouettes
 
 Object markers are now 16 px (previously 24 px), with no white tile behind them. Vehicles use a top-down car with wheels, windows and lights; pedestrians use a filled walking silhouette; cyclists show a rider and bicycle wheels/frame. Legend icons are 18 px for readability. These remain class symbols, not measured vehicle outlines or headings.
+
+The map marker size was subsequently adjusted to 20 px at user request, with a centered 10 px anchor. The 18 px legend icons and detailed silhouettes remain the same.
