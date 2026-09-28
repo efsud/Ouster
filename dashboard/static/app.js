@@ -8,16 +8,16 @@ let map, sitesLayer, objectLayer, toastTimer, liveRequest=0;
 const objectStyles={vehicle:{label:'Vehicle',color:'#426fba'},pedestrian:{label:'Pedestrian',color:'#17a990'},cyclist:{label:'Cyclist',color:'#a46eab'},unknown:{label:'Unknown / unclassified',color:'#87949b'}};
 // Fixed class pictograms: these are symbols, not measured vehicle dimensions/headings.
 const objectShapes={
-  vehicle:'<path d="M5 10l2-5h10l2 5M5 10h14v8H5z"/><path d="M7 18v2m10-2v2M8 13h1m6 0h1M7 8h10"/>',
-  pedestrian:'<circle cx="13" cy="4" r="2"/><path d="M11 8l4 3 4 1M11 8l-4 5-3 1m7-6l1 7-4 6m4-6l5 6"/>',
-  cyclist:'<circle cx="6" cy="17" r="4"/><circle cx="18" cy="17" r="4"/><circle cx="15" cy="4" r="1.5"/><path d="M12 7l-4 5 5 2-2 5m1-12l4 4h4M8 12l-2 5"/>',
-  unknown:'<path d="M12 2l10 10-10 10L2 12z"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4m0 3v.1"/>'
+  vehicle:'<g stroke="none"><rect x="5" y="5" width="3" height="5" rx="1" fill="#23313b"/><rect x="16" y="5" width="3" height="5" rx="1" fill="#23313b"/><rect x="5" y="15" width="3" height="5" rx="1" fill="#23313b"/><rect x="16" y="15" width="3" height="5" rx="1" fill="#23313b"/><rect x="7" y="1" width="10" height="22" rx="4" fill="currentColor"/><path d="M9 6h6l1 4H8zM8 16h8l-1 3H9z" fill="#c9e6f4"/><rect x="9" y="11" width="6" height="4" rx="1" fill="#ffffff" opacity=".3"/><path d="M8 3h2v2H8zm6 0h2v2h-2z" fill="#fff3be"/><path d="M8 20h2v1H8zm6 0h2v1h-2z" fill="#df6d68"/></g>',
+  pedestrian:'<circle cx="13" cy="3.5" r="2.5" fill="currentColor" stroke="none"/><path d="M12 8l-2 6 4 2 3 6M10 14l-4 7M11 9l-4 4-3 1M13 9l3 4 4 1" stroke-width="2.8"/><path d="M11 7h3l1 7-5 1z" fill="currentColor" stroke="none"/>',
+  cyclist:'<g stroke="#34424d" stroke-width="1.5"><circle cx="5" cy="17.5" r="4"/><circle cx="19" cy="17.5" r="4"/></g><path d="M5 17.5l4-7 5 7H5l7-5h4l3 5.5M8 10h3" stroke-width="1.5"/><circle cx="16" cy="3.5" r="2.3" fill="currentColor" stroke="none"/><path d="M13 7l-4 4 5 3-2 6M13 7l4 3h3" stroke-width="2.8"/>',
+  unknown:'<path d="M12 3l9 9-9 9-9-9z" fill="currentColor" stroke="none"/><path d="M10 9a2 2 0 1 1 3 2c-1 0-1 1-1 2m0 3v.1" stroke="white" stroke-width="1.7"/>'
 };
 function objectSymbol(kind){
   const style=objectStyles[kind]||objectStyles.unknown;
-  return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="${style.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${objectShapes[kind]||objectShapes.unknown}</svg>`;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" color="${style.color}" fill="none" stroke="${style.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${objectShapes[kind]||objectShapes.unknown}</svg>`;
 }
-function objectIcon(kind){return L.divIcon({className:'road-user-icon',html:objectSymbol(kind),iconSize:[24,24],iconAnchor:[12,12],tooltipAnchor:[0,-14]});}
+function objectIcon(kind){return L.divIcon({className:'road-user-icon',html:objectSymbol(kind),iconSize:[16,16],iconAnchor:[8,8],tooltipAnchor:[0,-10]});}
 for(const [kind,style] of Object.entries(objectStyles)){
   const item=document.createElement('span');item.className='object-legend-item';
   const swatch=document.createElement('i');swatch.className='object-legend-symbol';swatch.innerHTML=objectSymbol(kind);

@@ -165,3 +165,7 @@ The map legend identifies vehicles (blue), pedestrians (teal), cyclists (purple)
 ## 11. Object shapes
 
 Map objects now use matching vector pictograms: car for vehicles, walking person for pedestrians, bicycle/rider for cyclists, and a question-mark diamond for unknown classes. The legend and Leaflet markers share `objectSymbol()` so both shape and colour agree. Existing marker interpolation, identity and expiry remain unchanged. Icons are fixed-size class symbols; their orientation and size do not claim measured heading or dimensions. No external images or icon service is required.
+
+### Smaller, more detailed silhouettes
+
+Object markers are now 16 px (previously 24 px), with no white tile behind them. Vehicles use a top-down car with wheels, windows and lights; pedestrians use a filled walking silhouette; cyclists show a rider and bicycle wheels/frame. Legend icons are 18 px for readability. These remain class symbols, not measured vehicle outlines or headings.
