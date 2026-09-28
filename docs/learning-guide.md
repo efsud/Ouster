@@ -161,3 +161,7 @@ Its screenshot stays in ignored `data/qa/`; no field payloads are committed.
 ## 10. Object legend
 
 The map legend identifies vehicles (blue), pedestrians (teal), cyclists (purple), and unknown/unclassified objects (gray). `objectStyles` in app.js supplies both legend colours and marker colours, so they stay consistent. For example, an unknown class now renders gray rather than sharing the pedestrian colour. The legend wraps on small screens; tooltips still identify individual objects.
+
+## 11. Object shapes
+
+Map objects now use matching vector pictograms: car for vehicles, walking person for pedestrians, bicycle/rider for cyclists, and a question-mark diamond for unknown classes. The legend and Leaflet markers share `objectSymbol()` so both shape and colour agree. Existing marker interpolation, identity and expiry remain unchanged. Icons are fixed-size class symbols; their orientation and size do not claim measured heading or dimensions. No external images or icon service is required.

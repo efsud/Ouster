@@ -6,9 +6,21 @@ const escapeHTML = value => String(value).replace(/[&<>"']/g, c=>({'&':'&amp;','
 const number = v => v===null || v===undefined ? '—' : Number(v).toLocaleString(undefined,{maximumFractionDigits:1});
 let map, sitesLayer, objectLayer, toastTimer, liveRequest=0;
 const objectStyles={vehicle:{label:'Vehicle',color:'#426fba'},pedestrian:{label:'Pedestrian',color:'#17a990'},cyclist:{label:'Cyclist',color:'#a46eab'},unknown:{label:'Unknown / unclassified',color:'#87949b'}};
-for(const style of Object.values(objectStyles)){
+// Fixed class pictograms: these are symbols, not measured vehicle dimensions/headings.
+const objectShapes={
+  vehicle:'<path d="M5 10l2-5h10l2 5M5 10h14v8H5z"/><path d="M7 18v2m10-2v2M8 13h1m6 0h1M7 8h10"/>',
+  pedestrian:'<circle cx="13" cy="4" r="2"/><path d="M11 8l4 3 4 1M11 8l-4 5-3 1m7-6l1 7-4 6m4-6l5 6"/>',
+  cyclist:'<circle cx="6" cy="17" r="4"/><circle cx="18" cy="17" r="4"/><circle cx="15" cy="4" r="1.5"/><path d="M12 7l-4 5 5 2-2 5m1-12l4 4h4M8 12l-2 5"/>',
+  unknown:'<path d="M12 2l10 10-10 10L2 12z"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4m0 3v.1"/>'
+};
+function objectSymbol(kind){
+  const style=objectStyles[kind]||objectStyles.unknown;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="${style.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${objectShapes[kind]||objectShapes.unknown}</svg>`;
+}
+function objectIcon(kind){return L.divIcon({className:'road-user-icon',html:objectSymbol(kind),iconSize:[24,24],iconAnchor:[12,12],tooltipAnchor:[0,-14]});}
+for(const [kind,style] of Object.entries(objectStyles)){
   const item=document.createElement('span');item.className='object-legend-item';
-  const swatch=document.createElement('i');swatch.className='object-legend-swatch';swatch.style.backgroundColor=style.color;swatch.setAttribute('aria-hidden','true');
+  const swatch=document.createElement('i');swatch.className='object-legend-symbol';swatch.innerHTML=objectSymbol(kind);
   item.append(swatch,document.createTextNode(style.label));$('object-legend').append(item);
 }
 const displayedFrames=new Map(),sensorMarkers=new Map(),movingObjects=new Map();
@@ -117,9 +129,10 @@ async function refreshLive(){
       let m=movingObjects.get(key);
       const target=[o.lat,o.lng];
       if(!m){
-        const marker=L.circleMarker(target,{radius:5,color:(objectStyles[o.kind]||objectStyles.unknown).color,weight:2,fillOpacity:.9}).addTo(objectLayer);
-        m={marker,from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
+        const marker=L.marker(target,{icon:objectIcon(o.kind),title:(objectStyles[o.kind]||objectStyles.unknown).label,keyboard:false}).addTo(objectLayer);
+        m={marker,kind:o.kind,from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
       }
+      if(m.kind!==o.kind){m.marker.setIcon(objectIcon(o.kind));m.kind=o.kind;}
       if(m.event!==data.event_key||m.to[0]!==o.lat||m.to[1]!==o.lng){m.from=m.marker.getLatLng();m.to=target;m.started=performance.now();m.event=data.event_key;}
       m.expires=Date.now()+Math.max(0,5-(data.age_s||0))*1000;
       const label=document.createElement('span');label.textContent=`${data.site} · ${o.kind||o.class} ${o.id} · ${data.state==='approximate'?'APPROXIMATE · receipt time':'sensor time'} ${utcTime(o.timestamp)} · age ${number(o.age_s)} s`;
