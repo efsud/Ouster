@@ -14,7 +14,7 @@ from .analytics import METRICS, calculate, finite, local_to_geo, simulate
 from .bluecity import BlueCity
 from .storage import Store
 from .demo import generate
-from .live import snapshot
+from .live import snapshot, approximate_snapshot
 from .calibration import report as calibration_report
 from .processing import process_range, calendar_bounds
 from .anomalies import evaluate_traffic, evaluate_health
@@ -109,7 +109,8 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == '/api/network-live':
                 entries=[s for s in sites() if s.get('region')==q.get('region')]
                 now=time.time()
-                return self.send({'snapshots':[snapshot(self.server.store,s,now) for s in entries]})
+                rotation=finite(float(q.get('rotation',180)),'rotation')
+                return self.send({'snapshots':[approximate_snapshot(self.server.store,s,now,rotation) if q.get('approximate')=='true' else snapshot(self.server.store,s,now) for s in entries]})
             if parsed.path == '/api/live':
                 site = next((s for s in sites() if s['id']==q.get('site')),None)
                 if not site: raise ValueError('Select a configured site')

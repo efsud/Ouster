@@ -66,3 +66,12 @@ They are now in config/sites.json and Toronto is the default map network.
 The missing-Toronto-UDID blocker is resolved. Authenticated Toronto stream access,
 verified georeferencing/scene geometry, the original conversion script, and field
 KPI validation still require verification.
+
+## Live visualization update — 2026-09-28
+
+Approximate live motion is implemented and verified against received Driftwood
+objects (25 visible; 24 persistent IDs moved during a 1.5-second browser check).
+43 Python tests pass. A fresh bounded one-hour recorder was started for this test.
+The initial one-hour recorder had stopped; no historical frames are presented as
+live. Approximate projection is receipt-timed and does not establish calibration
+or event-clock validity. See learning-guide.md section 9.

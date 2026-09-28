@@ -5,7 +5,18 @@ const titles = {live:'Live network',history:'Historical performance',ctm:'CTM ex
 const escapeHTML = value => String(value).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number = v => v===null || v===undefined ? '—' : Number(v).toLocaleString(undefined,{maximumFractionDigits:1});
 let map, sitesLayer, objectLayer, toastTimer, liveRequest=0;
-const displayedFrames=new Map(),sensorMarkers=new Map();
+const displayedFrames=new Map(),sensorMarkers=new Map(),movingObjects=new Map();
+let liveBusy=false;
+function clearObjects(){objectLayer?.clearLayers();movingObjects.clear();}
+function animateObjects(now){
+  for(const [key,m] of movingObjects){
+    if(Date.now()>m.expires||state.tab!=='live'||map.getZoom()<17){objectLayer.removeLayer(m.marker);movingObjects.delete(key);continue;}
+    const fraction=Math.min(1,(now-m.started)/250);
+    m.marker.setLatLng([m.from.lat+(m.to[0]-m.from.lat)*fraction,m.from.lng+(m.to[1]-m.from.lng)*fraction]);
+  }
+  requestAnimationFrame(animateObjects);
+}
+requestAnimationFrame(animateObjects);
 function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,9000);}
 async function api(path, data){
   const response=await fetch(path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
@@ -31,9 +42,9 @@ function initMap(){
 }
 function renderNetwork(){
   const region=$('region').value;
-  $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven intersections selected. Live data awaits API access and sensor calibration.':'Toronto · Finch West LRT corridor · Ten sensors · approximate intersection markers. Object positions require verified sensor calibration.';
+  $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven intersections selected. Live data awaits API access and sensor calibration.':'Toronto · Finch West LRT corridor · Ten sensors · approximate live animation. Positions and rotation are uncalibrated; receipt freshness does not establish sensor latency.';
   const list=state.sites.filter(s=>s.region===region);
-  state.site=null;objectLayer?.clearLayers();sitesLayer?.clearLayers();sensorMarkers.clear();
+  state.site=null;clearObjects();sitesLayer?.clearLayers();sensorMarkers.clear();
   $('site-count').textContent=list.length;$('inventory-count').textContent=list.length;
   $('mapped-count').textContent=list.filter(s=>s.calibration_status?.valid||s.reference_location).length;
   $('region-label').textContent=region==='Florida'?'SR-436 · Altamonte Springs':'Finch West LRT · Toronto';
@@ -73,15 +84,16 @@ function selectSite(site,button){
   action(refreshLive);
 }
 async function refreshLive(){
-  if(state.tab!=='live')return;
+  if(state.tab!=='live'||liveBusy)return;
   const region=$('region').value,request=++liveRequest;
-  const result=await api('/api/network-live?region='+encodeURIComponent(region));
+  liveBusy=true;let result;
+  try{result=await api('/api/network-live?region='+encodeURIComponent(region)+'&approximate='+$('approximate-objects').checked+'&rotation='+$('preview-rotation').value);}finally{liveBusy=false;}
   if(request!==liveRequest||$('region').value!==region||state.tab!=='live')return;
-  objectLayer?.clearLayers();
-  const fresh=result.snapshots.filter(s=>s.state==='live');
+  const seen=new Set();
+  const fresh=result.snapshots.filter(s=>['live','approximate'].includes(s.state));
   $('health-rows').innerHTML=result.snapshots.map(s=>`<tr><td>${escapeHTML(s.site)}</td><td>${escapeHTML(s.health?.state||'not_started')}</td><td>${utcTime(s.health?.last_receipt)}</td><td>${utcTime(s.health?.last_sensor_time)}</td><td>${s.health?.saved_count||0}</td><td>${escapeHTML(s.health?.error||s.calibration?.reasons?.join('; ')||s.state)}</td></tr>`).join('');
   const receiving=result.snapshots.filter(s=>s.health?.last_receipt&&Date.now()/1000-s.health.last_receipt<5).length;
-  $('connection').textContent=receiving?`${receiving} / ${result.snapshots.length} receiving · ${fresh.length} calibrated live`:fresh.length?`${fresh.length} / ${result.snapshots.length} sites live`:'No verified live stream';
+  $('connection').textContent=receiving?`${receiving} / ${result.snapshots.length} receiving · ${fresh.length} object streams`:fresh.length?`${fresh.length} / ${result.snapshots.length} sites live`:'No verified live stream';
   let visible=0;
   for(const data of result.snapshots){
     sensorMarkers.get(data.site)?.setStyle({fillColor:data.active_anomalies?'#bf643c':data.state==='live'?'#197d79':'#87949b'});
@@ -92,16 +104,27 @@ async function refreshLive(){
       $('selected-detail').textContent=data.reason||`${data.site} · ${data.objects.length} objects · ${data.rejected_objects||0} invalid objects excluded`;
     }
     const beforeVisible=visible;
-    if(map&&map.getZoom()>=17&&data.state==='live')for(const o of data.objects){
+    if(map&&map.getZoom()>=17&&['live','approximate'].includes(data.state))for(const o of data.objects){
       if(!map.getBounds().contains([o.lat,o.lng]))continue;
       visible++;
-      const label=document.createElement('span');label.textContent=`${data.site} · ${o.kind||o.class} ${o.id} · ${utcTime(o.timestamp)} · age ${number(o.age_s)} s`;
-      L.circleMarker([o.lat,o.lng],{radius:4,color:o.kind==='cyclist'?'#a46eab':o.kind==='vehicle'?'#426fba':'#17a990',weight:1,fillOpacity:.9}).bindTooltip(label).addTo(objectLayer);
+      const key=data.site+':'+(data.session||'')+':'+o.id;seen.add(key);
+      let m=movingObjects.get(key);
+      const target=[o.lat,o.lng];
+      if(!m){
+        const marker=L.circleMarker(target,{radius:5,color:o.kind==='cyclist'?'#a46eab':o.kind==='vehicle'?'#426fba':'#17a990',weight:2,fillOpacity:.9}).addTo(objectLayer);
+        m={marker,from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
+      }
+      if(m.event!==data.event_key||m.to[0]!==o.lat||m.to[1]!==o.lng){m.from=m.marker.getLatLng();m.to=target;m.started=performance.now();m.event=data.event_key;}
+      m.expires=Date.now()+Math.max(0,5-(data.age_s||0))*1000;
+      const label=document.createElement('span');label.textContent=`${data.site} · ${o.kind||o.class} ${o.id} · ${data.state==='approximate'?'APPROXIMATE · receipt time':'sensor time'} ${utcTime(o.timestamp)} · age ${number(o.age_s)} s`;
+      m.marker.bindTooltip(label);
+
     }
     if(visible>beforeVisible&&data.event_key&&displayedFrames.get(data.site)!==data.event_key){
       displayedFrames.set(data.site,data.event_key);requestAnimationFrame(()=>api('/api/latency',{event_key:data.event_key,displayed_at:Date.now()/1000}).catch(()=>{}));
     }
   }
+  for(const [key,m] of movingObjects)if(!seen.has(key)){objectLayer.removeLayer(m.marker);movingObjects.delete(key);}
   $('object-count').textContent=fresh.length?visible:'—';
   $('frame-status').textContent=fresh.length?(map?.getZoom()<17?'Zoom to 17+ to view objects':`${fresh.length} fresh site streams`):'Waiting for a live stream';
 }
@@ -187,6 +210,7 @@ async function runCTM(){
 const methods=[['Control delay','Mean of (arrival − entry − approach length / free-flow speed). Requires complete traversals.'],['Stopped delay','Time-integral of speed at or below the crawl threshold. Requires a complete observed traversal and valid samples.'],['Queue length · P95','95th percentile of visible queue extents on a regular time grid. Membership requires lane, spacing, and queue-region checks.'],['Arrivals on green','100 × green arrivals / all arrivals. Requires verified clock synchronization and a known signal state for every arrival.'],['Split failure','100 × complete visible cycles with a residual queue / complete visible cycles.'],['Approach volume','Unique physical trajectory entries × 3600 / window seconds. Entry events may be used without a complete traversal.'],['Discharge rate','Queued departures during effective green × 3600 / green seconds / lane count.'],['CTM vs observed KPIs','CTM propagates aggregate density. It does not directly observe individual stopped time, arrivals, or LiDAR queue geometry. Simulation outputs remain separate.']];
 $('methods').innerHTML=methods.map(([title,body])=>`<article class="panel padded"><h3>${title}</h3><p>${body}</p></article>`).join('');
 $('region').onchange=renderNetwork;
+for(const id of ['approximate-objects','preview-rotation'])$(id).onchange=()=>{liveRequest++;clearObjects();action(refreshLive);};
 $('cadence').onchange=()=>action(()=>loadHistory(true));
 $('apply-filter').onclick=()=>action(()=>loadHistory());
 $('history-site').onchange=()=>{ $('approach').value='';action(()=>loadHistory(true));};
@@ -216,11 +240,14 @@ $('run-ctm').onclick=()=>action(runCTM);
 action(async()=>{
   const status=await api('/api/status');state.sites=status.sites;state.corridors=status.corridors||[];state.metrics=status.metrics;
   initMap();renderNetwork();renderCards();renderChart();
+  const requestedSite=new URLSearchParams(location.search).get('site');
+  const requestedButton=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===requestedSite);
+  requestedButton?.click();
   state.sites.sort((a,b)=>(a.region==='Toronto'?0:1)-(b.region==='Toronto'?0:1));
   state.sites.forEach(s=>{$('history-site').add(new Option(s.name,s.id));$('anomaly-site').add(new Option(s.name,s.id));});
   $('history-site').add(new Option('Learning dataset · SYNTHETIC','DEMO-001'));
-  $('history-site').value=state.sites.find(s=>s.region==='Toronto')?.id||'';await loadHistory(true);
-  setInterval(()=>refreshLive().catch(()=>{objectLayer?.clearLayers();$('connection').textContent='Connection lost';$('object-count').textContent='—';}),1000);
+  $('history-site').value=state.sites.find(s=>s.region==='Toronto')?.id||'';action(()=>loadHistory(true));
+  setInterval(()=>refreshLive().catch(()=>{clearObjects();$('connection').textContent='Connection lost';$('object-count').textContent='—';}),250);
 });
 
 let historyOffset=null,rawCursor=null,anomalyOffset=null;

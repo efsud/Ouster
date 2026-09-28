@@ -123,3 +123,37 @@ sensor origin. `start_connected.py` now bounds the test duration and shuts down
 child process groups; `config/sites.json` adds reference locations; `app.js`
 renders those pins and receipt health; `live.py` explains stored clock-pending
 events rather than calling them absent. Vendor SDK files remain unchanged.
+
+## 9. Live object animation (2026-09-28)
+
+The live map now defaults to **Approximate live objects**. Select an intersection
+(e.g. Driftwood); zoom 17+ shows its received road users. The rotation selector
+starts at 180° and changes only the display. These positions use street reference
+coordinates, not surveyed mounting points. Road alignment may therefore be wrong.
+
+`storage.py` keeps one `preview_frames` row per sensor as events arrive, avoiding a
+scan through the growing raw archive on every map update. Offset-free timestamps
+remain quarantined for analytics. The preview's age uses the computer receipt
+clock and does not claim the sensor event is less than five seconds old.
+`live.approximate_snapshot()` explicitly labels this distinction; the calibrated
+snapshot and KPI pipeline remain separate. Missing receipts expire after five
+seconds; invalid/future-clock quarantines do not enter the preview cache.
+
+The browser polls at 250 ms without overlapping requests. Markers are keyed by
+sensor + collector session + object ID. If ID 7 moves between coordinates A and B,
+its existing marker interpolates A→B for 250 ms instead of being destroyed and
+recreated. No movement is extrapolated beyond B. Empty frames remove absent IDs;
+stale markers expire even if the next request hangs. Uncheck approximate mode to
+return to strict calibration requirements. This is live reception, not historical
+replay. Sensor buffering/upstream delay remains unverified.
+
+Validation: 43 Python tests pass. New tests prove that approximate projection does
+not populate the strict calibrated view, that stale/empty frames clear, and that
+invalid-clock events cannot enter the preview. The real-browser animation check
+observed 25 objects at Driftwood, with 24 persistent IDs changing displayed
+position in 1.5 seconds, zero JavaScript errors, and successful clearing when
+approximate mode was disabled. This validates observed motion in the UI; it does
+not validate alignment with lanes, absolute sensor time or KPI accuracy.
+
+New `scripts/check_live_animation.cjs` requires a currently receiving stream.
+Its screenshot stays in ignored `data/qa/`; no field payloads are committed.

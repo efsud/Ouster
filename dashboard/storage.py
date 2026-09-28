@@ -33,6 +33,8 @@ class Store:
                   status TEXT NOT NULL, reason TEXT, payload TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS raw_site_time ON raw_events(site,sensor_time);
                 CREATE INDEX IF NOT EXISTS raw_receipt ON raw_events(received_at);
+                CREATE TABLE IF NOT EXISTS preview_frames (
+                  site TEXT PRIMARY KEY, received_at REAL, session TEXT, event_key TEXT, payload TEXT);
                 CREATE TABLE IF NOT EXISTS latest_frames (
                   site TEXT PRIMARY KEY, sensor_time REAL, received_at REAL,
                   session TEXT, event_key TEXT, payload TEXT);
@@ -108,6 +110,9 @@ class Store:
                 result=db.execute('INSERT OR IGNORE INTO raw_events(event_key,site,session,sensor_time,received_at,source,status,reason,payload) VALUES(?,?,?,?,?,?,?,?,?)',
                     (key,r['site'],r['session'],r.get('sensor_time'),r['received_at'],r.get('source','sdk'),status,r.get('reason'),payload))
                 inserted+=result.rowcount
+                if result.rowcount and 'frame' in r['event'] and (status=='received' or r.get('reason')=='unknown_timezone'):
+                    db.execute('INSERT INTO preview_frames VALUES(?,?,?,?,?) ON CONFLICT(site) DO UPDATE SET received_at=excluded.received_at,session=excluded.session,event_key=excluded.event_key,payload=excluded.payload WHERE excluded.received_at>=preview_frames.received_at',
+                        (r['site'],r['received_at'],r['session'],key,payload))
                 if result.rowcount and 'frame' in r['event'] and r.get('sensor_time') is not None and status=='received':
                     db.execute('''INSERT INTO latest_frames VALUES(?,?,?,?,?,?) ON CONFLICT(site) DO UPDATE SET
                         sensor_time=excluded.sensor_time,received_at=excluded.received_at,session=excluded.session,
@@ -149,6 +154,7 @@ class Store:
             db.execute("DELETE FROM frames WHERE EXISTS(SELECT 1 FROM raw_events r WHERE r.source='legacy' AND r.site=frames.site AND r.sensor_time=frames.time AND r.received_at<?)",(cutoff,))
             count=db.execute('DELETE FROM raw_events WHERE received_at<?',(cutoff,)).rowcount
             db.execute('DELETE FROM latest_frames WHERE received_at<?',(cutoff,))
+            db.execute('DELETE FROM preview_frames WHERE received_at<?',(cutoff,))
         for backup in Path(self.path).parent.glob(Path(self.path).name+'.pre-v2-*.bak'):
             if backup.stat().st_mtime<cutoff:backup.unlink()
         return count

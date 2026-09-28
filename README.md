@@ -142,3 +142,13 @@ Read [the task-by-task report](docs/toronto-implementation.md) for implemented b
 ## One-hour Toronto test
 
 Use `.venv/bin/python scripts/start_connected.py --toronto --port 8768 --duration 3600` and the private credential prompt. Saved raw observations remain after automatic shutdown. Approximate intersection markers are now available; they do not substitute for calibrated sensor origins. See [first real reception report](docs/toronto-live-test.md).
+
+## See moving objects
+
+In Live network, leave **Approximate live objects** enabled and select **Finch W &
+Driftwood** (or another receiving site). At zoom 17+ markers animate between received
+positions. Preview rotation starts at 180° and can be changed without modifying
+sensor settings. Positions are approximate and freshness uses receipt time;
+upstream delay and lane alignment remain unverified. Disabling approximate mode
+restores the strict calibrated display. A recorder must be running; saved frames
+are not replayed as live motion.
