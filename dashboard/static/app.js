@@ -5,6 +5,12 @@ const titles = {live:'Live network',history:'Historical performance',ctm:'CTM ex
 const escapeHTML = value => String(value).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number = v => v===null || v===undefined ? '—' : Number(v).toLocaleString(undefined,{maximumFractionDigits:1});
 let map, sitesLayer, objectLayer, toastTimer, liveRequest=0;
+const objectStyles={vehicle:{label:'Vehicle',color:'#426fba'},pedestrian:{label:'Pedestrian',color:'#17a990'},cyclist:{label:'Cyclist',color:'#a46eab'},unknown:{label:'Unknown / unclassified',color:'#87949b'}};
+for(const style of Object.values(objectStyles)){
+  const item=document.createElement('span');item.className='object-legend-item';
+  const swatch=document.createElement('i');swatch.className='object-legend-swatch';swatch.style.backgroundColor=style.color;swatch.setAttribute('aria-hidden','true');
+  item.append(swatch,document.createTextNode(style.label));$('object-legend').append(item);
+}
 const displayedFrames=new Map(),sensorMarkers=new Map(),movingObjects=new Map();
 let liveBusy=false;
 function clearObjects(){objectLayer?.clearLayers();movingObjects.clear();}
@@ -111,7 +117,7 @@ async function refreshLive(){
       let m=movingObjects.get(key);
       const target=[o.lat,o.lng];
       if(!m){
-        const marker=L.circleMarker(target,{radius:5,color:o.kind==='cyclist'?'#a46eab':o.kind==='vehicle'?'#426fba':'#17a990',weight:2,fillOpacity:.9}).addTo(objectLayer);
+        const marker=L.circleMarker(target,{radius:5,color:(objectStyles[o.kind]||objectStyles.unknown).color,weight:2,fillOpacity:.9}).addTo(objectLayer);
         m={marker,from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
       }
       if(m.event!==data.event_key||m.to[0]!==o.lat||m.to[1]!==o.lng){m.from=m.marker.getLatLng();m.to=target;m.started=performance.now();m.event=data.event_key;}

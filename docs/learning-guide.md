@@ -157,3 +157,7 @@ not validate alignment with lanes, absolute sensor time or KPI accuracy.
 
 New `scripts/check_live_animation.cjs` requires a currently receiving stream.
 Its screenshot stays in ignored `data/qa/`; no field payloads are committed.
+
+## 10. Object legend
+
+The map legend identifies vehicles (blue), pedestrians (teal), cyclists (purple), and unknown/unclassified objects (gray). `objectStyles` in app.js supplies both legend colours and marker colours, so they stay consistent. For example, an unknown class now renders gray rather than sharing the pedestrian colour. The legend wraps on small screens; tooltips still identify individual objects.
