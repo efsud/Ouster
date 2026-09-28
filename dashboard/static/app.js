@@ -31,11 +31,11 @@ function initMap(){
 }
 function renderNetwork(){
   const region=$('region').value;
-  $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven intersections selected. Live data awaits API access and sensor calibration.':'Toronto · Finch West LRT corridor · Ten sensor UDIDs configured. Live locations require verified sensor calibration.';
+  $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven intersections selected. Live data awaits API access and sensor calibration.':'Toronto · Finch West LRT corridor · Ten sensors · approximate intersection markers. Object positions require verified sensor calibration.';
   const list=state.sites.filter(s=>s.region===region);
   state.site=null;objectLayer?.clearLayers();sitesLayer?.clearLayers();sensorMarkers.clear();
   $('site-count').textContent=list.length;$('inventory-count').textContent=list.length;
-  $('mapped-count').textContent=list.filter(s=>s.calibration_status?.valid).length;
+  $('mapped-count').textContent=list.filter(s=>s.calibration_status?.valid||s.reference_location).length;
   $('region-label').textContent=region==='Florida'?'SR-436 · Altamonte Springs':'Finch West LRT · Toronto';
   $('object-count').textContent='—';$('frame-status').textContent='Waiting for a live stream';
   $('selected-name').textContent='Choose an intersection';$('selected-detail').textContent='Verified sensor origins and read-only stream access are needed before live objects can appear.';
@@ -47,25 +47,29 @@ function renderNetwork(){
     const button=document.createElement('button');button.className='site';button.dataset.siteId=site.id;
     button.innerHTML=`<strong>${escapeHTML(site.name)}</strong><small>${escapeHTML(site.id)}</small><span class="status">${site.calibration_status?.valid?'Location verified':'Location / access pending'}</span>`;
     button.onclick=()=>selectSite(site,button);$('sites-list').append(button);
-    if(site.calibration_status?.valid&&map){
-      const point=[site.origin.lat,site.origin.lng];
-      const label=document.createElement('span');label.textContent=site.name;
-      sensorMarkers.set(site.id,L.circleMarker(point,{radius:7,color:'#fff',weight:3,fillColor:'#197d79',fillOpacity:1}).bindTooltip(label).on('click',()=>selectSite(site,button)).addTo(sitesLayer));
+    if((site.calibration_status?.valid||site.reference_location)&&map){
+      const location=site.calibration_status?.valid?site.origin:site.reference_location;
+      const point=[location.lat,location.lng];
+      const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
+      sensorMarkers.set(site.id,L.circleMarker(point,{radius:7,color:'#fff',weight:3,dashArray:site.calibration_status?.valid?null:'3 3',fillColor:'#197d79',fillOpacity:1}).bindTooltip(label).on('click',()=>selectSite(site,button)).addTo(sitesLayer));
     }
   }
+  const referencePoints=list.map(s=>s.calibration_status?.valid?s.origin:s.reference_location).filter(Boolean);
+  if(map&&referencePoints.length)map.fitBounds(referencePoints.map(p=>[p.lat,p.lng]),{padding:[35,35],maxZoom:14,animate:false});
   const paths=state.corridors.filter(c=>c.region===region);
   for(const corridor of paths){
     if(!map)break;
     const label=document.createElement('span');label.textContent=corridor.name+' · verified corridor';
     L.polyline(corridor.coordinates.map(([lng,lat])=>[lat,lng]),{color:'#197d79',weight:4,opacity:.6}).bindTooltip(label).addTo(sitesLayer);
   }
-  $('map-note').textContent=paths.length?paths.length+' verified corridor paths':'Origins and corridor geometry must be verified';
+  $('map-note').textContent=paths.length?paths.length+' verified corridor paths':referencePoints.length+' approximate intersection markers; sensor origins unverified';
   action(refreshLive);
 }
 function selectSite(site,button){
   state.site=site;document.querySelectorAll('.site').forEach(b=>b.classList.toggle('selected',b===button));
   $('selected-name').textContent=site.name;$('selected-detail').textContent=`${site.id} · ${site.corridor||site.region} · ${site.timezone||'Timezone pending'}`;
-  if(site.calibration_status?.valid)map?.setView([site.origin.lat,site.origin.lng],18);
+  const location=site.calibration_status?.valid?site.origin:site.reference_location;
+  if(location)map?.setView([location.lat,location.lng],18);
   action(refreshLive);
 }
 async function refreshLive(){
@@ -76,12 +80,13 @@ async function refreshLive(){
   objectLayer?.clearLayers();
   const fresh=result.snapshots.filter(s=>s.state==='live');
   $('health-rows').innerHTML=result.snapshots.map(s=>`<tr><td>${escapeHTML(s.site)}</td><td>${escapeHTML(s.health?.state||'not_started')}</td><td>${utcTime(s.health?.last_receipt)}</td><td>${utcTime(s.health?.last_sensor_time)}</td><td>${s.health?.saved_count||0}</td><td>${escapeHTML(s.health?.error||s.calibration?.reasons?.join('; ')||s.state)}</td></tr>`).join('');
-  $('connection').textContent=fresh.length?`${fresh.length} / ${result.snapshots.length} sites live`:'No verified live stream';
+  const receiving=result.snapshots.filter(s=>s.health?.last_receipt&&Date.now()/1000-s.health.last_receipt<5).length;
+  $('connection').textContent=receiving?`${receiving} / ${result.snapshots.length} receiving · ${fresh.length} calibrated live`:fresh.length?`${fresh.length} / ${result.snapshots.length} sites live`:'No verified live stream';
   let visible=0;
   for(const data of result.snapshots){
     sensorMarkers.get(data.site)?.setStyle({fillColor:data.active_anomalies?'#bf643c':data.state==='live'?'#197d79':'#87949b'});
     const button=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===data.site);
-    if(button)button.querySelector('.status').textContent=data.state;
+    if(button)button.querySelector('.status').textContent=data.health?.error||data.state;
     if(state.site?.id===data.site){
       $('site-state').textContent=data.state;
       $('selected-detail').textContent=data.reason||`${data.site} · ${data.objects.length} objects · ${data.rejected_objects||0} invalid objects excluded`;

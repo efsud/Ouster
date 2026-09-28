@@ -54,70 +54,150 @@
       "name": "Finch W & Norfinch (LRT)",
       "region": "Toronto",
       "corridor": "Finch West LRT",
-      "timezone": "America/Toronto"
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.755982,
+        "lng": -79.524304,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Norfinch, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      }
     },
     {
       "id": "OBC-AG-SA-C618861",
       "name": "Finch W & Driftwood (LRT)",
       "region": "Toronto",
       "corridor": "Finch West LRT",
-      "timezone": "America/Toronto"
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.758059,
+        "lng": -79.513428,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Driftwood, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      }
     },
     {
       "id": "OBC-AG-SA-C251071",
       "name": "Finch W & Signet (LRT)",
       "region": "Toronto",
       "corridor": "Finch West LRT",
-      "timezone": "America/Toronto"
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.753354,
+        "lng": -79.536293,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Signet, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      }
     },
     {
       "id": "OBC-AG-SA-C351163",
       "name": "Finch W & Jane (LRT)",
       "region": "Toronto",
       "corridor": "Finch West LRT",
-      "timezone": "America/Toronto"
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.757299,
+        "lng": -79.517862,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Jane, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      }
     },
     {
       "id": "OBC-AG-SA-C251052",
       "name": "Finch W & Albion (LRT)",
       "region": "Toronto",
       "corridor": "Finch West LRT",
-      "timezone": "America/Toronto"
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.741053,
+        "lng": -79.58933,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Albion, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      }
     },
     {
       "id": "OBC-AG-SA-C257220",
       "name": "Finch W & Weston (LRT)",
       "region": "Toronto",
       "corridor": "Finch West LRT",
-      "timezone": "America/Toronto"
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.752152,
+        "lng": -79.542297,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Weston, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      }
     },
     {
       "id": "OBC-AG-SA-C257238",
       "name": "Finch W & Kipling (LRT)",
       "region": "Toronto",
       "corridor": "Finch West LRT",
-      "timezone": "America/Toronto"
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.743301,
+        "lng": -79.582204,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Kipling, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      }
     },
     {
       "id": "OBC-AG-SA-C257208",
       "name": "Finch W & Martin Grove (LRT)",
       "region": "Toronto",
       "corridor": "Finch West LRT",
-      "timezone": "America/Toronto"
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.736763,
+        "lng": -79.591746,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Martin Grove, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      }
     },
     {
       "id": "OBC-AG-SA-C251055",
       "name": "Finch W & York Gate (LRT)",
       "region": "Toronto",
       "corridor": "Finch West LRT",
-      "timezone": "America/Toronto"
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.756725,
+        "lng": -79.520692,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & York Gate, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      }
     },
     {
       "id": "OBC-AG-SA-C251064",
       "name": "Finch W & Islington (LRT)",
       "region": "Toronto",
       "corridor": "Finch West LRT",
-      "timezone": "America/Toronto"
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.746255,
+        "lng": -79.568657,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Islington, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      }
     }
   ]
 }

@@ -12,16 +12,20 @@ import subprocess
 import sys
 import socket
 import json
+import time
+import signal
 
 ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8765)
+    parser.add_argument('--duration',type=int,default=0,help='Stop collection after this many seconds; 0 runs until Ctrl+C')
     network=parser.add_mutually_exclusive_group()
     network.add_argument('--florida',action='store_true',help='Record all seven Florida UDIDs from config/sites.json')
     network.add_argument('--toronto',action='store_true',help='Record all ten Toronto UDIDs from config/sites.json')
     args=parser.parse_args()
+    if args.duration<0:raise SystemExit('Duration must be nonnegative.')
     if not 1<=args.port<=65535: raise SystemExit('Port must be between 1 and 65535.')
     with socket.socket() as probe:
         try: probe.bind(('127.0.0.1',args.port))
@@ -49,19 +53,25 @@ def main():
     env = dict(os.environ,BLUECITY_USERNAME=username,BLUECITY_PASSWORD=password)
     children = []
     try:
-        children.append(subprocess.Popen([sys.executable,'-m','dashboard.server','--port',str(args.port)],cwd=ROOT,env=env))
+        children.append(subprocess.Popen([sys.executable,'-m','dashboard.server','--port',str(args.port)],cwd=ROOT,env=env,start_new_session=True))
         for udid in udids:
-            children.append(subprocess.Popen([sys.executable,'-m','dashboard.collector','--site',udid],cwd=ROOT,env=env))
+            children.append(subprocess.Popen([sys.executable,'-m','dashboard.collector','--site',udid],cwd=ROOT,env=env,start_new_session=True))
         print(f'Open http://127.0.0.1:{args.port}. Ctrl+C stops the server and recorders.')
         print('Add verified site metadata to config/sites.local.json before mapping this stream.')
-        children[0].wait()
+        deadline=time.monotonic()+args.duration if args.duration else None
+        if deadline:print(f'Test recording automatically stops after {args.duration} seconds.',flush=True)
+        while children[0].poll() is None:
+            if deadline and time.monotonic()>=deadline:
+                print('Test duration reached. Stopping collection; saved observations remain in SQLite.',flush=True);break
+            time.sleep(1)
     except KeyboardInterrupt:
         print('\nStopping read-only services.')
     finally:
         for child in children:
-            child.terminate()
+            if child.poll() is None:os.killpg(child.pid,signal.SIGINT)
         for child in children:
             try: child.wait(timeout=5)
-            except subprocess.TimeoutExpired: child.kill(); child.wait()
+            except subprocess.TimeoutExpired:
+                os.killpg(child.pid,signal.SIGKILL);child.wait()
 
 if __name__=='__main__': main()

@@ -113,3 +113,13 @@ The original seven-formula calculator and Optimization placeholder are unchanged
 The CTM remains an educational simulation and is never anomaly ground truth.
 Private credentials, scene metadata, raw observations and generated reports stay
 outside Git. Share only reviewed, sanitized field evidence in acceptance issues.
+
+## 8. First real Toronto reception and approximate markers
+
+[The live-test report](toronto-live-test.md) records nine receiving sensors, one
+routing 404, the offset-free timestamp issue, one-hour launcher usage, approximate
+map provenance, and the distinction between an intersection pin and a calibrated
+sensor origin. `start_connected.py` now bounds the test duration and shuts down
+child process groups; `config/sites.json` adds reference locations; `app.js`
+renders those pins and receipt health; `live.py` explains stored clock-pending
+events rather than calling them absent. Vendor SDK files remain unchanged.

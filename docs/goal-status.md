@@ -1,3 +1,7 @@
+# Latest update — 2026-09-28
+
+Nine Toronto sensors now deliver stored real events; Norfinch returns a routing HTTP 404. Ten approximate intersection markers are implemented. Sensor timestamps lack offsets and remain quarantined pending clock confirmation. A bounded one-hour test has started; its full duration is not yet validated. See [live-test report](toronto-live-test.md). This supersedes the earlier zero-event audit below.
+
 # Current goal status — 2026-09-24
 
 See [Toronto implementation and validation](toronto-implementation.md) for the current task-by-task evidence. Ten Toronto IDs are configured; sensor coordinates and actual access remain unverified. Latest audit: zero raw events, zero real KPI windows, 36 synthetic windows. 40 Python tests and browser checks pass.

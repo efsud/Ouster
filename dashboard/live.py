@@ -13,7 +13,9 @@ def snapshot(store, site, now=None):
     with store.connect() as db:
         base['active_anomalies']=db.execute("SELECT count(*) FROM anomalies WHERE site=? AND state='active'",(site['id'],)).fetchone()[0]
     if not latest:
-        return dict(base,state='unavailable',reason='No frames recorded for this site')
+        if health.get('saved_count',0)>0:
+            return dict(base,state='clock_pending',reason='Raw events stored; sensor timezone requires verification. Approximate marker is an intersection reference only.')
+        return dict(base,state='unavailable',reason=health.get('error') or 'No frames recorded for this site')
     base['timestamp']=latest['timestamp']
     base['received_at']=latest.get('received_at')
     base['event_key']=latest.get('event_key')

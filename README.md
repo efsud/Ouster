@@ -138,3 +138,7 @@ published to GitHub.
 ## Toronto implementation and acceptance
 
 Read [the task-by-task report](docs/toronto-implementation.md) for implemented behavior, tests, remaining field gates, local metadata schema and API interfaces. Calibration now requires versioned reference metadata and at least three independent landmark checks; setting the boolean alone is insufficient.
+
+## One-hour Toronto test
+
+Use `.venv/bin/python scripts/start_connected.py --toronto --port 8768 --duration 3600` and the private credential prompt. Saved raw observations remain after automatic shutdown. Approximate intersection markers are now available; they do not substitute for calibrated sensor origins. See [first real reception report](docs/toronto-live-test.md).
