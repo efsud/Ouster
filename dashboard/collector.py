@@ -10,21 +10,32 @@ from pathlib import Path
 from .storage import Store
 from .reception import normalize_event
 
+def persist_observations(db, batch, record_until):
+    archive=[r for r in batch if record_until is None or r['received_at']<record_until]
+    preview=[r for r in batch if record_until is not None and r['received_at']>=record_until]
+    saved=db.save_batch(archive) if archive else 0
+    if preview:db.save_preview(preview)
+    return saved
+
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--site',required=True);args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--site',required=True)
+    parser.add_argument('--record-duration',type=int,default=None,help='Raw history seconds; 0 is live-only, omitted is unlimited. Streaming continues.')
+    args=parser.parse_args()
+    if args.record_duration is not None and args.record_duration<0:parser.error('Record duration must be nonnegative')
     from .sdk_client import ObservableConnection
     from google.protobuf.json_format import MessageToDict
     username=os.getenv('BLUECITY_USERNAME') or input('BlueCity username: ')
     password=os.getenv('BLUECITY_PASSWORD') or getpass.getpass('BlueCity password: ')
     path=os.getenv('OUSTER_DB',str(Path(__file__).resolve().parent.parent/'data/ouster.sqlite3'))
     db=Store(path);session=uuid.uuid4().hex
+    record_until=time.time()+args.record_duration if args.record_duration is not None else None
     db.set_health(args.site,state='starting',session=session,error=None,received_count=0,saved_count=0,last_receipt=None,last_sensor_time=None)
     batch=[];last_flush=time.monotonic();last_retention=0;received=0;saved=0;stream=None
     def flush():
         nonlocal saved,last_flush
         if batch:
-            saved+=db.save_batch(batch);last=batch[-1]
-            db.set_health(args.site,state='receiving' if last['status']=='received' else 'timestamp_error',last_receipt=last['received_at'],last_sensor_time=last['sensor_time'],error=last['reason'],received_count=received,saved_count=saved)
+            saved+=persist_observations(db,batch,record_until);last=batch[-1]
+            db.set_health(args.site,state='receiving' if last['status']=='received' else 'timestamp_error',last_receipt=last['received_at'],last_sensor_time=last['sensor_time'],error=last['reason'],received_count=received,saved_count=saved,recording_mode='recording' if record_until is None or last['received_at']<record_until else 'live_only',record_until=record_until)
             batch.clear()
         last_flush=time.monotonic()
     try:

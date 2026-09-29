@@ -21,10 +21,12 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8765)
     parser.add_argument('--duration',type=int,default=0,help='Stop collection after this many seconds; 0 runs until Ctrl+C')
+    parser.add_argument('--record-duration',type=int,default=None,help='Raw history seconds; 0 live-only, omitted unlimited. Does not stop live streaming.')
     network=parser.add_mutually_exclusive_group()
     network.add_argument('--florida',action='store_true',help='Record all seven Florida UDIDs from config/sites.json')
     network.add_argument('--toronto',action='store_true',help='Record all ten Toronto UDIDs from config/sites.json')
     args=parser.parse_args()
+    if args.record_duration is not None and args.record_duration<0:raise SystemExit('Record duration must be nonnegative.')
     if args.duration<0:raise SystemExit('Duration must be nonnegative.')
     if not 1<=args.port<=65535: raise SystemExit('Port must be between 1 and 65535.')
     with socket.socket() as probe:
@@ -55,7 +57,9 @@ def main():
     try:
         children.append(subprocess.Popen([sys.executable,'-m','dashboard.server','--port',str(args.port)],cwd=ROOT,env=env,start_new_session=True))
         for udid in udids:
-            children.append(subprocess.Popen([sys.executable,'-m','dashboard.collector','--site',udid],cwd=ROOT,env=env,start_new_session=True))
+            command=[sys.executable,'-m','dashboard.collector','--site',udid]
+            if args.record_duration is not None:command+=['--record-duration',str(args.record_duration)]
+            children.append(subprocess.Popen(command,cwd=ROOT,env=env,start_new_session=True))
         print(f'Open http://127.0.0.1:{args.port}. Ctrl+C stops the server and recorders.')
         print('Add verified site metadata to config/sites.local.json before mapping this stream.')
         deadline=time.monotonic()+args.duration if args.duration else None

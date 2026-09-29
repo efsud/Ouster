@@ -109,7 +109,7 @@ async function refreshLive(){
   if(request!==liveRequest||$('region').value!==region||state.tab!=='live')return;
   const seen=new Set();
   const fresh=result.snapshots.filter(s=>['live','approximate'].includes(s.state));
-  $('health-rows').innerHTML=result.snapshots.map(s=>`<tr><td>${escapeHTML(s.site)}</td><td>${escapeHTML(s.health?.state||'not_started')}</td><td>${utcTime(s.health?.last_receipt)}</td><td>${utcTime(s.health?.last_sensor_time)}</td><td>${s.health?.saved_count||0}</td><td>${escapeHTML(s.health?.error||s.calibration?.reasons?.join('; ')||s.state)}</td></tr>`).join('');
+  $('health-rows').innerHTML=result.snapshots.map(s=>`<tr><td>${escapeHTML(s.site)}</td><td>${escapeHTML(s.health?.state||'not_started')} · ${s.health?.recording_mode==='live_only'?'live only':s.health?.recording_mode==='recording'?'recording':''}</td><td>${utcTime(s.health?.last_receipt)}</td><td>${utcTime(s.health?.last_sensor_time)}</td><td>${s.health?.saved_count||0}</td><td>${escapeHTML(s.health?.error||s.calibration?.reasons?.join('; ')||s.state)}</td></tr>`).join('');
   const receiving=result.snapshots.filter(s=>s.health?.last_receipt&&Date.now()/1000-s.health.last_receipt<5).length;
   $('connection').textContent=receiving?`${receiving} / ${result.snapshots.length} receiving · ${fresh.length} object streams`:fresh.length?`${fresh.length} / ${result.snapshots.length} sites live`:'No verified live stream';
   let visible=0;
@@ -273,7 +273,11 @@ let historyOffset=null,rawCursor=null,anomalyOffset=null;
 function utcTime(value){return typeof value==='number'?new Date(value*1000).toISOString().replace('T',' ').replace('Z',' UTC'):'—';}
 async function loadAvailability(){
   const site=$('history-site').value;
-  if(!site||site==='DEMO-001'){$('availability').textContent='Synthetic examples are separate from received observations.';return;}
+  if(!site||site==='DEMO-001'){$('recorded-summary').textContent='Synthetic data is separate from the saved sensor recording.';$('recorded-chart').replaceChildren();$('availability').textContent='Synthetic examples are separate from received observations.';return;}
+  const recorded=await api('/api/recorded-summary?site='+encodeURIComponent(site));
+  $('recorded-summary').textContent=recorded.events?`${number(recorded.events)} saved SDK events · ${utcTime(recorded.start)} → ${utcTime(recorded.end)} · receipt-clock basis · ${JSON.stringify(recorded.status_counts)}`:'No recorded events for this sensor.';
+  const peak=Math.max(1,...recorded.buckets.map(b=>b.events));
+  $('recorded-chart').innerHTML=recorded.buckets.length?'<svg viewBox="0 0 720 130" role="img" aria-label="Received SDK messages per minute">'+recorded.buckets.map((b,i)=>`<rect x="${i*720/recorded.buckets.length}" y="${110-b.events/peak*100}" width="${Math.max(1,720/recorded.buckets.length-2)}" height="${b.events/peak*100}" fill="#197d79"><title>${utcTime(b.start)} · ${b.events} SDK messages</title></rect>`).join('')+'<text x="0" y="128" font-size="11">Start of saved interval</text><text x="720" y="128" text-anchor="end" font-size="11">Last saved event</text></svg>':'';
   const a=await api('/api/availability?site='+encodeURIComponent(site));
   $('availability').textContent=`${a.count} raw events retained · sensor times ${utcTime(a.first)} to ${utcTime(a.last)} · last receipt ${utcTime(a.last_receipt)} · ${JSON.stringify(a.status_counts)}`;
 }

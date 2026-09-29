@@ -91,6 +91,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send({'sites':entries,'corridors':corridors(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_configured':any(s.get('region')=='Toronto' for s in entries)})
             if parsed.path == '/api/received':
                 return self.send(self.server.store.raw_page(q.get('site'),float(q['start']) if q.get('start') else None,float(q['end']) if q.get('end') else None,int(q.get('cursor',0)),max(1,min(1000,int(q.get('limit',100))))))
+            if parsed.path == '/api/recorded-summary':
+                return self.send(self.server.store.recorded_summary(q.get('site')))
             if parsed.path == '/api/availability':
                 return self.send(self.server.store.availability(q.get('site')))
             if parsed.path == '/api/window':

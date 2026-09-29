@@ -33,6 +33,7 @@ class Store:
                   status TEXT NOT NULL, reason TEXT, payload TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS raw_site_time ON raw_events(site,sensor_time);
                 CREATE INDEX IF NOT EXISTS raw_receipt ON raw_events(received_at);
+                CREATE INDEX IF NOT EXISTS raw_site_receipt ON raw_events(site,received_at,sensor_time,status);
                 CREATE TABLE IF NOT EXISTS preview_frames (
                   site TEXT PRIMARY KEY, received_at REAL, session TEXT, event_key TEXT, payload TEXT);
                 CREATE TABLE IF NOT EXISTS latest_frames (
@@ -120,6 +121,18 @@ class Store:
                         (r['site'],r['sensor_time'],r['received_at'],r['session'],key,json.dumps(r['event']['frame'])))
         return inserted
 
+    def save_preview(self, records):
+        """Replace only the latest display frame; do not append raw history."""
+        with self.connect() as db:
+            for r in records:
+                if 'frame' not in r['event'] or not (r['status']=='received' or r.get('reason')=='unknown_timezone'):continue
+                key=self.event_key(r['site'],r['session'],dict(r['event'],_clock_key=r.get('sensor_time') or r['received_at']))
+                db.execute('INSERT INTO preview_frames VALUES(?,?,?,?,?) ON CONFLICT(site) DO UPDATE SET received_at=excluded.received_at,session=excluded.session,event_key=excluded.event_key,payload=excluded.payload WHERE excluded.received_at>=preview_frames.received_at',
+                    (r['site'],r['received_at'],r['session'],key,json.dumps(r['event'])))
+                if r['status']=='received' and r.get('sensor_time') is not None:
+                    db.execute('INSERT INTO latest_frames VALUES(?,?,?,?,?,?) ON CONFLICT(site) DO UPDATE SET sensor_time=excluded.sensor_time,received_at=excluded.received_at,session=excluded.session,event_key=excluded.event_key,payload=excluded.payload WHERE excluded.sensor_time>=latest_frames.sensor_time',
+                        (r['site'],r['sensor_time'],r['received_at'],r['session'],key,json.dumps(r['event']['frame'])))
+
     def set_health(self, site, **fields):
         with self.connect() as db:
             row=db.execute('SELECT payload FROM collector_health WHERE site=?',(site,)).fetchone()
@@ -146,6 +159,17 @@ class Store:
             r=db.execute('SELECT count(*) count,min(sensor_time) first,max(sensor_time) last,min(received_at) first_receipt,max(received_at) last_receipt FROM raw_events WHERE site=?',(site,)).fetchone()
             kinds=db.execute('SELECT status,count(*) count FROM raw_events WHERE site=? GROUP BY status',(site,)).fetchall()
         return dict(r,status_counts={x['status']:x['count'] for x in kinds},retention_days=30)
+
+    def recorded_summary(self,site):
+        """Last recorded hour, by receipt clock; event counts are not vehicle counts."""
+        with self.connect() as db:
+            bounds=db.execute('SELECT min(received_at) first,max(received_at) last FROM raw_events INDEXED BY raw_site_receipt WHERE site=?',(site,)).fetchone()
+            if bounds['last'] is None:return {'site':site,'events':0,'buckets':[],'basis':'receipt time'}
+            end=bounds['last'];start=max(bounds['first'],end-3600)
+            rows=db.execute('SELECT CAST((received_at-?)/60 AS INTEGER) minute,count(*) count FROM raw_events INDEXED BY raw_site_receipt WHERE site=? AND received_at>=? AND received_at<=? GROUP BY minute ORDER BY minute',(start,site,start,end)).fetchall()
+            counts={r['minute']:r['count'] for r in rows}
+            quality=db.execute('SELECT status,count(*) count FROM raw_events INDEXED BY raw_site_receipt WHERE site=? AND received_at>=? AND received_at<=? GROUP BY status',(site,start,end)).fetchall()
+        return {'site':site,'start':start,'end':end,'events':sum(counts.values()),'basis':'receipt time','status_counts':{r['status']:r['count'] for r in quality},'buckets':[{'start':start+i*60,'events':counts.get(i,0)} for i in range(int((end-start)//60)+1)]}
 
     def purge_raw(self, now=None):
         cutoff=(time.time() if now is None else now)-30*86400

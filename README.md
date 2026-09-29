@@ -152,3 +152,12 @@ sensor settings. Positions are approximate and freshness uses receipt time;
 upstream delay and lane alignment remain unverified. Disabling approximate mode
 restores the strict calibrated display. A recorder must be running; saved frames
 are not replayed as live motion.
+
+### Continuous live network, limited historical recording
+
+Use `.venv/bin/python scripts/start_connected.py --toronto --port 8768 --record-duration 3600`
+to keep the live map running while recording only the first hour. Use
+`--record-duration 0` when the test history is already saved. Do not add
+`--duration 3600` unless you want the entire service to stop. The standard Toronto
+launcher now uses the first option. Historical performance displays the last
+recorded hour's reception chart independently of the ongoing live stream.

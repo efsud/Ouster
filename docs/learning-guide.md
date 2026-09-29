@@ -175,3 +175,33 @@ The map marker size was subsequently adjusted to 20 px at user request, with a c
 ## 12. User-requested map alignment
 
 The approximate object preview now defaults to 210°, adding 30° anticlockwise to the previous 180° projection. Each position rotates about its own intersection reference point before conversion to latitude/longitude. For example, a previously westward 10 m offset becomes 8.66 m west and 5 m south. This moves object coordinates rather than rotating the icon artwork. Stored observations and verified calibration metadata are unchanged.
+
+## 13. Continuous live viewing versus a one-hour archive
+
+The two durations are now independent:
+
+- `--record-duration 3600`: archive raw events for one hour, then keep live streaming.
+- `--record-duration 0`: live viewing only; preserve previously recorded history.
+- Omit `--record-duration`: unlimited raw recording (existing CLI compatibility).
+- `--duration`: optional overall process shutdown; omit it for continuous live viewing.
+
+The Toronto double-click launcher now defaults to one hour of raw recording and
+continuous live viewing afterward. The restarted current session uses live-only
+mode because the test archive is already saved. Credentials stay in memory.
+Closing the map does not stop the collector; stopping Terminal, sleeping/shutting
+down the computer, or losing network access can interrupt this local service.
+
+`persist_observations()` splits batches at the recording deadline. After that
+boundary `save_preview()` replaces the latest per-sensor display frame without
+adding rows to raw history. Verified-clock frames also update the strict latest
+cache. Historical queries only read the raw archive, never the live preview cache.
+Boundary and live-only tests verify that history stops growing while live frames
+advance. The suite now has 45 passing tests.
+
+Historical performance also shows the last saved hour's received-message counts
+per minute and timestamp-quality counts, using the receipt clock. The chart's
+end is the last archived receipt, not the current live time. These are SDK-message
+counts, not vehicles, flow or calibrated performance metrics. A covering index
+avoids scanning full frame payloads to compute this summary. Gaps appear as zero
+received messages; they do not imply zero traffic. Full traffic KPI analysis still
+needs clock confirmation and verified scene annotations.
