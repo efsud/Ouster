@@ -209,22 +209,3 @@ needs clock confirmation and verified scene annotations.
 ## 14. Muted basemap
 
 A CSS filter on the Leaflet tile pane reduces basemap colour, contrast and brightness. Object icons, sensor markers, tooltips, controls and attribution remain outside that filter. This makes live objects stand out without changing coordinates or observations.
-
-## 15. Prepared public read-only gateway
-
-`python3 -m dashboard.public_view` serves a separate gateway on localhost:8769,
-forwarding an explicit read-only route list to localhost:8765. Never tunnel the
-administrative server directly. The gateway rejects POST/PUT/PATCH/DELETE, raw
-observation downloads, local data files and unlisted routes. Status metadata omits
-credentials/scene details; anomaly review notes are removed. Public UI controls
-for recording, import, processing and acknowledgement are disabled. Map objects,
-saved KPI/reception summaries and explanatory anomaly evidence are public content
-if the gateway is published. This is anonymous viewing, not password protection.
-
-The official Cloudflare binary is kept under ignored data/tools/. It was downloaded
-from the official release and checked against the release SHA-256 digest. A quick
-tunnel would forward HTTPS traffic to this gateway while the computer stays online;
-it is temporary, with no permanent hostname or uptime guarantee. Publication was initially held by automatic approval review. The user then explicitly approved publishing the Toronto live map and saved summaries to a public trycloudflare.com link, and the read-only tunnel was started. Credentials, databases and raw datasets are not committed.
-
-48 Python tests pass, including read-route allowlisting, denial of all supported
-write methods and removal of private metadata. The public gateway also passed a local browser check: the page renders in read-only mode while raw downloads, the database file and mutation requests return HTTP 403.

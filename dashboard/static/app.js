@@ -1,6 +1,6 @@
 'use strict';
 const $ = id => document.getElementById(id);
-const state = {sites:[],corridors:[],metrics:{},site:null,metric:'control_delay',rows:[],tab:'live',publicView:false};
+const state = {sites:[],corridors:[],metrics:{},site:null,metric:'control_delay',rows:[],tab:'live'};
 const titles = {live:'Live network',history:'Historical performance',ctm:'CTM explorer',optimization:'Optimization',guide:'Methods & learning',anomalies:'Anomalies'};
 const escapeHTML = value => String(value).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number = v => v===null || v===undefined ? '—' : Number(v).toLocaleString(undefined,{maximumFractionDigits:1});
@@ -139,7 +139,7 @@ async function refreshLive(){
       m.marker.bindTooltip(label);
 
     }
-    if(!state.publicView&&visible>beforeVisible&&data.event_key&&displayedFrames.get(data.site)!==data.event_key){
+    if(visible>beforeVisible&&data.event_key&&displayedFrames.get(data.site)!==data.event_key){
       displayedFrames.set(data.site,data.event_key);requestAnimationFrame(()=>api('/api/latency',{event_key:data.event_key,displayed_at:Date.now()/1000}).catch(()=>{}));
     }
   }
@@ -257,12 +257,7 @@ $('collect').onclick=()=>action(async()=>{
 for(const [id,unit] of [['demand','veh/h'],['green','s'],['offset','s']])$(id).oninput=()=>$(id+'-out').textContent=$(id).value+' '+unit;
 $('run-ctm').onclick=()=>action(runCTM);
 action(async()=>{
-  const status=await api('/api/status');state.publicView=status.public_view===true;
-  if(state.publicView){
-    for(const id of ['load-demo','import-file','collect','inspect-raw','raw-next','process-windows','process-daily','process-day','anomaly-evaluate']){const control=$(id);if(control){control.disabled=true;control.hidden=true;}}
-    const note=document.createElement('div');note.className='notice';note.textContent='Public read-only preview · live map and saved summaries · recording and detailed observations remain local.';document.querySelector('main').prepend(note);
-  }
-  state.sites=status.sites;state.corridors=status.corridors||[];state.metrics=status.metrics;
+  const status=await api('/api/status');state.sites=status.sites;state.corridors=status.corridors||[];state.metrics=status.metrics;
   initMap();renderNetwork();renderCards();renderChart();
   const requestedSite=new URLSearchParams(location.search).get('site');
   const requestedButton=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===requestedSite);
@@ -335,7 +330,7 @@ async function loadAnomalies(next=false){
     }
     const note=document.createElement('textarea');note.maxLength=2000;note.placeholder='Review note';note.setAttribute('aria-label','Review note for '+event.rule);note.value=event.note||'';
     const acknowledge=document.createElement('button');acknowledge.className='secondary';acknowledge.textContent='Acknowledge / save note';acknowledge.onclick=()=>action(async()=>{await api('/api/anomalies/acknowledge',{id:event.id,note:note.value});await loadAnomalies();});
-    if(!state.publicView)panel.append(note,acknowledge);$('anomaly-list').append(panel);
+    panel.append(note,acknowledge);$('anomaly-list').append(panel);
   }
   const evaluations=await api('/api/anomaly-evaluations?site='+encodeURIComponent($('anomaly-site').value));
   const counts={};evaluations.forEach(e=>counts[e.status]=(counts[e.status]||0)+1);
