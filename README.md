@@ -161,3 +161,7 @@ to keep the live map running while recording only the first hour. Use
 `--duration 3600` unless you want the entire service to stop. The standard Toronto
 launcher now uses the first option. Historical performance displays the last
 recorded hour's reception chart independently of the ongoing live stream.
+
+## Public read-only preview
+
+`python3 -m dashboard.public_view` exposes a read-only gateway on localhost:8769. A Cloudflare tunnel may point to that gateway after explicit authorization to share live sensor-derived data and saved summaries publicly. Never tunnel the local administrative server directly. The temporary HTTPS preview depends on this computer, the dashboard, the gateway, the collector and the tunnel staying online. Restarting a quick tunnel changes its public URL. Credentials, raw observation downloads and write controls remain local.
