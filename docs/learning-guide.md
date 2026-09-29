@@ -209,3 +209,27 @@ needs clock confirmation and verified scene annotations.
 ## 14. Muted basemap
 
 A CSS filter on the Leaflet tile pane reduces basemap colour, contrast and brightness. Object icons, sensor markers, tooltips, controls and attribution remain outside that filter. This makes live objects stand out without changing coordinates or observations.
+
+## 16. Recovering stalled live streams
+
+On 2026-09-29 the local servers were still listening, but the last receipts from
+nine sensors were about ten hours old. Collector processes remained open without
+new events; the existing launcher only watched the web server. The evidence does
+not establish whether sleep, connectivity or an upstream fault caused the stall.
+
+The launcher now supervises every sensor collector. After a 60-second startup
+grace period it restarts an exited collector or one with no receipts for over
+30 seconds. Authentication/routing failures retain their specific errors and the
+SDK retry behavior. Restarts stop the old process group before starting a new one.
+The same credentials remain in process memory; none are written to the repository.
+
+An absolute `--record-until` deadline passes to restarted collectors, so recovery
+cannot reset a one-hour recording window and accidentally extend the archive.
+The active session uses live-only mode and leaves the saved hour intact. The
+watchdog works while the launcher/computer is running; it cannot keep a sleeping
+or powered-off computer online. Objects still expire after five seconds so stale
+positions cannot appear live during reconnection.
+
+46 Python tests pass, including startup grace, healthy receipt, stalled receipt,
+collector exit and explicit routing-failure cases. Field restart restored the
+stream; long-duration unattended recovery remains to be monitored.

@@ -23,3 +23,12 @@ class LauncherTest(unittest.TestCase):
         self.assertEqual(kill.call_count,11)
         self.assertTrue(all(c.args[1]==start_connected.signal.SIGINT for c in kill.call_args_list))
         self.assertEqual(child.wait.call_count,11)
+
+    def test_watchdog_detects_stall_and_exit_without_resetting_on_error(self):
+        process=MagicMock();process.poll.return_value=None
+        self.assertIsNone(start_connected.restart_reason(process,{},100,159))
+        self.assertEqual(start_connected.restart_reason(process,{'last_receipt':110},100,170),'receipt_timeout')
+        self.assertIsNone(start_connected.restart_reason(process,{'last_receipt':165},100,170))
+        self.assertIsNone(start_connected.restart_reason(process,{'state':'routing_failed'},100,170))
+        process.poll.return_value=1
+        self.assertEqual(start_connected.restart_reason(process,{},100,170),'collector_exited')

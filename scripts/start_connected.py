@@ -17,6 +17,23 @@ import signal
 
 ROOT = Path(__file__).resolve().parents[1]
 
+def restart_reason(process,health,started,now):
+    if process.poll() is not None:return 'collector_exited'
+    if now-started<60:return None
+    if health.get('state') in {'authentication_failed','routing_failed'}:return None
+    last=health.get('last_receipt')
+    if now-max(started,last or started)>30:return 'receipt_timeout'
+    return None
+
+def stop_group(child):
+    try:os.killpg(child.pid,signal.SIGINT)
+    except ProcessLookupError:return
+    try:child.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        try:os.killpg(child.pid,signal.SIGKILL)
+        except ProcessLookupError:pass
+        child.wait()
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8765)
@@ -39,7 +56,7 @@ def main():
         raise SystemExit('Install the bundled SDK first. See README.md, Connected mode.')
     sys.path.insert(0,str(ROOT))
     from dashboard.storage import Store
-    Store(os.getenv('OUSTER_DB',str(ROOT/'data/ouster.sqlite3')))
+    store=Store(os.getenv('OUSTER_DB',str(ROOT/'data/ouster.sqlite3')))
     udids=[]
     if args.florida or args.toronto:
         region='Toronto' if args.toronto else 'Florida'
@@ -53,12 +70,14 @@ def main():
     if not username or not password:
         raise SystemExit('Username and password are required.')
     env = dict(os.environ,BLUECITY_USERNAME=username,BLUECITY_PASSWORD=password)
-    children = []
+    children = [];commands=[];started=[]
+    record_until=time.time()+args.record_duration if args.record_duration is not None else None
     try:
         children.append(subprocess.Popen([sys.executable,'-m','dashboard.server','--port',str(args.port)],cwd=ROOT,env=env,start_new_session=True))
         for udid in udids:
             command=[sys.executable,'-m','dashboard.collector','--site',udid]
-            if args.record_duration is not None:command+=['--record-duration',str(args.record_duration)]
+            if record_until is not None:command+=['--record-until',str(record_until)]
+            commands.append(command);started.append(time.time())
             children.append(subprocess.Popen(command,cwd=ROOT,env=env,start_new_session=True))
         print(f'Open http://127.0.0.1:{args.port}. Ctrl+C stops the server and recorders.')
         print('Add verified site metadata to config/sites.local.json before mapping this stream.')
@@ -67,15 +86,19 @@ def main():
         while children[0].poll() is None:
             if deadline and time.monotonic()>=deadline:
                 print('Test duration reached. Stopping collection; saved observations remain in SQLite.',flush=True);break
+            now=time.time()
+            for i,udid in enumerate(udids):
+                if now-started[i]<60:continue
+                reason=restart_reason(children[i+1],store.health(udid),started[i],now)
+                if reason:
+                    stop_group(children[i+1])
+                    children[i+1]=subprocess.Popen(commands[i],cwd=ROOT,env=env,start_new_session=True)
+                    started[i]=time.time()
+                    print(f'{udid}: reconnecting ({reason}). Historical recording deadline unchanged.',flush=True)
             time.sleep(1)
     except KeyboardInterrupt:
         print('\nStopping read-only services.')
     finally:
-        for child in children:
-            if child.poll() is None:os.killpg(child.pid,signal.SIGINT)
-        for child in children:
-            try: child.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                os.killpg(child.pid,signal.SIGKILL);child.wait()
+        for child in children:stop_group(child)
 
 if __name__=='__main__': main()

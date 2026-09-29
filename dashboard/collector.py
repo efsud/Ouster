@@ -20,6 +20,7 @@ def persist_observations(db, batch, record_until):
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--site',required=True)
     parser.add_argument('--record-duration',type=int,default=None,help='Raw history seconds; 0 is live-only, omitted is unlimited. Streaming continues.')
+    parser.add_argument('--record-until',type=float,default=None,help='Absolute receipt-time archive deadline preserved across reconnects')
     args=parser.parse_args()
     if args.record_duration is not None and args.record_duration<0:parser.error('Record duration must be nonnegative')
     from .sdk_client import ObservableConnection
@@ -28,7 +29,7 @@ def main():
     password=os.getenv('BLUECITY_PASSWORD') or getpass.getpass('BlueCity password: ')
     path=os.getenv('OUSTER_DB',str(Path(__file__).resolve().parent.parent/'data/ouster.sqlite3'))
     db=Store(path);session=uuid.uuid4().hex
-    record_until=time.time()+args.record_duration if args.record_duration is not None else None
+    record_until=args.record_until if args.record_until is not None else time.time()+args.record_duration if args.record_duration is not None else None
     db.set_health(args.site,state='starting',session=session,error=None,received_count=0,saved_count=0,last_receipt=None,last_sensor_time=None)
     batch=[];last_flush=time.monotonic();last_retention=0;received=0;saved=0;stream=None
     def flush():
