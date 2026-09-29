@@ -158,7 +158,12 @@ class Store:
         with self.connect() as db:
             r=db.execute('SELECT count(*) count,min(sensor_time) first,max(sensor_time) last,min(received_at) first_receipt,max(received_at) last_receipt FROM raw_events WHERE site=?',(site,)).fetchone()
             kinds=db.execute('SELECT status,count(*) count FROM raw_events WHERE site=? GROUP BY status',(site,)).fetchall()
-        return dict(r,status_counts={x['status']:x['count'] for x in kinds},retention_days=30)
+        health=self.health(site)
+        last=r['last_receipt']
+        return dict(r,status_counts={x['status']:x['count'] for x in kinds},retention_days=30,
+                    recording_active=health.get('recording_mode')=='recording' and last is not None and 0<=time.time()-last<30,
+                    recording_mode=health.get('recording_mode','unknown'),record_until=health.get('record_until'),
+                    collection_error=health.get('error'))
 
     def recorded_summary(self,site):
         """Last recorded hour, by receipt clock; event counts are not vehicle counts."""

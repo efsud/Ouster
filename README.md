@@ -163,5 +163,5 @@ For an optional one-hour recording followed by live-only viewing, add
 Do not add `--duration 3600` unless you want the entire service to stop.
 
 Historical performance offers intersection/date selection and a provisional CTM
-analysis of up to one recorded hour, with editable assumptions and a KPI time
+analysis of up to 24 recorded hours, with editable assumptions and a KPI time
 series. See [the worked guide and validation](docs/historical-ctm.md).

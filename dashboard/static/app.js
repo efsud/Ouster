@@ -273,12 +273,15 @@ let historyOffset=null,rawCursor=null,anomalyOffset=null;
 function utcTime(value){return typeof value==='number'?new Date(value*1000).toISOString().replace('T',' ').replace('Z',' UTC'):'—';}
 async function loadAvailability(){
   const site=$('history-site').value;
-  if(!site||site==='DEMO-001'){$('recorded-summary').textContent='Synthetic data is separate from the saved sensor recording.';$('recorded-chart').replaceChildren();$('availability').textContent='Synthetic examples are separate from received observations.';return;}
+  if(!site||site==='DEMO-001'){$('recorded-summary').textContent='Synthetic data is separate from the saved sensor recording.';$('recorded-chart').replaceChildren();$('availability').textContent='Synthetic examples are separate from received observations.';$('recording-status').textContent='Choose a sensor to see recording status and available dates.';return;}
   const recorded=await api('/api/recorded-summary?site='+encodeURIComponent(site));
+  if(site!==$('history-site').value)return;
   $('recorded-summary').textContent=recorded.events?`${number(recorded.events)} saved SDK events · ${utcTime(recorded.start)} → ${utcTime(recorded.end)} · receipt-clock basis · ${JSON.stringify(recorded.status_counts)}`:'No recorded events for this sensor.';
   const peak=Math.max(1,...recorded.buckets.map(b=>b.events));
   $('recorded-chart').innerHTML=recorded.buckets.length?'<svg viewBox="0 0 720 130" role="img" aria-label="Received SDK messages per minute">'+recorded.buckets.map((b,i)=>`<rect x="${i*720/recorded.buckets.length}" y="${110-b.events/peak*100}" width="${Math.max(1,720/recorded.buckets.length-2)}" height="${b.events/peak*100}" fill="#197d79"><title>${utcTime(b.start)} · ${b.events} SDK messages</title></rect>`).join('')+'<text x="0" y="128" font-size="11">Start of saved interval</text><text x="720" y="128" text-anchor="end" font-size="11">Last saved event</text></svg>':'';
   const a=await api('/api/availability?site='+encodeURIComponent(site));
+  if(site!==$('history-site').value)return;
+  $('recording-status').textContent=`${a.recording_active?'Recording active':'No recent saved events — recording not confirmed'} · ${a.count?`Saved range: ${utcTime(a.first_receipt)} → ${utcTime(a.last_receipt)}`:'No saved data'} · raw retention: ${a.retention_days} days. ${a.collection_error?'Collection note: '+a.collection_error+'. ':''}Select a range of up to 24 hours; gaps remain unavailable.`;
   $('availability').textContent=`${a.count} raw events retained · sensor times ${utcTime(a.first)} to ${utcTime(a.last)} · last receipt ${utcTime(a.last_receipt)} · ${JSON.stringify(a.status_counts)}`;
 }
 function bindEvidence(){
@@ -416,3 +419,5 @@ $('hctm-download').onclick=()=>{
   const url=URL.createObjectURL(new Blob([JSON.stringify(historicalCTM,null,2)],{type:'application/json'}));
   const a=document.createElement('a');a.href=url;a.download=historicalCTM.saved_run;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
+
+$('recording-refresh').onclick=()=>action(loadAvailability);

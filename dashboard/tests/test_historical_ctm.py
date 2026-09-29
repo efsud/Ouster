@@ -28,3 +28,27 @@ class HistoricalCTMTest(unittest.TestCase):
     def test_parameters_reject_bad_values(self):
         for p in [{'lanes':1.2},{'axis':'z'},{'green_s':100},{'free_speed_mps':float('nan')}]:
             with self.assertRaises(ValueError):parameters(p)
+    def test_archive_range_supports_day_and_rejects_longer(self):
+        import tempfile
+        from pathlib import Path
+        from dashboard.storage import Store
+        from dashboard.historical_ctm import analyze
+        with tempfile.TemporaryDirectory() as tmp:
+            store=Store(Path(tmp)/'archive.sqlite')
+            store.save_batch([dict(site='S',session='s',received_at=1,sensor_time=None,status='quarantined',reason='unknown_timezone',event={'frame':{'objects':[]}})])
+            result=analyze(store,'S',0,86400,{})
+            self.assertEqual(len(result['rows']),288)
+            self.assertTrue(all(r['values']['volume'] is None for r in result['rows']))
+            with self.assertRaises(ValueError):analyze(store,'S',0,86401,{})
+    def test_recording_status_requires_recent_saved_event(self):
+        import tempfile,time
+        from pathlib import Path
+        from dashboard.storage import Store
+        with tempfile.TemporaryDirectory() as tmp:
+            store=Store(Path(tmp)/'archive.sqlite')
+            store.set_health('S',recording_mode='recording')
+            self.assertFalse(store.availability('S')['recording_active'])
+            store.save_batch([dict(site='S',session='s',received_at=time.time(),sensor_time=None,status='quarantined',reason='unknown_timezone',event={'frame':{'objects':[]}})])
+            self.assertTrue(store.availability('S')['recording_active'])
+            store.set_health('S',recording_mode='live_only')
+            self.assertFalse(store.availability('S')['recording_active'])

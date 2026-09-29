@@ -5,7 +5,7 @@ Live collectors now save received events continuously as well as updating the li
 ## Using the historical tab
 
 1. Choose the intersection in Dataset.
-2. Choose From/To in your computer's local time, or click **Use latest recorded hour**. The shortcut rounds both boundaries down to minutes. Each calculation covers at most one hour.
+2. Choose From/To in your computer's local time, or click **Use latest recorded hour**. The shortcut rounds both boundaries down to minutes. Each calculation covers at most 24 hours.
 3. Open the CTM assumptions and review the sensor-local count line, direction, width, approach length, lanes, speeds, jam density and signal timing.
 4. Click **Calculate & save CTM**, then choose a KPI. The chart and table show five-minute windows in UTC. Missing coverage produces gaps, not zeros.
 5. Download the JSON to retain the results, assumptions, model version, input counts and limitations. Each calculation is also saved locally under ignored `data/ctm-history/`.
@@ -40,3 +40,7 @@ Upstream waiting outside the modelled approach is reported as backlog, but exclu
 Automated checks cover directional crossings, session namespaces, repeated IDs, censored tracks, missing coordinates, observation gaps, signal sensitivity, conservation, coverage resets and unsupported outputs. The full Python suite passes 55 tests. A real Driftwood query after recording restarted processed 3,794 frames and found 18 assumed-line crossings; only one five-minute interval met the coverage threshold. Conservation residual was below 1e-12 vehicles. This verifies software execution on recorded input, not field calibration or KPI accuracy.
 
 Browser validation passed against real recorded frames: 12 reporting intervals, KPI switching, unavailable AOG, JSON download, mobile width and clearing results on site change.
+
+## Continuous archive update
+
+The Historical CTM panel now displays the full retained receipt-time range and whether new raw events have been saved within 30 seconds while the collector is in recording mode. Refresh recording status to check again. A running process alone does not count as active recording. Analysis accepts arbitrary saved date ranges up to 24 hours per calculation, producing five-minute results throughout that range, with gaps retained. You can repeat for another day. Saving continues independently of the displayed tab. Closing the collector, sleeping or shutting down the computer interrupts capture; the dashboard cannot recover unreceived live frames. Existing raw retention is 30 days, while saved CTM results remain on disk.

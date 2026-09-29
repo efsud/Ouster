@@ -95,7 +95,7 @@ LABELS={'control_delay':'CTM excess-time proxy','stopped_delay':'Stopped delay â
 
 def analyze(store,site,start,end,assumptions):
     finite(start,'start');finite(end,'end')
-    if not 0<end-start<=3600.01:raise ValueError('Select a recorded range of at most one hour')
+    if not 0<end-start<=86400.01:raise ValueError('Select a recorded range of at most 24 hours')
     p=parameters(assumptions)
     def records():
         with store.connect() as db:
