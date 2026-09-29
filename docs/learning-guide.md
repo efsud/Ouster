@@ -233,3 +233,14 @@ positions cannot appear live during reconnection.
 46 Python tests pass, including startup grace, healthy receipt, stalled receipt,
 collector exit and explicit routing-failure cases. Field restart restored the
 stream; long-duration unattended recovery remains to be monitored.
+
+## 17. Click an intersection to inspect the paper's KPIs
+
+`site_kpis.py` maps the seven Tier-1 definitions to saved results and explains
+missing inputs. `server.py` exposes the read-only `/api/site-kpis` query. The new
+panel in `index.html` and its `app.js` handlers keep the selected sensor, approach
+and reporting window together; a request counter prevents a slow previous-site
+response from replacing the current selection. No synthetic values are used for
+real intersection cards. The panel's historical link selects the same sensor.
+See [the document review and worked example](intersection-kpi-review.md) for
+requirements, current data limitations and validation evidence.

@@ -62,7 +62,7 @@ function renderNetwork(){
   const region=$('region').value;
   $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven intersections selected. Live data awaits API access and sensor calibration.':'Toronto · Finch West LRT corridor · Ten sensors · approximate live animation. Positions and rotation are uncalibrated; receipt freshness does not establish sensor latency.';
   const list=state.sites.filter(s=>s.region===region);
-  state.site=null;clearObjects();sitesLayer?.clearLayers();sensorMarkers.clear();
+  state.site=null;$('site-kpi-panel').hidden=true;clearObjects();sitesLayer?.clearLayers();sensorMarkers.clear();
   $('site-count').textContent=list.length;$('inventory-count').textContent=list.length;
   $('mapped-count').textContent=list.filter(s=>s.calibration_status?.valid||s.reference_location).length;
   $('region-label').textContent=region==='Florida'?'SR-436 · Altamonte Springs':'Finch West LRT · Toronto';
@@ -75,7 +75,7 @@ function renderNetwork(){
   for(const site of list){
     const button=document.createElement('button');button.className='site';button.dataset.siteId=site.id;
     button.innerHTML=`<strong>${escapeHTML(site.name)}</strong><small>${escapeHTML(site.id)}</small><span class="status">${site.calibration_status?.valid?'Location verified':'Location / access pending'}</span>`;
-    button.onclick=()=>selectSite(site,button);$('sites-list').append(button);
+    button.onclick=event=>{selectSite(site,button);if(event.isTrusted)$('site-kpi-panel').scrollIntoView({behavior:'smooth',block:'start'});};$('sites-list').append(button);
     if((site.calibration_status?.valid||site.reference_location)&&map){
       const location=site.calibration_status?.valid?site.origin:site.reference_location;
       const point=[location.lat,location.lng];
@@ -99,7 +99,7 @@ function selectSite(site,button){
   $('selected-name').textContent=site.name;$('selected-detail').textContent=`${site.id} · ${site.corridor||site.region} · ${site.timezone||'Timezone pending'}`;
   const location=site.calibration_status?.valid?site.origin:site.reference_location;
   if(location)map?.setView([location.lat,location.lng],18);
-  action(refreshLive);
+  action(refreshLive);action(()=>loadSiteKPIs());
 }
 async function refreshLive(){
   if(state.tab!=='live'||liveBusy)return;
@@ -339,3 +339,34 @@ async function loadAnomalies(next=false){
 $('anomaly-refresh').onclick=()=>action(()=>loadAnomalies());$('anomaly-next').onclick=()=>action(()=>loadAnomalies(true));
 $('anomaly-site').onchange=()=>action(()=>loadAnomalies());$('anomaly-category').onchange=()=>action(()=>loadAnomalies());
 $('anomaly-evaluate').onclick=()=>action(async()=>{await api('/api/anomalies/evaluate',{site:$('anomaly-site').value});await loadAnomalies();toast('Evaluation complete. Detections remain provisional.');});
+
+
+let siteKpiRequest=0;
+async function loadSiteKPIs(keepApproach=false,keepWindow=false){
+  const site=state.site;if(!site)return;
+  const request=++siteKpiRequest;
+  $('site-kpi-panel').hidden=false;$('site-kpi-title').textContent=site.name+' · stored KPIs';
+  $('site-kpi-summary').textContent='Loading saved observations…';$('site-kpi-cards').replaceChildren();
+  const q=new URLSearchParams({site:site.id});
+  if(keepApproach&&$('site-kpi-approach').value)q.set('approach',$('site-kpi-approach').value);
+  if(keepWindow&&$('site-kpi-window').value)q.set('window',$('site-kpi-window').value);
+  let data;
+  try{data=await api('/api/site-kpis?'+q);}catch(e){if(request===siteKpiRequest)$('site-kpi-summary').textContent='Could not load stored KPIs: '+e.message;return;}
+  if(request!==siteKpiRequest||state.site?.id!==site.id)return;
+  const r=data.recorded,w=data.selected_window;
+  $('site-kpi-summary').textContent=r.events?`${number(r.events)} saved SDK messages · ${utcTime(r.start)} → ${utcTime(r.end)} (last recorded hour, receipt clock). Messages are not vehicle counts.`:'No saved sensor observations for this intersection.';
+  $('site-kpi-approach').replaceChildren(...(data.approaches.length?data.approaches.map(a=>new Option(a,a)):[new Option('No annotated approaches','')]));
+  $('site-kpi-approach').value=data.approach||'';$('site-kpi-approach').disabled=!data.approaches.length;
+  $('site-kpi-window').replaceChildren(...(data.windows.length?data.windows.map(r=>new Option(utcTime(r.start)+' → '+utcTime(r.end)+' · '+r.source,r.key)):[new Option('No calculated windows','')]));
+  if(w)$('site-kpi-window').value=data.windows.find(r=>r.start===w.start&&r.end===w.end&&r.source===w.source)?.key||'';
+  $('site-kpi-window').disabled=!data.windows.length;
+  $('site-kpi-quality').textContent=w?`${w.source} · ${w.quality.valid_tracks} valid traversals · ${number(w.quality.coverage*100)}% coverage · ${w.quality.flags.join('; ')||'Passes input checks; field validation pending'}`:'The recorded data cannot yet support these operational KPIs. Each card explains the missing inputs.';
+  $('site-kpi-cards').innerHTML=data.metrics.map(m=>`<article class="kpi-card site-kpi"><span>${escapeHTML(m.name)}</span><strong>${m.value===null?'Unavailable':number(m.value)} <small>${escapeHTML(m.unit)}</small></strong><small>${escapeHTML(m.status)} · ${escapeHTML(m.cadence)}</small><p>${escapeHTML(m.formula)}</p>${m.reasons.length?'<ul>'+m.reasons.map(reason=>'<li>'+escapeHTML(reason)+'</li>').join('')+'</ul>':''}</article>`).join('');
+}
+$('site-kpi-approach').onchange=()=>action(()=>loadSiteKPIs(true));
+$('site-kpi-window').onchange=()=>action(()=>loadSiteKPIs(true,true));
+$('site-kpi-history').onclick=()=>action(async()=>{
+  if(!state.site)return;
+  $('history-site').value=state.site.id;$('from').value='';$('to').value='';$('approach').value='';
+  document.querySelector('[data-tab=history]').click();await loadHistory(true);
+});

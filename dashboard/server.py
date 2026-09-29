@@ -19,6 +19,7 @@ from .calibration import report as calibration_report
 from .processing import process_range, calendar_bounds
 from .anomalies import evaluate_traffic, evaluate_health
 from .worker import start_worker
+from .site_kpis import summary as site_kpi_summary
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT/'dashboard/static'
@@ -89,6 +90,10 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == '/api/status':
                 entries=[dict(s,calibration_status=calibration_report(s)) for s in sites()]
                 return self.send({'sites':entries,'corridors':corridors(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_configured':any(s.get('region')=='Toronto' for s in entries)})
+            if parsed.path == '/api/site-kpis':
+                site=next((s for s in sites() if s['id']==q.get('site')),None)
+                if not site:raise ValueError('Select a configured intersection')
+                return self.send(site_kpi_summary(self.server.store,site,q.get('approach'),q.get('window')))
             if parsed.path == '/api/received':
                 return self.send(self.server.store.raw_page(q.get('site'),float(q['start']) if q.get('start') else None,float(q['end']) if q.get('end') else None,int(q.get('cursor',0)),max(1,min(1000,int(q.get('limit',100))))))
             if parsed.path == '/api/recorded-summary':
