@@ -7,7 +7,7 @@ Live collectors now save received events continuously as well as updating the li
 1. Pick the time interval (From/To in your computer's local time; maximum 24 hours).
 2. Pick the intersection.
 3. Pick the CTM KPI.
-4. Click **Calculate KPI**. Results appear in five-minute windows; chart timestamps are UTC.
+4. Click **Calculate KPI**. Results appear in five-minute windows; CTM chart and table timestamps use the same local timezone as the date picker.
 
 The **Use latest recorded hour** shortcut uses the selected intersection and rounds boundaries down to minutes. Road, count-line and signal assumptions remain editable below the four-step form. Changing any selection clears the result and requires recalculation. Unsupported KPIs are disabled and explained. Results and assumptions can be downloaded as JSON and are also saved locally under ignored `data/ctm-history/`. Message counts, measured-KPI cards, imports and inspection tools are now in a closed Advanced section to keep the main workflow focused on CTM.
 
@@ -45,3 +45,5 @@ Browser validation passed against real recorded frames: 12 reporting intervals, 
 ## Continuous archive update
 
 The Historical CTM panel now displays the full retained receipt-time range and whether new raw events have been saved within 30 seconds while the collector is in recording mode. Refresh recording status to check again. A running process alone does not count as active recording. Analysis accepts arbitrary saved date ranges up to 24 hours per calculation, producing five-minute results throughout that range, with gaps retained. You can repeat for another day. Saving continues independently of the displayed tab. Closing the collector, sleeping or shutting down the computer interrupts capture; the dashboard cannot recover unreceived live frames. Existing raw retention is 30 days, while saved CTM results remain on disk.
+
+The CTM figure is pinned to the exact selected start/end timestamps. Its caption includes full dates and the browser timezone; ticks and tooltips show dates and timezone abbreviations, including across midnight and daylight-saving changes. Points represent window starts, with full start/end boundaries in the table and tooltips. UTC storage and exports remain unchanged.

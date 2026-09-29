@@ -167,15 +167,19 @@ function renderCards(){
     b.onclick=()=>{state.metric=key;renderCards();renderChart();};$('kpi-cards').append(b);
   }
 }
-function lineChart(rows,key,metricInfo=state.metrics){
+function localChartTime(t,full=false){
+  return new Date(t*1000).toLocaleString(undefined,{...(full?{year:'numeric'}:{}),month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZoneName:'short'});
+}
+function lineChart(rows,key,metricInfo=state.metrics,options={}){
   if(!rows.length)return '<div class="empty"><strong>No saved observations in this range.</strong>Collect or import data, or load the labelled learning dataset.</div>';
   const points=rows.filter(r=>r.values[key]!==null);
   if(!points.length)return '<div class="empty"><strong>This KPI is unavailable.</strong>Its required observations or synchronized signal metadata are missing.</div>';
   const W=950,H=255,L=62,R=20,T=20,B=45;
-  const minT=Math.min(...rows.map(r=>r.start)),maxT=Math.max(...rows.map(r=>r.end));
+  const minT=options.start??Math.min(...rows.map(r=>r.start)),maxT=options.end??Math.max(...rows.map(r=>r.end));
+  const timeLabel=t=>options.local?localChartTime(t):new Date(t*1000).toISOString();
   let low=Math.min(0,...points.map(r=>r.values[key])),high=Math.max(1,...points.map(r=>r.values[key]))*1.12;
   const x=t=>L+(t-minT)/(maxT-minT||1)*(W-L-R),y=v=>T+(high-v)/(high-low)*(H-T-B);
-  let svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeHTML(metricInfo[key][0])} by reporting window in UTC">`;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" role="img" data-start="${minT}" data-end="${maxT}" aria-label="${escapeHTML(metricInfo[key][0])} by reporting window in ${options.local?escapeHTML(Intl.DateTimeFormat().resolvedOptions().timeZone):'UTC'}">`;
   for(let i=0;i<5;i++){const value=low+(high-low)*i/4,py=y(value);svg+=`<line x1="${L}" x2="${W-R}" y1="${py}" y2="${py}" stroke="#e5edeb"/><text x="${L-10}" y="${py+4}" text-anchor="end" fill="#83928d" font-size="10">${number(value)}</text>`;}
   const colors=['#197d79','#5677ba','#b2813f','#915e9d'];
   [...new Set(rows.map(r=>r.approach))].forEach((approach,index)=>{
@@ -184,11 +188,11 @@ function lineChart(rows,key,metricInfo=state.metrics){
       if(r.values[key]===null){last=null;continue;}
       const cx=x(r.start),cy=y(r.values[key]);
       if(last&&last.end===r.start)svg+=`<line x1="${last.x}" y1="${last.y}" x2="${cx}" y2="${cy}" stroke="${color}" stroke-width="2"/>`;
-      svg+=`<circle cx="${cx}" cy="${cy}" r="3" fill="${color}"><title>${escapeHTML(approach)} · ${new Date(r.start*1000).toISOString()} · ${number(r.values[key])} ${escapeHTML(metricInfo[key][1])} · ${escapeHTML(r.quality.status)}</title></circle>`;
+      svg+=`<circle cx="${cx}" cy="${cy}" r="3" fill="${color}"><title>${escapeHTML(approach)} · ${escapeHTML(timeLabel(r.start))} → ${escapeHTML(timeLabel(r.end))} · ${number(r.values[key])} ${escapeHTML(metricInfo[key][1])} · ${escapeHTML(r.quality.status)}</title></circle>`;
       last={x:cx,y:cy,end:r.end};
     }
   });
-  for(let i=0;i<5;i++){const t=minT+(maxT-minT)*i/4;svg+=`<text x="${x(t)}" y="${H-15}" text-anchor="middle" fill="#83928d" font-size="10">${new Date(t*1000).toISOString().slice(11,16)}</text>`;}
+  for(let i=0;i<5;i++){const t=minT+(maxT-minT)*i/4;svg+=`<text x="${x(t)}" y="${H-15}" text-anchor="${i===0?'start':i===4?'end':'middle'}" class="time-tick" fill="#83928d" font-size="10">${escapeHTML(options.local?localChartTime(t):new Date(t*1000).toISOString().slice(11,16))}</text>`;}
   return svg+'</svg>';
 }
 function renderChart(){
@@ -376,7 +380,7 @@ $('site-kpi-history').onclick=()=>action(async()=>{
 
 let historicalCTM=null,hctmGeneration=0;
 function clearHistoricalCTM(){
-  hctmGeneration++;historicalCTM=null;$('hctm-chart').replaceChildren();$('hctm-rows').replaceChildren();$('hctm-evidence').textContent='';$('hctm-title').textContent='';$('hctm-download').disabled=true;
+  hctmGeneration++;historicalCTM=null;$('hctm-chart').replaceChildren();$('hctm-rows').replaceChildren();$('hctm-evidence').textContent='';$('hctm-title').textContent='';$('hctm-range').textContent='';$('hctm-download').disabled=true;
   $('hctm-status').textContent='Selection or assumptions changed. Calculate to see matching results.';
 }
 for(const el of [$('history-site'),$('from'),$('to'),...document.querySelectorAll('[data-hctm]')])el.addEventListener('change',clearHistoricalCTM);
@@ -384,9 +388,10 @@ function renderHistoricalCTM(){
   if(!historicalCTM)return;
   const r=historicalCTM,key=$('hctm-kpi').value;
   $('hctm-title').textContent=r.labels[key]+' · provisional · '+state.metrics[key][1];
+  $('hctm-range').textContent=`${localChartTime(r.start,true)} → ${localChartTime(r.end,true)} · ${Intl.DateTimeFormat().resolvedOptions().timeZone} (same timezone as the picker). Each point represents a reporting window starting at that time; missing windows remain gaps.`;
   const metrics=Object.fromEntries(Object.keys(r.labels).map(k=>[k,[r.labels[k],state.metrics[k][1]]]));
-  $('hctm-chart').innerHTML=lineChart(r.rows.map(b=>({...b,approach:'Assumed approach',quality:{status:'provisional'}})),key,metrics);
-  $('hctm-rows').innerHTML=r.rows.map(b=>`<tr><td>${utcTime(b.start)}</td><td>${number(b.values[key])}</td><td>${b.crossings}</td><td>${number(100*b.coverage)}%</td><td>${escapeHTML(b.flags.join('; '))}</td></tr>`).join('');
+  $('hctm-chart').innerHTML=lineChart(r.rows.map(b=>({...b,approach:'Assumed approach',quality:{status:'provisional'}})),key,metrics,{start:r.start,end:r.end,local:true});
+  $('hctm-rows').innerHTML=r.rows.map(b=>`<tr><td>${escapeHTML(localChartTime(b.start))} → ${escapeHTML(localChartTime(b.end))}</td><td>${number(b.values[key])}</td><td>${b.crossings}</td><td>${number(100*b.coverage)}%</td><td>${escapeHTML(b.flags.join('; '))}</td></tr>`).join('');
 }
 $('hctm-kpi').onchange=clearHistoricalCTM;
 $('hctm-latest').onclick=()=>action(async()=>{
