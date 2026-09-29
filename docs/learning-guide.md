@@ -205,3 +205,7 @@ counts, not vehicles, flow or calibrated performance metrics. A covering index
 avoids scanning full frame payloads to compute this summary. Gaps appear as zero
 received messages; they do not imply zero traffic. Full traffic KPI analysis still
 needs clock confirmation and verified scene annotations.
+
+## 14. Muted basemap
+
+A CSS filter on the Leaflet tile pane reduces basemap colour, contrast and brightness. Object icons, sensor markers, tooltips, controls and attribution remain outside that filter. This makes live objects stand out without changing coordinates or observations.
