@@ -167,7 +167,7 @@ function renderCards(){
     b.onclick=()=>{state.metric=key;renderCards();renderChart();};$('kpi-cards').append(b);
   }
 }
-function lineChart(rows,key){
+function lineChart(rows,key,metricInfo=state.metrics){
   if(!rows.length)return '<div class="empty"><strong>No saved observations in this range.</strong>Collect or import data, or load the labelled learning dataset.</div>';
   const points=rows.filter(r=>r.values[key]!==null);
   if(!points.length)return '<div class="empty"><strong>This KPI is unavailable.</strong>Its required observations or synchronized signal metadata are missing.</div>';
@@ -175,7 +175,7 @@ function lineChart(rows,key){
   const minT=Math.min(...rows.map(r=>r.start)),maxT=Math.max(...rows.map(r=>r.end));
   let low=Math.min(0,...points.map(r=>r.values[key])),high=Math.max(1,...points.map(r=>r.values[key]))*1.12;
   const x=t=>L+(t-minT)/(maxT-minT||1)*(W-L-R),y=v=>T+(high-v)/(high-low)*(H-T-B);
-  let svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeHTML(state.metrics[key][0])} by reporting window in UTC">`;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeHTML(metricInfo[key][0])} by reporting window in UTC">`;
   for(let i=0;i<5;i++){const value=low+(high-low)*i/4,py=y(value);svg+=`<line x1="${L}" x2="${W-R}" y1="${py}" y2="${py}" stroke="#e5edeb"/><text x="${L-10}" y="${py+4}" text-anchor="end" fill="#83928d" font-size="10">${number(value)}</text>`;}
   const colors=['#197d79','#5677ba','#b2813f','#915e9d'];
   [...new Set(rows.map(r=>r.approach))].forEach((approach,index)=>{
@@ -184,7 +184,7 @@ function lineChart(rows,key){
       if(r.values[key]===null){last=null;continue;}
       const cx=x(r.start),cy=y(r.values[key]);
       if(last&&last.end===r.start)svg+=`<line x1="${last.x}" y1="${last.y}" x2="${cx}" y2="${cy}" stroke="${color}" stroke-width="2"/>`;
-      svg+=`<circle cx="${cx}" cy="${cy}" r="3" fill="${color}"><title>${escapeHTML(approach)} · ${new Date(r.start*1000).toISOString()} · ${number(r.values[key])} ${escapeHTML(state.metrics[key][1])} · ${escapeHTML(r.quality.status)}</title></circle>`;
+      svg+=`<circle cx="${cx}" cy="${cy}" r="3" fill="${color}"><title>${escapeHTML(approach)} · ${new Date(r.start*1000).toISOString()} · ${number(r.values[key])} ${escapeHTML(metricInfo[key][1])} · ${escapeHTML(r.quality.status)}</title></circle>`;
       last={x:cx,y:cy,end:r.end};
     }
   });
@@ -367,6 +367,52 @@ $('site-kpi-approach').onchange=()=>action(()=>loadSiteKPIs(true));
 $('site-kpi-window').onchange=()=>action(()=>loadSiteKPIs(true,true));
 $('site-kpi-history').onclick=()=>action(async()=>{
   if(!state.site)return;
-  $('history-site').value=state.site.id;$('from').value='';$('to').value='';$('approach').value='';
+  clearHistoricalCTM();$('history-site').value=state.site.id;$('from').value='';$('to').value='';$('approach').value='';
   document.querySelector('[data-tab=history]').click();await loadHistory(true);
 });
+
+let historicalCTM=null,hctmGeneration=0;
+function clearHistoricalCTM(){
+  hctmGeneration++;historicalCTM=null;$('hctm-chart').replaceChildren();$('hctm-rows').replaceChildren();$('hctm-evidence').textContent='';$('hctm-title').textContent='';$('hctm-download').disabled=true;
+  $('hctm-status').textContent='Selection or assumptions changed. Calculate to see matching results.';
+}
+for(const el of [$('history-site'),$('from'),$('to'),...document.querySelectorAll('[data-hctm]')])el.addEventListener('change',clearHistoricalCTM);
+function renderHistoricalCTM(){
+  if(!historicalCTM)return;
+  const r=historicalCTM,key=$('hctm-kpi').value;
+  $('hctm-title').textContent=r.labels[key]+' · provisional · '+state.metrics[key][1];
+  const metrics=Object.fromEntries(Object.keys(r.labels).map(k=>[k,[r.labels[k],state.metrics[k][1]]]));
+  $('hctm-chart').innerHTML=lineChart(r.rows.map(b=>({...b,approach:'Assumed approach',quality:{status:'provisional'}})),key,metrics);
+  $('hctm-rows').innerHTML=r.rows.map(b=>`<tr><td>${utcTime(b.start)}</td><td>${number(b.values[key])}</td><td>${b.crossings}</td><td>${number(100*b.coverage)}%</td><td>${escapeHTML(b.flags.join('; '))}</td></tr>`).join('');
+}
+$('hctm-kpi').onchange=renderHistoricalCTM;
+$('hctm-latest').onclick=()=>action(async()=>{
+  const site=$('history-site').value;
+  const r=await api('/api/recorded-summary?site='+encodeURIComponent(site));
+  if(site!==$('history-site').value)return;
+  if(!r.events)throw new Error('No saved events for this intersection');
+  const local=t=>{const d=new Date(t*1000);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);};
+  $('from').value=local(r.end-3600);$('to').value=local(r.end);clearHistoricalCTM();
+  $('hctm-status').textContent='Latest recorded hour selected, rounded to minutes. Review assumptions, then calculate.';
+});
+$('hctm-run').onclick=()=>action(async()=>{
+  clearHistoricalCTM();const generation=hctmGeneration;
+  const start=new Date($('from').value).getTime()/1000,end=new Date($('to').value).getTime()/1000;
+  if(!Number.isFinite(start)||!Number.isFinite(end))throw new Error('Choose both dates or use the latest recorded hour');
+  const assumptions={};document.querySelectorAll('[data-hctm]').forEach(el=>assumptions[el.dataset.hctm]=el.dataset.hctm==='axis'?el.value:Number(el.value));
+  $('hctm-run').disabled=true;$('hctm-status').textContent='Reading saved frames and calculating CTM… Live collection continues independently.';
+  try{
+    const result=await api('/api/historical-ctm',{site:$('history-site').value,start,end,assumptions});
+    if(generation!==hctmGeneration)return;
+    historicalCTM=result;
+    $('hctm-status').textContent=`${result.site} · ${number(result.input_frames)} recorded frames · ${result.crossings} directional crossings · saved locally as ${result.saved_run}. All results are provisional.`;
+    $('hctm-evidence').textContent=JSON.stringify({assumptions:result.assumptions,limitations:result.limitations,version:result.version,max_conservation_error:result.max_conservation_error},null,2);
+    $('hctm-download').disabled=false;renderHistoricalCTM();
+  }catch(e){if(generation===hctmGeneration)$('hctm-status').textContent=e.message;throw e;}
+  finally{$('hctm-run').disabled=false;}
+});
+$('hctm-download').onclick=()=>{
+  if(!historicalCTM)return;
+  const url=URL.createObjectURL(new Blob([JSON.stringify(historicalCTM,null,2)],{type:'application/json'}));
+  const a=document.createElement('a');a.href=url;a.download=historicalCTM.saved_run;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};

@@ -153,11 +153,15 @@ upstream delay and lane alignment remain unverified. Disabling approximate mode
 restores the strict calibrated display. A recorder must be running; saved frames
 are not replayed as live motion.
 
-### Continuous live network, limited historical recording
+### Continuous live network and recorded history
 
-Use `.venv/bin/python scripts/start_connected.py --toronto --port 8768 --record-duration 3600`
-to keep the live map running while recording only the first hour. Use
-`--record-duration 0` when the test history is already saved. Do not add
-`--duration 3600` unless you want the entire service to stop. The standard Toronto
-launcher now uses the first option. Historical performance displays the last
-recorded hour's reception chart independently of the ongoing live stream.
+Use `.venv/bin/python scripts/start_connected.py --toronto --port 8768` to keep
+both the live map and raw recording running. The standard Toronto launcher now
+uses this continuous recording mode. Raw retention remains 30 days after receipt.
+For an optional one-hour recording followed by live-only viewing, add
+`--record-duration 3600`; `--record-duration 0` records no new raw history.
+Do not add `--duration 3600` unless you want the entire service to stop.
+
+Historical performance offers intersection/date selection and a provisional CTM
+analysis of up to one recorded hour, with editable assumptions and a KPI time
+series. See [the worked guide and validation](docs/historical-ctm.md).

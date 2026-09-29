@@ -20,6 +20,7 @@ from .processing import process_range, calendar_bounds
 from .anomalies import evaluate_traffic, evaluate_health
 from .worker import start_worker
 from .site_kpis import summary as site_kpi_summary
+from .historical_ctm import analyze as historical_ctm
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT/'dashboard/static'
@@ -156,6 +157,15 @@ class Handler(BaseHTTPRequestHandler):
             body=json.loads(self.rfile.read(length))
             if self.path != '/api/import' and not isinstance(body,dict):
                 raise ValueError('Expected a JSON object')
+            if self.path == '/api/historical-ctm':
+                if body.get('site') not in {s['id'] for s in sites()}:raise ValueError('Select a configured intersection')
+                if not isinstance(body.get('assumptions',{}),dict):raise ValueError('Assumptions must be an object')
+                result=historical_ctm(self.server.store,body['site'],body['start'],body['end'],body.get('assumptions',{}))
+                dest=ROOT/'data/ctm-history';dest.mkdir(parents=True,exist_ok=True)
+                result['saved_run']=f'ctm-{time.time_ns()}.json'
+                temporary=dest/(result['saved_run']+'.tmp')
+                temporary.write_text(json.dumps(result,allow_nan=False));temporary.replace(dest/result['saved_run'])
+                return self.send(result)
             if self.path == '/api/latency':
                 finite(body['displayed_at'],'displayed_at')
                 return self.send({'saved':self.server.store.record_latency(body['event_key'],body['displayed_at'])})
