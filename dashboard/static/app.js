@@ -265,7 +265,7 @@ action(async()=>{
   state.sites.sort((a,b)=>(a.region==='Toronto'?0:1)-(b.region==='Toronto'?0:1));
   state.sites.forEach(s=>{$('history-site').add(new Option(s.name,s.id));$('anomaly-site').add(new Option(s.name,s.id));});
   $('history-site').add(new Option('Learning dataset · SYNTHETIC','DEMO-001'));
-  $('history-site').value=state.sites.find(s=>s.region==='Toronto')?.id||'';action(()=>loadHistory(true));
+  $('history-site').value=state.site?.id||state.sites.find(s=>s.region==='Toronto')?.id||'';action(()=>loadHistory(true));
   setInterval(()=>refreshLive().catch(()=>{clearObjects();$('connection').textContent='Connection lost';$('object-count').textContent='—';}),250);
 });
 
@@ -388,7 +388,7 @@ function renderHistoricalCTM(){
   $('hctm-chart').innerHTML=lineChart(r.rows.map(b=>({...b,approach:'Assumed approach',quality:{status:'provisional'}})),key,metrics);
   $('hctm-rows').innerHTML=r.rows.map(b=>`<tr><td>${utcTime(b.start)}</td><td>${number(b.values[key])}</td><td>${b.crossings}</td><td>${number(100*b.coverage)}%</td><td>${escapeHTML(b.flags.join('; '))}</td></tr>`).join('');
 }
-$('hctm-kpi').onchange=renderHistoricalCTM;
+$('hctm-kpi').onchange=clearHistoricalCTM;
 $('hctm-latest').onclick=()=>action(async()=>{
   const site=$('history-site').value;
   const r=await api('/api/recorded-summary?site='+encodeURIComponent(site));
@@ -401,11 +401,12 @@ $('hctm-latest').onclick=()=>action(async()=>{
 $('hctm-run').onclick=()=>action(async()=>{
   clearHistoricalCTM();const generation=hctmGeneration;
   const start=new Date($('from').value).getTime()/1000,end=new Date($('to').value).getTime()/1000;
-  if(!Number.isFinite(start)||!Number.isFinite(end))throw new Error('Choose both dates or use the latest recorded hour');
+  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start||end-start>86400){$('hctm-status').textContent='Choose a valid interval of up to 24 hours.';throw new Error('Choose a valid interval of up to 24 hours');}
+  if(!$('history-site').value||$('history-site').value==='DEMO-001'){ $('hctm-status').textContent='Choose a real intersection for CTM calculation.';return;}
   const assumptions={};document.querySelectorAll('[data-hctm]').forEach(el=>assumptions[el.dataset.hctm]=el.dataset.hctm==='axis'?el.value:Number(el.value));
   $('hctm-run').disabled=true;$('hctm-status').textContent='Reading saved frames and calculating CTM… Live collection continues independently.';
   try{
-    const result=await api('/api/historical-ctm',{site:$('history-site').value,start,end,assumptions});
+    const result=await api('/api/historical-ctm',{site:$('history-site').value,start,end,assumptions,kpi:$('hctm-kpi').value});
     if(generation!==hctmGeneration)return;
     historicalCTM=result;
     $('hctm-status').textContent=`${result.site} · ${number(result.input_frames)} recorded frames · ${result.crossings} directional crossings · saved locally as ${result.saved_run}. All results are provisional.`;

@@ -161,6 +161,7 @@ class Handler(BaseHTTPRequestHandler):
                 if body.get('site') not in {s['id'] for s in sites()}:raise ValueError('Select a configured intersection')
                 if not isinstance(body.get('assumptions',{}),dict):raise ValueError('Assumptions must be an object')
                 result=historical_ctm(self.server.store,body['site'],body['start'],body['end'],body.get('assumptions',{}))
+                result['selected_kpi']=body.get('kpi','control_delay')
                 dest=ROOT/'data/ctm-history';dest.mkdir(parents=True,exist_ok=True)
                 result['saved_run']=f'ctm-{time.time_ns()}.json'
                 temporary=dest/(result['saved_run']+'.tmp')

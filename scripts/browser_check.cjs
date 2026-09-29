@@ -22,6 +22,7 @@ const fs = require('node:fs');
     fs.mkdirSync('data/qa',{recursive:true});
     await page.screenshot({path:'data/qa/live-desktop.png',fullPage:true});
     await page.locator('[data-tab=history]').click();
+    await page.locator('#history-advanced > summary').click();
     await page.locator('#load-demo').click();
     await page.waitForFunction(()=>document.getElementById('window-count').textContent==='36 windows');
     assert.equal(await page.locator('.kpi-card').count(),7);

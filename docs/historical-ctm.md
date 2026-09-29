@@ -4,11 +4,12 @@ Live collectors now save received events continuously as well as updating the li
 
 ## Using the historical tab
 
-1. Choose the intersection in Dataset.
-2. Choose From/To in your computer's local time, or click **Use latest recorded hour**. The shortcut rounds both boundaries down to minutes. Each calculation covers at most 24 hours.
-3. Open the CTM assumptions and review the sensor-local count line, direction, width, approach length, lanes, speeds, jam density and signal timing.
-4. Click **Calculate & save CTM**, then choose a KPI. The chart and table show five-minute windows in UTC. Missing coverage produces gaps, not zeros.
-5. Download the JSON to retain the results, assumptions, model version, input counts and limitations. Each calculation is also saved locally under ignored `data/ctm-history/`.
+1. Pick the time interval (From/To in your computer's local time; maximum 24 hours).
+2. Pick the intersection.
+3. Pick the CTM KPI.
+4. Click **Calculate KPI**. Results appear in five-minute windows; chart timestamps are UTC.
+
+The **Use latest recorded hour** shortcut uses the selected intersection and rounds boundaries down to minutes. Road, count-line and signal assumptions remain editable below the four-step form. Changing any selection clears the result and requires recalculation. Unsupported KPIs are disabled and explained. Results and assumptions can be downloaded as JSON and are also saved locally under ignored `data/ctm-history/`. Message counts, measured-KPI cards, imports and inspection tools are now in a closed Advanced section to keep the main workflow focused on CTM.
 
 Changing intersection, dates or assumptions clears the previous result. The ordinary observed-KPI cards remain separate and still require verified metadata. Optimization and the educational CTM explorer are unchanged.
 
