@@ -432,17 +432,16 @@ $('recording-refresh').onclick=()=>action(loadAvailability);
 
 let signalsBusy=false;
 function phaseBadges(phases){
-  return phases.map(p=>`<span class="phase-light ${['RED','YELLOW','GREEN'].includes(p.display_status)?p.display_status.toLowerCase():'unknown'}" title="Phase ${escapeHTML(p.phase)}: ${escapeHTML(p.display_status)}" aria-label="Phase ${escapeHTML(p.phase)}: ${escapeHTML(p.display_status)}">${escapeHTML(p.phase)}</span>`).join('');
+  return phases.filter(p=>['RED','YELLOW','GREEN'].includes(p.status)).map(p=>{
+    const live=['RED','YELLOW','GREEN'].includes(p.display_status);
+    const label=`Phase ${p.phase}: ${live?p.display_status:'unconfirmed; last report '+p.status}`;
+    return `<span class="traffic-signal ${live?'confirmed':'unconfirmed'}" title="${escapeHTML(label)}" aria-label="${escapeHTML(label)}"><span class="traffic-signal-number">${escapeHTML(p.phase)}</span><span class="traffic-signal-housing">${['RED','YELLOW','GREEN'].map(color=>`<i class="traffic-lamp ${color.toLowerCase()} ${live&&p.display_status===color?'lit':''}"></i>`).join('')}</span>${live?'':'<span class="traffic-signal-pending">?</span>'}</span>`;
+  }).join('');
 }
 function signalMapIcon(result){
-  const phases=result?.phases||[];
-  const counts={RED:0,YELLOW:0,GREEN:0,UNKNOWN:0};
-  phases.forEach(p=>counts[Object.hasOwn(counts,p.display_status)?p.display_status:'UNKNOWN']++);
-  const detailed=map&&map.getZoom()>=17;
-  const active=phases.filter(p=>p.status!=='INVALID');
-  const summary=phases.length?['RED','YELLOW','GREEN','UNKNOWN'].map(k=>`<span class="signal-count"><i class="phase-light ${k.toLowerCase()}"></i>${counts[k]}</span>`).join(''):'<span class="signal-count"><i class="phase-light unknown"></i>No signal</span>';
-  const body=detailed&&active.length?phaseBadges(active):summary;
-  return L.divIcon({className:'map-signal-marker',html:`<div class="map-signal-strip" aria-label="Intersection signal phase states">${body}</div>`,iconSize:[150,30],iconAnchor:[75,-12]});
+  const active=(result?.phases||[]).filter(p=>['RED','YELLOW','GREEN'].includes(p.status));
+  const width=active.length?Math.min(6,active.length)*27+12:125;
+  return L.divIcon({className:'map-signal-marker',html:`<div class="map-signal-strip" style="width:${width}px" aria-label="Reported signal channels"><strong class="signal-strip-title">${active.length?active.length+' reported channels':'No signal data'}</strong><div class="traffic-signal-grid">${phaseBadges(active)}</div></div>`,iconSize:[width,30],iconAnchor:[width/2,-12]});
 }
 function renderMapSignals(){
   for(const [siteId,marker] of signalMarkers){
@@ -450,7 +449,7 @@ function renderMapSignals(){
     const result=entry?{...entry.result,phases:entry.result.phases.map(p=>({...p,display_status:old?'UNCONFIRMED':p.display_status}))}:null;
     marker.setIcon(signalMapIcon(result));
     const site=state.sites.find(s=>s.id===siteId);
-    marker.setPopupContent(`<strong>${escapeHTML(site?.name||siteId)}</strong><p>${old?'Signal updates unavailable':result?.absolute_received?'Reported phase states':'Partial reports — states unconfirmed'}</p><div class="signal-popup-phases">${result?.phases.length?phaseBadges(result.phases):'No phase reports received'}</div><p>Numbers identify API phases, not mapped traffic movements. Grey = invalid, unknown or unconfirmed. Positions mark the intersection reference, not physical signal heads.</p>`);
+    marker.setPopupContent(`<strong>${escapeHTML(site?.name||siteId)}</strong><p>${old?'Signal updates unavailable':result?.absolute_received?'Reported phase states':'Partial reports — states unconfirmed'}</p><div class="signal-popup-phases">${result?.phases.some(p=>['RED','YELLOW','GREEN'].includes(p.status))?phaseBadges(result.phases):'No valid phase reports received'}</div><p>One symbol per reported signal channel; invalid entries are omitted. Numbers identify API phases, not a verified physical-light count. Unlit symbols with ? have no confirmed current state. Positions are schematic at the intersection centre.</p>`);
   }
 }
 async function refreshSignals(){

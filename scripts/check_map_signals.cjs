@@ -6,13 +6,13 @@ const assert=require('node:assert/strict');
  await page.waitForFunction(()=>mapSignalStates.size===10,{},{timeout:60000});
  assert.equal(await page.locator('.map-signal-marker').count(),10);
  const checks=await page.evaluate(()=>{
-  const phases=['RED','YELLOW','GREEN','UNCONFIRMED'].map((status,i)=>({phase:String(i+1),status,display_status:status}));
+  const phases=['RED','YELLOW','GREEN','UNCONFIRMED'].map((status,i)=>({phase:String(i+1),status:status==='UNCONFIRMED'?'GREEN':status,display_status:status}));
   map.setZoom(18,{animate:false});
   const div=document.createElement('div');div.innerHTML=signalMapIcon({phases}).options.html;
-  const colors=['red','yellow','green','unknown'].every(c=>div.querySelector('.phase-light.'+c));
+  const colors=['red','yellow','green'].every(c=>div.querySelector('.traffic-lamp.'+c+'.lit'))&&div.querySelectorAll('.traffic-signal').length===4&&div.querySelectorAll('.traffic-lamp.lit').length===3;
   const id='OBC-AG-SA-C618861';mapSignalStates.set(id,{at:Date.now()-6000,result:{phases}});renderMapSignals();
   const html=signalMarkers.get(id).getElement();
-  return {colors,stale:html.querySelectorAll('.phase-light.unknown').length===4};
+  return {colors,stale:html.querySelectorAll('.traffic-signal.unconfirmed').length===4&&html.querySelectorAll('.traffic-lamp.lit').length===0};
  });assert.equal(checks.colors,true);assert.equal(checks.stale,true);
  await page.locator('#region').selectOption('Florida');
  await page.waitForFunction(()=>signalMarkers.size===state.sites.filter(s=>s.region==='Florida'&&(s.calibration_status?.valid||s.reference_location)).length);

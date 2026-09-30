@@ -19,3 +19,7 @@ Validation: unit tests cover absolute replacement, incremental changes, empty sn
 Each mapped intersection now has a signal badge at its reference point. At corridor zoom it shows counts of red, yellow, green and unconfirmed/invalid phases. At zoom 17 and above it shows numbered phase lights for reported non-invalid phases. Click a badge for all phases and completeness details. Phase numbers do not indicate physical signal-head locations or movement directions.
 
 The browser requests the visible network's signal reports every second using `/api/network-signals`. Confirmed reported states use red/yellow/green; other states remain grey. If dashboard responses stop for more than five seconds, cached map colours turn grey automatically. Changing networks replaces the markers. Recording and sensor configuration are unchanged.
+
+## Individual light display revision
+
+The map now shows one three-lamp traffic-light symbol per channel whose reported status is RED, YELLOW or GREEN, at every zoom. Only the matching lamp illuminates when that state is confirmed; unconfirmed states have all lamps dark and a question mark. Invalid API slots are omitted. A Driftwood snapshot contained 12 valid-status channels and 52 invalid slots; this is not a verified count of physical heads, since several physical lights may share one phase. The read-only phase metadata request failed with a network error during this update, so no physical count or movement mapping was inferred. Symbols remain grouped schematically at the intersection centre.
