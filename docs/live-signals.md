@@ -1,5 +1,7 @@
 # Real-time signal phase reports
 
+**September 30 update:** At the user’s request, signal symbols, the map legend, the signal panel and browser signal polling were removed. The descriptions below document the earlier display. Backend phase recording and read-only APIs remain available for analysis.
+
 The existing collector already subscribes to FRAME, PHASE_CHANGE and LOOP_CHANGE. It uses the SDK's combined singleton queue so all event types can be archived together with a receipt timestamp and collector session. A separate `get_phase()` consumer would require a separate non-singleton connection; it is unnecessary for the current combined recorder. No extra credentials or sensor configuration changes were needed.
 
 The Live network tab now shows phase reports for the selected intersection, refreshed once per second from saved events. `dashboard/signals.py` implements reconstruction; `/api/signals?site=...` is read-only. The raw phase events continue to be saved by the existing continuous recorder.

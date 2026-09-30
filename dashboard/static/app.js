@@ -23,7 +23,7 @@ for(const [kind,style] of Object.entries(objectStyles)){
   const swatch=document.createElement('i');swatch.className='object-legend-symbol';swatch.innerHTML=objectSymbol(kind);
   item.append(swatch,document.createTextNode(style.label));$('object-legend').append(item);
 }
-const displayedFrames=new Map(),sensorMarkers=new Map(),movingObjects=new Map(),signalMarkers=new Map(),mapSignalStates=new Map();
+const displayedFrames=new Map(),sensorMarkers=new Map(),movingObjects=new Map();
 let liveBusy=false;
 function clearObjects(){objectLayer?.clearLayers();movingObjects.clear();}
 function animateObjects(now){
@@ -56,13 +56,13 @@ function initMap(){
   let tileErrorShown=false;
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).on('tileerror',()=>{if(!tileErrorShown){$('map-note').textContent='Basemap unavailable; check network';tileErrorShown=true;}}).addTo(map);
   sitesLayer=L.layerGroup().addTo(map);objectLayer=L.layerGroup().addTo(map);
-  map.on('moveend',()=>{action(refreshLive);renderMapSignals();});
+  map.on('moveend',()=>action(refreshLive));
 }
 function renderNetwork(){
   const region=$('region').value;
   $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven intersections selected. Live data awaits API access and sensor calibration.':'Toronto · Finch West LRT corridor · Ten sensors · approximate live animation. Positions and rotation are uncalibrated; receipt freshness does not establish sensor latency.';
   const list=state.sites.filter(s=>s.region===region);
-  state.site=null;$('site-kpi-panel').hidden=true;clearObjects();sitesLayer?.clearLayers();sensorMarkers.clear();signalMarkers.clear();mapSignalStates.clear();
+  state.site=null;$('site-kpi-panel').hidden=true;clearObjects();sitesLayer?.clearLayers();sensorMarkers.clear();
   $('site-count').textContent=list.length;$('inventory-count').textContent=list.length;
   $('mapped-count').textContent=list.filter(s=>s.calibration_status?.valid||s.reference_location).length;
   $('region-label').textContent=region==='Florida'?'SR-436 · Altamonte Springs':'Finch West LRT · Toronto';
@@ -81,7 +81,6 @@ function renderNetwork(){
       const point=[location.lat,location.lng];
       const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
       sensorMarkers.set(site.id,L.circleMarker(point,{radius:7,color:'#fff',weight:3,dashArray:site.calibration_status?.valid?null:'3 3',fillColor:'#197d79',fillOpacity:1}).bindTooltip(label).on('click',()=>selectSite(site,button)).addTo(sitesLayer));
-      signalMarkers.set(site.id,L.marker(point,{icon:signalMapIcon(null),zIndexOffset:500}).bindPopup('Waiting for phase reports').addTo(sitesLayer));
     }
   }
   const referencePoints=list.map(s=>s.calibration_status?.valid?s.origin:s.reference_location).filter(Boolean);
@@ -101,7 +100,6 @@ function selectSite(site,button){
   const location=site.calibration_status?.valid?site.origin:site.reference_location;
   if(location)map?.setView([location.lat,location.lng],18);
   action(refreshLive);action(()=>loadSiteKPIs());
-  $('signal-phases').replaceChildren();$('signal-status').textContent='Loading phase reports…';action(refreshSignals);
 }
 async function refreshLive(){
   if(state.tab!=='live'||liveBusy)return;
@@ -429,43 +427,3 @@ $('hctm-download').onclick=()=>{
 };
 
 $('recording-refresh').onclick=()=>action(loadAvailability);
-
-let signalsBusy=false;
-function phaseBadges(phases){
-  return phases.filter(p=>['RED','YELLOW','GREEN'].includes(p.status)).map(p=>{
-    const live=['RED','YELLOW','GREEN'].includes(p.display_status);
-    const label=`Phase ${p.phase}: ${live?p.display_status:'unconfirmed; last report '+p.status}`;
-    return `<span class="traffic-signal ${live?'confirmed':'unconfirmed'}" title="${escapeHTML(label)}" aria-label="${escapeHTML(label)}"><span class="traffic-signal-number">${escapeHTML(p.phase)}</span><span class="traffic-signal-housing">${['RED','YELLOW','GREEN'].map(color=>`<i class="traffic-lamp ${color.toLowerCase()} ${live&&p.display_status===color?'lit':''}"></i>`).join('')}</span>${live?'':'<span class="traffic-signal-pending">?</span>'}</span>`;
-  }).join('');
-}
-function signalMapIcon(result){
-  const active=(result?.phases||[]).filter(p=>['RED','YELLOW','GREEN'].includes(p.status));
-  const width=active.length?Math.min(6,active.length)*27+12:125;
-  return L.divIcon({className:'map-signal-marker',html:`<div class="map-signal-strip" style="width:${width}px" aria-label="Reported signal channels"><strong class="signal-strip-title">${active.length?active.length+' reported channels':'No signal data'}</strong><div class="traffic-signal-grid">${phaseBadges(active)}</div></div>`,iconSize:[width,30],iconAnchor:[width/2,-12]});
-}
-function renderMapSignals(){
-  for(const [siteId,marker] of signalMarkers){
-    const entry=mapSignalStates.get(siteId),old=!entry||Date.now()-entry.at>5000;
-    const result=entry?{...entry.result,phases:entry.result.phases.map(p=>({...p,display_status:old?'UNCONFIRMED':p.display_status}))}:null;
-    marker.setIcon(signalMapIcon(result));
-    const site=state.sites.find(s=>s.id===siteId);
-    marker.setPopupContent(`<strong>${escapeHTML(site?.name||siteId)}</strong><p>${old?'Signal updates unavailable':result?.absolute_received?'Reported phase states':'Partial reports — states unconfirmed'}</p><div class="signal-popup-phases">${result?.phases.some(p=>['RED','YELLOW','GREEN'].includes(p.status))?phaseBadges(result.phases):'No valid phase reports received'}</div><p>One symbol per reported signal channel; invalid entries are omitted. Numbers identify API phases, not a verified physical-light count. Unlit symbols with ? have no confirmed current state. Positions are schematic at the intersection centre.</p>`);
-  }
-}
-async function refreshSignals(){
-  if(signalsBusy||state.tab!=='live')return;
-  const region=$('region').value;signalsBusy=true;
-  try{
-    const network=await api('/api/network-signals?region='+encodeURIComponent(region));
-    if($('region').value!==region)return;
-    network.snapshots.forEach(result=>mapSignalStates.set(result.site,{result,at:Date.now()}));renderMapSignals();
-    const site=state.site,result=network.snapshots.find(r=>r.site===site?.id);
-    if(!site||!result)return;
-    $('signal-title').textContent=site.name+' · signal phases';
-    $('signal-status').textContent=(result.stream_receiving?'Stream receiving':'Stream not confirmed live')+' · '+(result.absolute_received?'Absolute snapshot received':'Partial state — awaiting absolute snapshot')+' · '+(result.last_change_receipt?'Last phase receipt '+localChartTime(result.last_change_receipt,true):'No phase changes found in recent saved data');
-    $('signal-note').textContent=result.note;
-    $('signal-phases').innerHTML=result.phases.map(p=>`<article class="signal-state ${p.display_status.toLowerCase()}"><strong>Phase ${escapeHTML(p.phase)} · ${escapeHTML(p.display_status)}</strong><p>Last report: ${escapeHTML(p.status)} · ${number(p.age_s)} s ago</p><small>Sensor timestamp: ${escapeHTML(p.sensor_timestamp||'Unavailable')} (timezone unverified)</small></article>`).join('');
-  }catch(e){mapSignalStates.clear();renderMapSignals();$('signal-phases').replaceChildren();$('signal-status').textContent='Signal status unavailable: '+e.message;}
-  finally{signalsBusy=false;}
-}
-setInterval(()=>{refreshSignals();renderMapSignals();},1000);
