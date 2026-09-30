@@ -13,3 +13,9 @@ To avoid scanning the whole multi-gigabyte archive for a live display, reconstru
 The sensor timestamps currently lack a verified timezone. Display age uses receipt time and does not measure upstream latency. The panel does not infer northbound/southbound or turning movements from phase numbers, coordination offsets, or active timing plans. Verified phase-to-movement mapping and clock synchronization are still required before these reports can replace assumed CTM signals or support arrivals-on-green KPIs.
 
 Validation: unit tests cover absolute replacement, incremental changes, empty snapshots, reconnect/session reset, receipt gaps, missing/default status, stale reports and regressing timestamps. All 60 Python tests pass. Real phase changes were observed in the saved Toronto stream, including Driftwood.
+
+## Signal indicators on the map
+
+Each mapped intersection now has a signal badge at its reference point. At corridor zoom it shows counts of red, yellow, green and unconfirmed/invalid phases. At zoom 17 and above it shows numbered phase lights for reported non-invalid phases. Click a badge for all phases and completeness details. Phase numbers do not indicate physical signal-head locations or movement directions.
+
+The browser requests the visible network's signal reports every second using `/api/network-signals`. Confirmed reported states use red/yellow/green; other states remain grey. If dashboard responses stop for more than five seconds, cached map colours turn grey automatically. Changing networks replaces the markers. Recording and sensor configuration are unchanged.

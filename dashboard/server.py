@@ -92,6 +92,8 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == '/api/status':
                 entries=[dict(s,calibration_status=calibration_report(s)) for s in sites()]
                 return self.send({'sites':entries,'corridors':corridors(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_configured':any(s.get('region')=='Toronto' for s in entries)})
+            if parsed.path == '/api/network-signals':
+                return self.send({'snapshots':[self.server.signal_reader.snapshot(s['id']) for s in sites() if s.get('region')==q.get('region')]})
             if parsed.path == '/api/signals':
                 if q.get('site') not in {s['id'] for s in sites()}:raise ValueError('Select a configured intersection')
                 return self.send(self.server.signal_reader.snapshot(q['site']))
