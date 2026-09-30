@@ -23,3 +23,7 @@ The browser requests the visible network's signal reports every second using `/a
 ## Individual light display revision
 
 The map now shows one three-lamp traffic-light symbol per channel whose reported status is RED, YELLOW or GREEN, at every zoom. Only the matching lamp illuminates when that state is confirmed; unconfirmed states have all lamps dark and a question mark. Invalid API slots are omitted. A Driftwood snapshot contained 12 valid-status channels and 52 invalid slots; this is not a verified count of physical heads, since several physical lights may share one phase. The read-only phase metadata request failed with a network error during this update, so no physical count or movement mapping was inferred. Symbols remain grouped schematically at the intersection centre.
+
+## Recovering stopped local services
+
+If objects vanish, first check whether the dashboard port and recorder supervisor are running and whether saved receipts are fresh. During the September 30 check, the supervisor and port 8765 server were absent, several collectors had exited with EOFError, and Driftwood frames were over five hours old. Stale frames must not be replayed as live. Double-click `scripts/connect_toronto.command` to start a supervised continuous session in your own Terminal at the normal port 8765, entering credentials privately. Keep that Terminal running and the computer awake. This avoids depending on the lifetime of an agent tool terminal, but does not provide service across shutdown or computer sleep.
