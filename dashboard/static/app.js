@@ -100,6 +100,7 @@ function selectSite(site,button){
   const location=site.calibration_status?.valid?site.origin:site.reference_location;
   if(location)map?.setView([location.lat,location.lng],18);
   action(refreshLive);action(()=>loadSiteKPIs());
+  $('signal-phases').replaceChildren();$('signal-status').textContent='Loading phase reports…';action(refreshSignals);
 }
 async function refreshLive(){
   if(state.tab!=='live'||liveBusy)return;
@@ -427,3 +428,19 @@ $('hctm-download').onclick=()=>{
 };
 
 $('recording-refresh').onclick=()=>action(loadAvailability);
+
+let signalsBusy=false;
+async function refreshSignals(){
+  if(signalsBusy||state.tab!=='live'||!state.site)return;
+  const site=state.site;signalsBusy=true;
+  try{
+    const result=await api('/api/signals?site='+encodeURIComponent(site.id));
+    if(state.site?.id!==site.id)return;
+    $('signal-title').textContent=site.name+' · signal phases';
+    $('signal-status').textContent=(result.stream_receiving?'Stream receiving':'Stream not confirmed live')+' · '+(result.absolute_received?'Absolute snapshot received':'Partial state — awaiting absolute snapshot')+' · '+(result.last_change_receipt?'Last phase receipt '+localChartTime(result.last_change_receipt,true):'No phase changes found in recent saved data');
+    $('signal-note').textContent=result.note;
+    $('signal-phases').innerHTML=result.phases.map(p=>`<article class="signal-state ${p.display_status.toLowerCase()}"><strong>Phase ${escapeHTML(p.phase)} · ${escapeHTML(p.display_status)}</strong><p>Last report: ${escapeHTML(p.status)} · ${number(p.age_s)} s ago</p><small>Sensor timestamp: ${escapeHTML(p.sensor_timestamp||'Unavailable')} (timezone unverified)</small></article>`).join('');
+  }catch(e){if(state.site?.id===site.id){$('signal-phases').replaceChildren();$('signal-status').textContent='Signal status unavailable: '+e.message;}}
+  finally{signalsBusy=false;}
+}
+setInterval(()=>{refreshSignals();},1000);

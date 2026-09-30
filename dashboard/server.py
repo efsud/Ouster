@@ -13,6 +13,7 @@ from urllib.error import HTTPError, URLError
 from .analytics import METRICS, calculate, finite, local_to_geo, simulate
 from .bluecity import BlueCity
 from .storage import Store
+from .signals import SignalReader
 from .demo import generate
 from .live import snapshot, approximate_snapshot
 from .calibration import report as calibration_report
@@ -91,6 +92,9 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == '/api/status':
                 entries=[dict(s,calibration_status=calibration_report(s)) for s in sites()]
                 return self.send({'sites':entries,'corridors':corridors(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_configured':any(s.get('region')=='Toronto' for s in entries)})
+            if parsed.path == '/api/signals':
+                if q.get('site') not in {s['id'] for s in sites()}:raise ValueError('Select a configured intersection')
+                return self.send(self.server.signal_reader.snapshot(q['site']))
             if parsed.path == '/api/site-kpis':
                 site=next((s for s in sites() if s['id']==q.get('site')),None)
                 if not site:raise ValueError('Select a configured intersection')
@@ -227,6 +231,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__); p.add_argument('--port',type=int,default=8765); args=p.parse_args()
     server=ThreadingHTTPServer(('127.0.0.1',args.port),Handler)
     server.store=Store(os.getenv('OUSTER_DB',str(ROOT/'data/ouster.sqlite3')))
+    server.signal_reader=SignalReader(server.store)
     server.bluecity=BlueCity()
     stop_worker=start_worker(server.store,sites)
     print(f'Ouster dashboard: http://127.0.0.1:{args.port}',flush=True)
