@@ -88,3 +88,7 @@ Added a --toronto SDK launcher option and connect_toronto.command for a private
 credential prompt on port 8767. Florida remains available. The overview center
 is a navigation aid, not a sensor georeference; no exact sensor origins or
 rotations are assumed.
+
+## 2026-09-29 — Additional 5° counterclockwise map alignment
+
+Changed the approximate object display rotation from 210° to 215°. Each site's intersection reference location remains the pivot: a point at local (0,0) stays fixed, while all other points rotate another 5° counterclockwise at the same distance from it. The previous 210° alignment remains selectable. This display adjustment does not change raw recordings or the sensor-local CTM count line.
