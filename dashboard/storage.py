@@ -5,6 +5,14 @@ import time
 import hashlib
 from pathlib import Path
 
+class ClosingConnection(sqlite3.Connection):
+    """Commit/rollback on context exit, then deterministically release SQLite handles."""
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
 class Store:
     def __init__(self, path='data/ouster.sqlite3'):
         self.path = str(path)
@@ -13,7 +21,7 @@ class Store:
             with self.connect() as existing:
                 if existing.execute('PRAGMA user_version').fetchone()[0]<2:
                     backup=Path(str(path)+f'.pre-v2-{time.time_ns()}.bak')
-                    with sqlite3.connect(backup) as target: existing.backup(target)
+                    with sqlite3.connect(backup, factory=ClosingConnection) as target: existing.backup(target)
         with self.connect() as db:
             db.executescript('''
                 PRAGMA journal_mode=WAL;
@@ -63,7 +71,7 @@ class Store:
                 db.execute('PRAGMA user_version=2')
 
     def connect(self):
-        db = sqlite3.connect(self.path, timeout=10)
+        db = sqlite3.connect(self.path, timeout=10, factory=ClosingConnection)
         db.row_factory = sqlite3.Row
         return db
 

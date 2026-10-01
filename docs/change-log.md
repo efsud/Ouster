@@ -92,3 +92,11 @@ rotations are assumed.
 ## 2026-09-29 — Additional 5° counterclockwise map alignment
 
 Changed the approximate object display rotation from 210° to 215°. Each site's intersection reference location remains the pivot: a point at local (0,0) stays fixed, while all other points rotate another 5° counterclockwise at the same distance from it. The previous 210° alignment remains selectable. This display adjustment does not change raw recordings or the sensor-local CTM count line.
+
+## 2026-10-01 — Fix recurring dashboard connection failures
+
+The dashboard could remain listening while returning empty responses or resetting sockets. Inspection found SQLite/database-WAL handles occupying descriptors through 255. `with sqlite3.connect(...)` commits or rolls back a transaction but does not close the connection; repeated polling relied on eventual garbage collection and exhausted the process handle limit.
+
+`Store.connect()` now uses a connection subclass that commits/rolls back and always closes on context exit, including failure paths. Migration backup connections use the same lifecycle. This preserves existing transaction semantics while releasing handles deterministically. The repaired dashboard remains at port 8766; the live recorder was not interrupted.
+
+Validation: all 63 Python tests pass, including 1,000 connection contexts with garbage collection disabled, commit persistence, rollback and closure on exceptions. A four-client load check completed 120 live-network requests successfully. Afterward the server's open descriptors were back to its terminal, log, listener and runtime socket; no accumulated SQLite handles remained. Live browser motion was checked separately.
