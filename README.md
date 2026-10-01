@@ -165,3 +165,12 @@ Do not add `--duration 3600` unless you want the entire service to stop.
 Historical performance offers intersection/date selection and a provisional CTM
 analysis of up to 24 recorded hours, with editable assumptions and a KPI time
 series. See [the worked guide and validation](docs/historical-ctm.md).
+
+### Reopen the dashboard after services stop
+
+Double-click `scripts/open_dashboard.command` to serve the dashboard at
+`http://127.0.0.1:8766`. It runs in a separate Terminal window and keeps server
+diagnostics in ignored `data/logs/dashboard-8766.log`. To restore live recording,
+also open `scripts/connect_toronto.command` and enter credentials privately.
+Keep both Terminal windows open and the computer awake. Saved history remains
+available when recording is offline; old observations are never replayed as live.
