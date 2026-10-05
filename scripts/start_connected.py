@@ -38,6 +38,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8765)
     parser.add_argument('--duration',type=int,default=0,help='Stop collection after this many seconds; 0 runs until Ctrl+C')
+    parser.add_argument('--exclude-site',action='append',default=[],help='Skip a site already being recorded; repeat for multiple sites')
     parser.add_argument('--record-duration',type=int,default=None,help='Raw history seconds; 0 live-only, omitted unlimited. Does not stop live streaming.')
     network=parser.add_mutually_exclusive_group()
     network.add_argument('--florida',action='store_true',help='Record all seven Florida UDIDs from config/sites.json')
@@ -61,6 +62,7 @@ def main():
     if args.florida or args.toronto:
         region='Toronto' if args.toronto else 'Florida'
         udids=[s['id'] for s in json.loads((ROOT/'config/sites.json').read_text())['sites'] if s['region']==region]
+        udids=[site for site in udids if site not in args.exclude_site]
         print(f'{region}: {len(udids)} configured sensor UDIDs selected.')
     print('BlueCity read-only access — credentials remain in process memory.')
     username = input('BlueCity API username: ').strip()

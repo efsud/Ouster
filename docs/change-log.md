@@ -1,5 +1,11 @@
 # Live object map update — 2026-10-05
 
+The network launcher now accepts repeatable `--exclude-site` arguments so an
+already active Driftwood recorder can keep running while the other nine Toronto
+sites connect. The map already requests all regional streams and displays fresh
+objects from any site within the viewport at zoom 17 or above. Reconnection needs
+private credentials; availability is checked per site rather than assumed.
+
 Removed the signal overlay script at the user's request. Signal markers, manual
 phase selectors and direction guides no longer appear or poll the signal API.
 The live object renderer and saved signal recordings remain unchanged.
