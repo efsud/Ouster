@@ -1,3 +1,12 @@
+# Live object map update — 2026-10-05
+
+Removed the signal overlay script at the user's request. Signal markers, manual
+phase selectors and direction guides no longer appear or poll the signal API.
+The live object renderer and saved signal recordings remain unchanged.
+Browser validation confirmed map tiles load, signal controls and direction guides
+are absent, and no JavaScript errors occur. The stream was stale at validation;
+a private recorder prompt was opened to restore fresh Driftwood object reception.
+
 # Toronto pipeline update — 2026-09-24
 
 Added reception diagnostics, clock quarantine, batched/deduplicated storage, migration backup and 30-day raw retention; versioned calibration gates; geometric trajectory processing and calendar-day summaries; paginated received/history inspection; provisional anomaly rules, evidence and local review; live latency/manual review tools. Updated launcher, live status, UI, tests and learning documentation. Optimization and CTM unchanged. See [acceptance evidence](toronto-implementation.md).
