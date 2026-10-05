@@ -58,6 +58,14 @@ function initMap(){
   sitesLayer=L.layerGroup().addTo(map);objectLayer=L.layerGroup().addTo(map);
   map.on('moveend',()=>action(refreshLive));
 }
+// Shared approximate mounting translation for both LiDAR and object display.
+// Retain the original observations and use a fixed reference latitude per site.
+function lidarMarkerPoint(site,location){
+  if(site.region!=='Toronto')return [location.lat,location.lng];
+  const offsetMetres=18;
+  const reference=site.calibration_status?.valid?site.origin:site.reference_location;
+  return [location.lat-offsetMetres/111320,location.lng+offsetMetres/(111320*Math.cos(reference.lat*Math.PI/180))];
+}
 function renderNetwork(){
   const region=$('region').value;
   $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven intersections selected. Live data awaits API access and sensor calibration.':'Toronto · Finch West LRT corridor · Ten sensors · approximate live animation. Positions and rotation are uncalibrated; receipt freshness does not establish sensor latency.';
@@ -78,8 +86,8 @@ function renderNetwork(){
     button.onclick=event=>{selectSite(site,button);if(event.isTrusted)$('site-kpi-panel').scrollIntoView({behavior:'smooth',block:'start'});};$('sites-list').append(button);
     if((site.calibration_status?.valid||site.reference_location)&&map){
       const location=site.calibration_status?.valid?site.origin:site.reference_location;
-      const point=[location.lat,location.lng];
-      const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
+      const point=lidarMarkerPoint(site,location);
+      const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.region==='Toronto'?' · LiDAR — approximate southeast corner (18 m south and east of reference); mounting point unverified':site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
       sensorMarkers.set(site.id,L.circleMarker(point,{radius:7,color:'#fff',weight:3,dashArray:site.calibration_status?.valid?null:'3 3',fillColor:'#197d79',fillOpacity:1}).bindTooltip(label).on('click',()=>selectSite(site,button)).addTo(sitesLayer));
     }
   }
@@ -91,7 +99,8 @@ function renderNetwork(){
     const label=document.createElement('span');label.textContent=corridor.name+' · verified corridor';
     L.polyline(corridor.coordinates.map(([lng,lat])=>[lat,lng]),{color:'#197d79',weight:4,opacity:.6}).bindTooltip(label).addTo(sitesLayer);
   }
-  $('map-note').textContent=paths.length?paths.length+' verified corridor paths':referencePoints.length+' approximate intersection markers; sensor origins unverified';
+  $('map-note').textContent=region==='Toronto'?'LiDAR and objects shifted together: 18 m south and 18 m east (approximate)':paths.length?paths.length+' verified corridor paths':referencePoints.length+' approximate intersection markers; sensor origins unverified';
+  document.querySelector('.map-footer .legend-dot').parentElement.lastChild.textContent=region==='Toronto'?' Approximate LiDAR location':' Intersection reference';
   action(refreshLive);
 }
 function selectSite(site,button){
@@ -122,7 +131,12 @@ async function refreshLive(){
       $('selected-detail').textContent=data.reason||`${data.site} · ${data.objects.length} objects · ${data.rejected_objects||0} invalid objects excluded`;
     }
     const beforeVisible=visible;
-    if(map&&map.getZoom()>=17&&['live','approximate'].includes(data.state))for(const o of data.objects){
+    const objectSite=state.sites.find(s=>s.id===data.site);
+    const displayObjects=data.objects.map(o=>{
+      if(!objectSite||objectSite.region!=='Toronto')return o;
+      const [lat,lng]=lidarMarkerPoint(objectSite,o);return {...o,lat,lng};
+    });
+    if(map&&map.getZoom()>=17&&['live','approximate'].includes(data.state))for(const o of displayObjects){
       if(!map.getBounds().contains([o.lat,o.lng]))continue;
       visible++;
       const key=data.site+':'+(data.session||'')+':'+o.id;seen.add(key);

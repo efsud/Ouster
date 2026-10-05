@@ -1,5 +1,12 @@
 # Live object map update — 2026-10-05
 
+Moved the Toronto LiDAR display markers to approximate southeast corners, 18 m
+south and 18 m east of each existing reference. The identical translation is
+applied to live objects before viewport filtering and animation. Per-site reference
+latitude keeps the offset consistent for every object. Raw observations and the
+215-degree rotation remain intact. This is a user-requested visual alignment,
+not a surveyed mounting coordinate or a historical KPI recalibration.
+
 The network launcher now accepts repeatable `--exclude-site` arguments so an
 already active Driftwood recorder can keep running while the other nine Toronto
 sites connect. The map already requests all regional streams and displays fresh
