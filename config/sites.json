@@ -71,14 +71,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.758108,
-        "lng": -79.51323,
+        "lat": 43.758042,
+        "lng": -79.51351,
         "accuracy": "user-specified LiDAR position; field calibration unverified",
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 225,
-      "preview_alignment_version": "user-2026-10-06"
+      "preview_rotation_deg": 140,
+      "preview_alignment_version": "user-2026-10-06-r2"
     },
     {
       "id": "OBC-AG-SA-C251071",
@@ -87,14 +87,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.753406,
-        "lng": -79.535887,
+        "lat": 43.753306,
+        "lng": -79.536397,
         "accuracy": "user-specified LiDAR position; field calibration unverified",
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 220,
-      "preview_alignment_version": "user-2026-10-06"
+      "preview_rotation_deg": 135,
+      "preview_alignment_version": "user-2026-10-06-r2"
     },
     {
       "id": "OBC-AG-SA-C351163",
@@ -118,14 +118,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.741271,
-        "lng": -79.589169,
+        "lat": 43.741152,
+        "lng": -79.589252,
         "accuracy": "user-specified LiDAR position; field calibration unverified",
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 225,
-      "preview_alignment_version": "user-2026-10-06"
+      "preview_rotation_deg": 145,
+      "preview_alignment_version": "user-2026-10-06-r2"
     },
     {
       "id": "OBC-AG-SA-C257220",
@@ -141,7 +141,7 @@
         "retrieved": "2026-10-06"
       },
       "preview_rotation_deg": 210,
-      "preview_alignment_version": "user-2026-10-06"
+      "preview_alignment_version": "user-2026-10-06-r2"
     },
     {
       "id": "OBC-AG-SA-C257238",
@@ -150,14 +150,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.743321,
-        "lng": -79.581885,
+        "lat": 43.743273,
+        "lng": -79.582284,
         "accuracy": "user-specified LiDAR position; field calibration unverified",
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 225,
-      "preview_alignment_version": "user-2026-10-06"
+      "preview_rotation_deg": 220,
+      "preview_alignment_version": "user-2026-10-06-r2"
     },
     {
       "id": "OBC-AG-SA-C257208",
@@ -166,14 +166,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.736838,
-        "lng": -79.591507,
+        "lat": 43.736772,
+        "lng": -79.591825,
         "accuracy": "user-specified LiDAR position; field calibration unverified",
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 215,
-      "preview_alignment_version": "user-2026-10-06"
+      "preview_rotation_deg": 140,
+      "preview_alignment_version": "user-2026-10-06-r2"
     },
     {
       "id": "OBC-AG-SA-C251055",
@@ -182,14 +182,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.756934,
-        "lng": -79.520632,
+        "lat": 43.756759,
+        "lng": -79.520823,
         "accuracy": "user-specified LiDAR position; field calibration unverified",
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 225,
-      "preview_alignment_version": "user-2026-10-06"
+      "preview_rotation_deg": 135,
+      "preview_alignment_version": "user-2026-10-06-r2"
     },
     {
       "id": "OBC-AG-SA-C251064",
@@ -198,14 +198,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.746264,
-        "lng": -79.568383,
+        "lat": 43.746175,
+        "lng": -79.568791,
         "accuracy": "user-specified LiDAR position; field calibration unverified",
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 225,
-      "preview_alignment_version": "user-2026-10-06"
+      "preview_rotation_deg": 210,
+      "preview_alignment_version": "user-2026-10-06-r2"
     }
   ]
 }

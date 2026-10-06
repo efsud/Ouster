@@ -9,7 +9,7 @@ class PreviewTest(unittest.TestCase):
         from dashboard.analytics import local_to_geo
         with tempfile.TemporaryDirectory() as tmp:
             store=Store(Path(tmp)/'db')
-            for ident,rotation,lat,lng in [('A',215,43.736838,-79.591507),('B',225,43.741271,-79.589169)]:
+            for ident,rotation,lat,lng in [('A',140,43.736772,-79.591825),('B',145,43.741152,-79.589252),('C',220,43.743273,-79.582284),('D',210,43.746175,-79.568791),('E',135,43.753306,-79.536397)]:
                 site={'id':ident,'reference_location':{'lat':lat,'lng':lng},'preview_rotation_deg':rotation}
                 store.save_batch([dict(site=ident,session='a',received_at=100,sensor_time=None,status='quarantined',reason='unknown_timezone',event={'frame':{'objects':[{'id':'origin'},{'id':'offset','centerX':10,'centerY':5}]}})])
                 for override in [None,220]:

@@ -1,5 +1,31 @@
 # Centre placement update — 2026-10-06
 
+## Revised clockwise and anticlockwise alignments
+
+This revision supersedes the coordinate table below. Requested clockwise angles
+are subtracted from the original 180-degree conversion, not from the previous
+site-specific angle. Explicit 210-degree requests are total rotations. The marker
+and all local object coordinates share the supplied origin. Movement headings
+follow displayed trajectories. Tooltips now spell out clockwise versus
+anticlockwise instead of displaying a misleading negative adjustment.
+
+| Intersection | Latitude | Longitude | User adjustment | Total rotation |
+|---|---:|---:|---|---:|
+| Martin Grove | 43.736772 | -79.591825 | 40° clockwise | 140° |
+| Albion | 43.741152 | -79.589252 | 35° clockwise | 145° |
+| Kipling | 43.743273 | -79.582284 | 40° anticlockwise | 220° |
+| Islington | 43.746175 | -79.568791 | Explicit previous alignment | 210° |
+| Weston | 43.752070 | -79.542374 | Explicit previous alignment | 210° |
+| Arrow / Signet | 43.753306 | -79.536397 | 45° clockwise | 135° |
+| York Gate | 43.756759 | -79.520823 | 45° clockwise | 135° |
+| Driftwood | 43.758042 | -79.513510 | 40° clockwise | 140° |
+
+Finch's expected heavier traffic is context for visual review, not a reason to
+alter observed counts or fabricate flow assignments. These are user-directed
+preview alignments; field validation still requires scene evidence. Jane and
+Norfinch remain unchanged. Eight preview/live tests pass, and browser/API checks
+verify all eight exact coordinates, total angles and directional labels.
+
 ## Per intersection user alignment
 
 The default preview now uses each site's own coordinates and angle. Angles are
