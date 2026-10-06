@@ -1,5 +1,10 @@
 # Centre placement update — 2026-10-06
 
+Increased the default network object preview rotation from 215 to 220 degrees:
+40 degrees counterclockwise beyond the original 180-degree conversion. All sites
+use the shared preview selection. Intersection centres remain fixed, and object
+heading follows the rotated motion. The previous 215-degree option is retained.
+
 All live object classes now rotate toward their observed travel direction. Bearing
 is derived from displayed geographic displacement, so the existing map rotation
 is already included. A 0.25 m displacement threshold reduces stationary jitter;

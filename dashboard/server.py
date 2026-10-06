@@ -125,7 +125,7 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == '/api/network-live':
                 entries=[s for s in sites() if s.get('region')==q.get('region')]
                 now=time.time()
-                rotation=finite(float(q.get('rotation',215)),'rotation')
+                rotation=finite(float(q.get('rotation',220)),'rotation')
                 return self.send({'snapshots':[approximate_snapshot(self.server.store,s,now,rotation) if q.get('approximate')=='true' else snapshot(self.server.store,s,now) for s in entries]})
             if parsed.path == '/api/live':
                 site = next((s for s in sites() if s['id']==q.get('site')),None)

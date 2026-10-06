@@ -46,7 +46,7 @@ def snapshot(store, site, now=None):
     return dict(base,state='live',rejected_objects=rejected)
 
 
-def approximate_snapshot(store,site,now=None,rotation=215):
+def approximate_snapshot(store,site,now=None,rotation=220):
     """Receipt-timed visualization only; never promotes quarantined data to KPIs."""
     import json
     clock=time.time() if now is None else now
