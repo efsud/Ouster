@@ -46,9 +46,10 @@ def snapshot(store, site, now=None):
     return dict(base,state='live',rejected_objects=rejected)
 
 
-def approximate_snapshot(store,site,now=None,rotation=220):
+def approximate_snapshot(store,site,now=None,rotation=None):
     """Receipt-timed visualization only; never promotes quarantined data to KPIs."""
     import json
+    rotation=site.get('preview_rotation_deg',220) if rotation is None else rotation
     clock=time.time() if now is None else now
     base={'site':site['id'],'objects':[],'health':store.health(site['id']),
           'state':'unavailable','spatial_accuracy':'approximate','rotation_deg':rotation,

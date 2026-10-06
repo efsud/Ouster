@@ -5,6 +5,20 @@ from dashboard.storage import Store
 from dashboard.live import approximate_snapshot,snapshot
 
 class PreviewTest(unittest.TestCase):
+    def test_site_rotation_and_origin_with_explicit_override(self):
+        from dashboard.analytics import local_to_geo
+        with tempfile.TemporaryDirectory() as tmp:
+            store=Store(Path(tmp)/'db')
+            for ident,rotation,lat,lng in [('A',215,43.736838,-79.591507),('B',225,43.741271,-79.589169)]:
+                site={'id':ident,'reference_location':{'lat':lat,'lng':lng},'preview_rotation_deg':rotation}
+                store.save_batch([dict(site=ident,session='a',received_at=100,sensor_time=None,status='quarantined',reason='unknown_timezone',event={'frame':{'objects':[{'id':'origin'},{'id':'offset','centerX':10,'centerY':5}]}})])
+                for override in [None,220]:
+                    r=approximate_snapshot(store,site,101,override)
+                    angle=rotation if override is None else override
+                    self.assertEqual(r['rotation_deg'],angle)
+                    self.assertEqual((r['objects'][0]['lat'],r['objects'][0]['lng']),(lat,lng))
+                    expected=local_to_geo(10,5,lat,lng,angle)
+                    self.assertEqual((r['objects'][1]['lat'],r['objects'][1]['lng']),tuple(expected))
     def test_quarantined_receipts_are_only_approximate_and_expire(self):
         with tempfile.TemporaryDirectory() as tmp:
             store=Store(Path(tmp)/'db');site={'id':'S','reference_location':{'lat':43.75,'lng':-79.52}}

@@ -71,13 +71,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.758059,
-        "lng": -79.513428,
-        "accuracy": "approximate intersection; sensor mounting point unverified",
-        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
-        "query": "Finch W & Driftwood, Toronto, Ontario, Canada",
-        "retrieved": "2026-09-28"
-      }
+        "lat": 43.758108,
+        "lng": -79.51323,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 225,
+      "preview_alignment_version": "user-2026-10-06"
     },
     {
       "id": "OBC-AG-SA-C251071",
@@ -86,13 +87,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.753354,
-        "lng": -79.536293,
-        "accuracy": "approximate intersection; sensor mounting point unverified",
-        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
-        "query": "Finch W & Signet, Toronto, Ontario, Canada",
-        "retrieved": "2026-09-28"
-      }
+        "lat": 43.753406,
+        "lng": -79.535887,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 220,
+      "preview_alignment_version": "user-2026-10-06"
     },
     {
       "id": "OBC-AG-SA-C351163",
@@ -116,13 +118,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.741053,
-        "lng": -79.58933,
-        "accuracy": "approximate intersection; sensor mounting point unverified",
-        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
-        "query": "Finch W & Albion, Toronto, Ontario, Canada",
-        "retrieved": "2026-09-28"
-      }
+        "lat": 43.741271,
+        "lng": -79.589169,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 225,
+      "preview_alignment_version": "user-2026-10-06"
     },
     {
       "id": "OBC-AG-SA-C257220",
@@ -131,13 +134,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.752152,
-        "lng": -79.542297,
-        "accuracy": "approximate intersection; sensor mounting point unverified",
-        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
-        "query": "Finch W & Weston, Toronto, Ontario, Canada",
-        "retrieved": "2026-09-28"
-      }
+        "lat": 43.75207,
+        "lng": -79.542374,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 210,
+      "preview_alignment_version": "user-2026-10-06"
     },
     {
       "id": "OBC-AG-SA-C257238",
@@ -146,13 +150,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.743301,
-        "lng": -79.582204,
-        "accuracy": "approximate intersection; sensor mounting point unverified",
-        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
-        "query": "Finch W & Kipling, Toronto, Ontario, Canada",
-        "retrieved": "2026-09-28"
-      }
+        "lat": 43.743321,
+        "lng": -79.581885,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 225,
+      "preview_alignment_version": "user-2026-10-06"
     },
     {
       "id": "OBC-AG-SA-C257208",
@@ -161,13 +166,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.736763,
-        "lng": -79.591746,
-        "accuracy": "approximate intersection; sensor mounting point unverified",
-        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
-        "query": "Finch W & Martin Grove, Toronto, Ontario, Canada",
-        "retrieved": "2026-09-28"
-      }
+        "lat": 43.736838,
+        "lng": -79.591507,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 215,
+      "preview_alignment_version": "user-2026-10-06"
     },
     {
       "id": "OBC-AG-SA-C251055",
@@ -176,13 +182,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.756725,
-        "lng": -79.520692,
-        "accuracy": "approximate intersection; sensor mounting point unverified",
-        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
-        "query": "Finch W & York Gate, Toronto, Ontario, Canada",
-        "retrieved": "2026-09-28"
-      }
+        "lat": 43.756934,
+        "lng": -79.520632,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 225,
+      "preview_alignment_version": "user-2026-10-06"
     },
     {
       "id": "OBC-AG-SA-C251064",
@@ -191,13 +198,14 @@
       "corridor": "Finch West LRT",
       "timezone": "America/Toronto",
       "reference_location": {
-        "lat": 43.746255,
-        "lng": -79.568657,
-        "accuracy": "approximate intersection; sensor mounting point unverified",
-        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
-        "query": "Finch W & Islington, Toronto, Ontario, Canada",
-        "retrieved": "2026-09-28"
-      }
+        "lat": 43.746264,
+        "lng": -79.568383,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 225,
+      "preview_alignment_version": "user-2026-10-06"
     }
   ]
 }

@@ -1,5 +1,29 @@
 # Centre placement update — 2026-10-06
 
+## Per intersection user alignment
+
+The default preview now uses each site's own coordinates and angle. Angles are
+counterclockwise beyond the original 180-degree conversion (35 means 215 total).
+The same origin places the LiDAR marker and converts its local object positions.
+Arrow Road uses the existing Signet UDID C251071. These user-specified positions
+remain approximate until field calibration; raw data and historical CTM inputs
+are unchanged. Jane and Norfinch retain their references and +40-degree defaults.
+
+| Intersection | Latitude | Longitude | Adjustment |
+|---|---:|---:|---:|
+| Martin Grove | 43.736838 | -79.591507 | 35° |
+| Albion | 43.741271 | -79.589169 | 45° |
+| Kipling | 43.743321 | -79.581885 | 45° |
+| Islington | 43.746264 | -79.568383 | 45° |
+| Weston | 43.752070 | -79.542374 | 30° |
+| Arrow / Signet | 43.753406 | -79.535887 | 40° |
+| York Gate | 43.756934 | -79.520632 | 45° |
+| Driftwood | 43.758108 | -79.513230 | 45° |
+
+Validation: eight live/preview tests pass, including site-specific rotation,
+zero-coordinate placement at the origin, and explicit global preview overrides.
+The browser verifies all eight coordinates and rotations against the running API.
+
 Increased the default network object preview rotation from 215 to 220 degrees:
 40 degrees counterclockwise beyond the original 180-degree conversion. All sites
 use the shared preview selection. Intersection centres remain fixed, and object
