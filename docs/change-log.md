@@ -1,5 +1,15 @@
 # Centre placement update — 2026-10-06
 
+All live object classes now rotate toward their observed travel direction. Bearing
+is derived from displayed geographic displacement, so the existing map rotation
+is already included. A 0.25 m displacement threshold reduces stationary jitter;
+small movements accumulate against the last heading anchor. Stopped objects keep
+their previous direction, and newly seen tracks wait for movement evidence. A small
+direction tip makes orientation clear even for unclassified symbols. Icon rotation
+uses a nested element so Leaflet positioning is unaffected and wraps by the shortest
+angle. Browser checks cover four cardinal directions, all four classes, stationary
+retention and sub-threshold motion. This is travel direction, not measured body yaw.
+
 Returned LiDAR markers and live objects to the existing approximate intersection
 centre references. Removed the 18 m south/east display translation for both layers;
 the existing object rotation and raw recordings are unchanged. Browser validation

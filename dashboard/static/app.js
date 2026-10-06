@@ -6,7 +6,7 @@ const escapeHTML = value => String(value).replace(/[&<>"']/g, c=>({'&':'&amp;','
 const number = v => v===null || v===undefined ? '—' : Number(v).toLocaleString(undefined,{maximumFractionDigits:1});
 let map, sitesLayer, objectLayer, toastTimer, liveRequest=0;
 const objectStyles={vehicle:{label:'Vehicle',color:'#426fba'},pedestrian:{label:'Pedestrian',color:'#17a990'},cyclist:{label:'Cyclist',color:'#a46eab'},unknown:{label:'Unknown / unclassified',color:'#87949b'}};
-// Fixed class pictograms: these are symbols, not measured vehicle dimensions/headings.
+// Pictograms are symbolic; heading is inferred from observed displacement.
 const objectShapes={
   vehicle:'<g stroke="none"><rect x="5" y="5" width="3" height="5" rx="1" fill="#23313b"/><rect x="16" y="5" width="3" height="5" rx="1" fill="#23313b"/><rect x="5" y="15" width="3" height="5" rx="1" fill="#23313b"/><rect x="16" y="15" width="3" height="5" rx="1" fill="#23313b"/><rect x="7" y="1" width="10" height="22" rx="4" fill="currentColor"/><path d="M9 6h6l1 4H8zM8 16h8l-1 3H9z" fill="#c9e6f4"/><rect x="9" y="11" width="6" height="4" rx="1" fill="#ffffff" opacity=".3"/><path d="M8 3h2v2H8zm6 0h2v2h-2z" fill="#fff3be"/><path d="M8 20h2v1H8zm6 0h2v1h-2z" fill="#df6d68"/></g>',
   pedestrian:'<circle cx="13" cy="3.5" r="2.5" fill="currentColor" stroke="none"/><path d="M12 8l-2 6 4 2 3 6M10 14l-4 7M11 9l-4 4-3 1M13 9l3 4 4 1" stroke-width="2.8"/><path d="M11 7h3l1 7-5 1z" fill="currentColor" stroke="none"/>',
@@ -17,7 +17,25 @@ function objectSymbol(kind){
   const style=objectStyles[kind]||objectStyles.unknown;
   return `<svg viewBox="0 0 24 24" aria-hidden="true" color="${style.color}" fill="none" stroke="${style.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${objectShapes[kind]||objectShapes.unknown}</svg>`;
 }
-function objectIcon(kind){return L.divIcon({className:'road-user-icon',html:objectSymbol(kind),iconSize:[20,20],iconAnchor:[10,10],tooltipAnchor:[0,-12]});}
+function objectIcon(kind){
+  const offset=['cyclist','pedestrian'].includes(kind)?-90:0;
+  return L.divIcon({className:'road-user-icon',html:`<div class="object-heading"><div style="transform:rotate(${offset}deg)">${objectSymbol(kind)}</div><span class="object-heading-tip" hidden></span></div>`,iconSize:[20,20],iconAnchor:[10,10],tooltipAnchor:[0,-12]});
+}
+function movementHeading(from,to){
+  const north=(to[0]-from[0])*111320;
+  const east=(to[1]-from[1])*111320*Math.cos((from[0]+to[0])*Math.PI/360);
+  if(Math.hypot(north,east)<0.25)return null;
+  return Math.atan2(east,north)*180/Math.PI;
+}
+function updateObjectHeading(m,target){
+  const bearing=movementHeading(m.headingAnchor,target);
+  if(bearing!==null){
+    m.heading=m.heading===null?bearing:m.heading+((bearing-m.heading)%360+540)%360-180;
+    m.headingAnchor=target.slice();
+  }
+  const el=m.marker.getElement()?.querySelector('.object-heading');
+  if(el&&m.heading!==null){el.style.transform=`rotate(${m.heading}deg)`;el.querySelector('.object-heading-tip').hidden=false;}
+}
 for(const [kind,style] of Object.entries(objectStyles)){
   const item=document.createElement('span');item.className='object-legend-item';
   const swatch=document.createElement('i');swatch.className='object-legend-symbol';swatch.innerHTML=objectSymbol(kind);
@@ -140,9 +158,10 @@ async function refreshLive(){
       const target=[o.lat,o.lng];
       if(!m){
         const marker=L.marker(target,{icon:objectIcon(o.kind),title:(objectStyles[o.kind]||objectStyles.unknown).label,keyboard:false}).addTo(objectLayer);
-        m={marker,kind:o.kind,from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
+        m={marker,kind:o.kind,heading:null,headingAnchor:target.slice(),from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
       }
       if(m.kind!==o.kind){m.marker.setIcon(objectIcon(o.kind));m.kind=o.kind;}
+      updateObjectHeading(m,target);
       if(m.event!==data.event_key||m.to[0]!==o.lat||m.to[1]!==o.lng){m.from=m.marker.getLatLng();m.to=target;m.started=performance.now();m.event=data.event_key;}
       m.expires=Date.now()+Math.max(0,5-(data.age_s||0))*1000;
       const label=document.createElement('span');label.textContent=`${data.site} · ${o.kind||o.class} ${o.id} · ${data.state==='approximate'?'APPROXIMATE · receipt time':'sensor time'} ${utcTime(o.timestamp)} · age ${number(o.age_s)} s`;
