@@ -1,3 +1,10 @@
+# Centre placement update — 2026-10-06
+
+Returned LiDAR markers and live objects to the existing approximate intersection
+centre references. Removed the 18 m south/east display translation for both layers;
+the existing object rotation and raw recordings are unchanged. Browser validation
+checks all ten markers against their references and confirms zero object offset.
+
 # Live object map update — 2026-10-05
 
 Moved the Toronto LiDAR display markers to approximate southeast corners, 18 m

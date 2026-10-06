@@ -58,13 +58,9 @@ function initMap(){
   sitesLayer=L.layerGroup().addTo(map);objectLayer=L.layerGroup().addTo(map);
   map.on('moveend',()=>action(refreshLive));
 }
-// Shared approximate mounting translation for both LiDAR and object display.
-// Retain the original observations and use a fixed reference latitude per site.
+// Centre placement: no additional translation of LiDAR or object coordinates.
 function lidarMarkerPoint(site,location){
-  if(site.region!=='Toronto')return [location.lat,location.lng];
-  const offsetMetres=18;
-  const reference=site.calibration_status?.valid?site.origin:site.reference_location;
-  return [location.lat-offsetMetres/111320,location.lng+offsetMetres/(111320*Math.cos(reference.lat*Math.PI/180))];
+  return [location.lat,location.lng];
 }
 function renderNetwork(){
   const region=$('region').value;
@@ -87,7 +83,7 @@ function renderNetwork(){
     if((site.calibration_status?.valid||site.reference_location)&&map){
       const location=site.calibration_status?.valid?site.origin:site.reference_location;
       const point=lidarMarkerPoint(site,location);
-      const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.region==='Toronto'?' · LiDAR — approximate southeast corner (18 m south and east of reference); mounting point unverified':site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
+      const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.region==='Toronto'?' · LiDAR — approximate intersection centre; mounting point unverified':site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
       sensorMarkers.set(site.id,L.circleMarker(point,{radius:7,color:'#fff',weight:3,dashArray:site.calibration_status?.valid?null:'3 3',fillColor:'#197d79',fillOpacity:1}).bindTooltip(label).on('click',()=>selectSite(site,button)).addTo(sitesLayer));
     }
   }
@@ -99,7 +95,7 @@ function renderNetwork(){
     const label=document.createElement('span');label.textContent=corridor.name+' · verified corridor';
     L.polyline(corridor.coordinates.map(([lng,lat])=>[lat,lng]),{color:'#197d79',weight:4,opacity:.6}).bindTooltip(label).addTo(sitesLayer);
   }
-  $('map-note').textContent=region==='Toronto'?'LiDAR and objects shifted together: 18 m south and 18 m east (approximate)':paths.length?paths.length+' verified corridor paths':referencePoints.length+' approximate intersection markers; sensor origins unverified';
+  $('map-note').textContent=region==='Toronto'?'LiDAR at approximate intersection centres; objects use the same centre reference':paths.length?paths.length+' verified corridor paths':referencePoints.length+' approximate intersection markers; sensor origins unverified';
   document.querySelector('.map-footer .legend-dot').parentElement.lastChild.textContent=region==='Toronto'?' Approximate LiDAR location':' Intersection reference';
   action(refreshLive);
 }
