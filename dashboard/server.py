@@ -22,6 +22,7 @@ from .anomalies import evaluate_traffic, evaluate_health
 from .worker import start_worker
 from .site_kpis import summary as site_kpi_summary
 from .historical_ctm import analyze as historical_ctm
+from .deepctm_status import status as deepctm_status
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT/'dashboard/static'
@@ -89,6 +90,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             q = {k:v[0] for k,v in parse_qs(parsed.query).items()}
+            if parsed.path == '/api/deepctm':
+                return self.send(deepctm_status())
             if parsed.path == '/api/status':
                 entries=[dict(s,calibration_status=calibration_report(s)) for s in sites()]
                 return self.send({'sites':entries,'corridors':corridors(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_configured':any(s.get('region')=='Toronto' for s in entries)})

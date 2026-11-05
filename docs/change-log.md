@@ -194,3 +194,7 @@ The dashboard could remain listening while returning empty responses or resettin
 `Store.connect()` now uses a connection subclass that commits/rolls back and always closes on context exit, including failure paths. Migration backup connections use the same lifecycle. This preserves existing transaction semantics while releasing handles deterministically. The repaired dashboard remains at port 8766; the live recorder was not interrupted.
 
 Validation: all 63 Python tests pass, including 1,000 connection contexts with garbage collection disabled, commit persistence, rollback and closure on exceptions. A four-client load check completed 120 live-network requests successfully. Afterward the server's open descriptors were back to its terminal, log, listener and runtime socket; no accumulated SQLite handles remained. Live browser motion was checked separately.
+
+## 2026-11-04 — DeepCTM research adaptation and 24-hour capture
+
+Reviewed the supplied 12-page paper, including equations/architecture; documented missing specifications and inconsistent 60-minute RMSE tables. Added an optional PyTorch implementation, conservative CTM integration, directional messages/gating/PEC, masked features and chronological evaluation against persistence/pure CTM. Added compressed Weston/Signet recording with a fixed 24-hour deadline, restart supervision and disk guard. Added a separate read-only experiment viewer and historical-page link. All results remain provisional pending calibration and sufficient recorded data. No change to signal controls or existing map alignment.

@@ -244,3 +244,7 @@ response from replacing the current selection. No synthetic values are used for
 real intersection cards. The panel's historical link selects the same sensor.
 See [the document review and worked example](intersection-kpi-review.md) for
 requirements, current data limitations and validation evidence.
+
+## DeepCTM forecasting experiment (November 2026)
+
+See [deepctm.md](deepctm.md) for the complete paper review, equations, ambiguities, data contract and worked flow/density/speed example. `deepctm/capture.py` saves a bounded compressed recording from Weston and Signet; `features.py` derives provisional direction-specific q/k/v; `model.py` implements CTM plus directional neural propagation; `experiment.py` trains only on chronological training windows and saves held-out comparisons. `dashboard/deepctm_status.py` and `deepctm.html` show capture health and results without importing PyTorch into the live-map server. These are forecasts, not new observed intersection KPIs.
