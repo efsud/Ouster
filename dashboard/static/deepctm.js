@@ -6,7 +6,7 @@
   function cell(row,value){const td=document.createElement('td');td.textContent=value;row.append(td);}
   function render(){
     const d=report?.directions?.[el('forecast-direction').value];el('forecast-metrics').replaceChildren();el('forecast-chart').replaceChildren();
-    if(!d){el('forecast-status').textContent='No trained results yet. Training follows the 24-hour capture and coverage checks.';return;}
+    if(!d){el('forecast-status').textContent='No trained results yet. Short recordings test reception; training requires sufficient complete windows.';return;}
     el('forecast-status').textContent=d.state==='insufficient_data'?d.reason:`Provisional model · ${d.sequences.train} training, ${d.sequences.validation} validation, ${d.sequences.test} test sequences. Best epoch ${d.best_epoch}.`;
     if(!d.metrics)return;
     const table=document.createElement('table'),head=document.createElement('tr');['Forecast horizon','DeepCTM RMSE, both sites (veh/h)','Persistence RMSE','Pure CTM RMSE'].forEach(x=>cell(head,x));table.append(head);

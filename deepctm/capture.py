@@ -66,13 +66,13 @@ def stop(p):
         except subprocess.TimeoutExpired:os.killpg(p.pid,signal.SIGKILL);p.wait()
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--worker');p.add_argument('--directory');p.add_argument('--deadline',type=float);p.add_argument('--seconds',type=int,default=86400)
+    p=argparse.ArgumentParser();p.add_argument('--worker');p.add_argument('--directory');p.add_argument('--deadline',type=float);p.add_argument('--seconds',type=int,default=86400);p.add_argument('--record-only',action='store_true',help='Save observations without starting model training')
     a=p.parse_args()
     if a.worker:return worker(a.worker,a.directory,a.deadline)
     if not sys.stdin.isatty():raise SystemExit('Use the private Terminal launcher.')
     if not 60<=a.seconds<=86400:raise SystemExit('Duration must be 60–86400 seconds.')
     config=json.loads((ROOT/'config/deepctm.json').read_text())
-    print('Read-only Weston + Signet capture. Leave this Terminal open for 24 hours.')
+    print(f'Read-only Weston + Signet capture. Leave this Terminal open for {a.seconds/3600:g} hour(s).')
     username=input('BlueCity API username: ').strip();password=getpass.getpass('BlueCity password (hidden): ')
     if not username or not password:raise SystemExit('Credentials required.')
     now=time.time();directory=ROOT/'data/deepctm'/time.strftime('%Y%m%dT%H%M%SZ',time.gmtime(now));directory.mkdir(parents=True)
@@ -105,7 +105,7 @@ def main():
         for child in children.values():stop(child)
         if awake:awake.terminate()
         manifest['finished_at']=time.time();atomic(directory/'manifest.json',manifest)
-    if complete:
+    if complete and not a.record_only:
         # Training has no credentials, network access, or SDK dependency.
         command=[str(ROOT/'.venv-deepctm/bin/python'),'-m','deepctm.experiment','--capture',str(directory)]
         outcome=subprocess.run(command,cwd=ROOT)

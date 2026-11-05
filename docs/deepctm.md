@@ -124,3 +124,7 @@ Tests:
 ```
 
 The paper is supplied locally and is not copied into Git. Optional ML dependencies are isolated from the live dashboard. Optimization, live-object alignment and the existing CTM KPI formulas are unchanged.
+
+### One-hour reception test
+
+Double-click `scripts/record_one_hour.command` and enter credentials privately. It uses `--seconds 3600 --record-only`, creates a new capture folder, and stops after one hour without launching training. Existing recordings are not overwritten. One hour is insufficient for this model's separate training, validation and test windows.
