@@ -86,7 +86,7 @@ def draw(tracks,direction,start,end,stations,path,title):
     axes[1].set_title('Colored by displacement-derived speed · red = low speed, not a verified red signal',loc='left',fontsize=10)
     axes[1].xaxis.set_major_locator(mdates.MinuteLocator(interval=1 if end-start<=600 else 10,tz=ZONE))
     axes[1].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S' if end-start<=600 else '%H:%M',tz=ZONE));axes[1].set_xlabel('Receipt time · America/Toronto · '+datetime.fromtimestamp(start,ZONE).strftime('%B %d, %Y'))
-    fig.colorbar(plt.cm.ScalarMappable(norm=norm,cmap='RdYlGn'),ax=axes[1],label='Speed (m/s)',fraction=.025,pad=.02,extend='max')
+    fig.colorbar(plt.cm.ScalarMappable(norm=norm,cmap='RdYlGn'),cax=fig.add_axes([.92,.105,.018,.34]),label='Speed (m/s)',extend='max')
     fig.suptitle(title,fontsize=14,fontweight='bold')
     fig.text(.01,.012,'Measured local fragments; approximate geometry. No cross-sensor identity matching, signal states, queue or LOS claims.',fontsize=8,color='#555')
     fig.savefig(path,dpi=160);plt.close(fig)
