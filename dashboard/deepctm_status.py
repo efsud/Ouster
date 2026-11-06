@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import time
+import sqlite3
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -16,9 +17,23 @@ def status(root=ROOT):
         path=directory/(site+'-status.json');value=json.loads(path.read_text()) if path.exists() else {'site':site,'state':'connecting'}
         last=value.get('last_receipt');value['age_seconds']=max(0,now-last) if last else None
         value['receiving_now']=bool(last and now-last<5 and manifest['state']=='recording')
+        if site in manifest.get('unavailable_sites',[]):value.update(state='unavailable after retries',receiving_now=False)
+        health_path=directory/(site+'-health.sqlite3')
+        if health_path.exists() and not value['receiving_now']:
+            try:
+                db=sqlite3.connect('file:'+str(health_path)+'?mode=ro',uri=True)
+                try:
+                    row=db.execute('SELECT payload FROM collector_health WHERE site=?',(site,)).fetchone()
+                    health=json.loads(row[0]) if row else {}
+                    if health.get('error'):value['error']=health['error']
+                finally:db.close()
+            except (sqlite3.Error,ValueError):pass
         sensors.append(value)
+    config=json.loads((directory/'config.json').read_text())
+    name_map=dict(zip(config['sites_west_to_east'],config['site_names']))
+    for sensor in sensors:sensor['name']=name_map.get(sensor['site'],sensor['site'])
     report_path=directory/'report.json'
-    return {'state':manifest['state'],'start':manifest['start'],'end':manifest['end'],'error':manifest.get('error'),'sensors':sensors,'report':json.loads(report_path.read_text()) if report_path.exists() else None,'assumptions':json.loads((directory/'config.json').read_text())['assumptions']}
+    return {'capture_id':directory.name,'title':config.get('title','Weston ↔ Signet / Arrow'),'figures_state':manifest.get('figures_state'),'state':manifest['state'],'start':manifest['start'],'end':manifest['end'],'error':manifest.get('error'),'sensors':sensors,'report':json.loads(report_path.read_text()) if report_path.exists() else None,'assumptions':json.loads((directory/'config.json').read_text())['assumptions']}
 
 
 def figure_asset(name, root=ROOT):

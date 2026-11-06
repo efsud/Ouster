@@ -65,19 +65,36 @@ def stop(p):
         try:p.wait(timeout=10)
         except subprocess.TimeoutExpired:os.killpg(p.pid,signal.SIGKILL);p.wait()
 
+def retry_site(site, children, manifest, directory, launch):
+    """Retire only the exhausted site; preserve healthy peers and prior archives."""
+    count=manifest['restarts'].get(site,0)
+    stop(children[site])
+    if count>=10:
+        manifest['unavailable_sites'].append(site)
+        atomic(directory/'manifest.json',manifest)
+        print(site+': unavailable after repeated attempts; other sensors continue.',flush=True)
+        return
+    manifest['restarts'][site]=count+1
+    atomic(directory/'manifest.json',manifest)
+    launch(site)
+
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--worker');p.add_argument('--directory');p.add_argument('--deadline',type=float);p.add_argument('--seconds',type=int,default=86400);p.add_argument('--record-only',action='store_true',help='Save observations without starting model training')
+    p=argparse.ArgumentParser();p.add_argument('--worker');p.add_argument('--directory');p.add_argument('--deadline',type=float);p.add_argument('--seconds',type=int,default=86400);p.add_argument('--toronto',action='store_true',help='Record all ten Finch sites');p.add_argument('--figures',action='store_true',help='Generate trajectory figures after capture');p.add_argument('--record-only',action='store_true',help='Save observations without starting model training')
     a=p.parse_args()
     if a.worker:return worker(a.worker,a.directory,a.deadline)
     if not sys.stdin.isatty():raise SystemExit('Use the private Terminal launcher.')
     if not 60<=a.seconds<=86400:raise SystemExit('Duration must be 60–86400 seconds.')
     config=json.loads((ROOT/'config/deepctm.json').read_text())
-    print(f'Read-only Weston + Signet capture. Leave this Terminal open for {a.seconds/3600:g} hour(s).')
+    if a.toronto:
+        if not a.record_only:raise SystemExit('Full-corridor mode requires --record-only; no corridor training is configured.')
+        from .corridor import configuration
+        config=configuration(json.loads((ROOT/'config/sites.json').read_text())['sites'])
+    print(f"Read-only capture of {len(config['sites_west_to_east'])} Finch sites. Leave this Terminal open for {a.seconds/3600:g} hour(s).")
     username=input('BlueCity API username: ').strip();password=getpass.getpass('BlueCity password (hidden): ')
     if not username or not password:raise SystemExit('Credentials required.')
     now=time.time();directory=ROOT/'data/deepctm'/time.strftime('%Y%m%dT%H%M%SZ',time.gmtime(now));directory.mkdir(parents=True)
     atomic(directory/'config.json',config)
-    manifest={'state':'recording','start':now,'end':now+a.seconds,'sites':config['sites_west_to_east'],'directory':str(directory),'restarts':{},'format':'gzip JSONL, receipt timestamps + original SDK payload'}
+    manifest={'state':'recording','start':now,'end':now+a.seconds,'sites':config['sites_west_to_east'],'directory':str(directory),'restarts':{},'unavailable_sites':[],'generate_figures':a.figures,'format':'gzip JSONL, receipt timestamps + original SDK payload'}
     atomic(directory/'manifest.json',manifest);atomic(ROOT/'data/deepctm/latest.json',{'directory':str(directory)})
     env=dict(os.environ,BLUECITY_USERNAME=username,BLUECITY_PASSWORD=password)
     children={}; launched={};awake=None;complete=False
@@ -91,12 +108,11 @@ def main():
         while time.time()<manifest['end']:
             if shutil.disk_usage(directory).free<2*1024**3:raise RuntimeError('Disk free space below 2 GiB')
             for site,child in list(children.items()):
+                if site in manifest['unavailable_sites']:continue
                 status_path=directory/(site+'-status.json')
                 status=json.loads(status_path.read_text()) if status_path.exists() else {}
                 if time.time()-launched[site]>90 and (child.poll() is not None or time.time()-max(launched[site],status.get('last_receipt') or 0)>60):
-                    count=manifest['restarts'].get(site,0)
-                    if count>=10:raise RuntimeError('Repeated reception failure: '+site)
-                    stop(child);manifest['restarts'][site]=count+1;atomic(directory/'manifest.json',manifest);launch(site)
+                    retry_site(site,children,manifest,directory,launch)
             time.sleep(1)
         complete=True;manifest['state']='captured'
     except KeyboardInterrupt:manifest.update(state='interrupted',error='Stopped by user')
@@ -105,6 +121,10 @@ def main():
         for child in children.values():stop(child)
         if awake:awake.terminate()
         manifest['finished_at']=time.time();atomic(directory/'manifest.json',manifest)
+    if complete and a.figures:
+        outcome=subprocess.run([str(ROOT/'.venv-deepctm/bin/python'),'-m','deepctm.figures','--capture',str(directory)],cwd=ROOT,env=dict(os.environ,MPLCONFIGDIR=str(ROOT/'data/deepctm/matplotlib-cache')))
+        manifest['figures_state']='complete' if outcome.returncode==0 else 'failed'
+        atomic(directory/'manifest.json',manifest)
     if complete and not a.record_only:
         # Training has no credentials, network access, or SDK dependency.
         command=[str(ROOT/'.venv-deepctm/bin/python'),'-m','deepctm.experiment','--capture',str(directory)]

@@ -146,3 +146,11 @@ MPLCONFIGDIR=/private/tmp/ouster-matplotlib .venv-deepctm/bin/python -m deepctm.
 ```
 
 Generated images and index metadata remain local in the capture's `figures/` folder. Four tests verify direction/speed, gap/session splitting, stationary/ROI exclusion and westbound classification. All 65 dashboard tests pass. Browser verification confirms 26 selectable figures and successful image rendering; representative figures were visually checked for readable axes, labels and color bars.
+
+### One-hour full Finch corridor figures
+
+Use `scripts/record_finch_hour.command` to privately authenticate and record all ten Toronto sensors for 3,600 seconds. Configuration snapshots names, existing map rotations/origins, cumulative station distances and local corridor bearings. The ordered sites are Martin Grove, Albion, Kipling, Islington, Weston, Signet, Norfinch, York Gate, Jane and Driftwood. The approximate cumulative span is 6.9 km, not surveyed road chainage.
+
+Each site has its own stream and retry budget. An exhausted site becomes unavailable while the other nine continue until the common deadline. Global disk failure still stops collection. Old recordings are preserved in their existing folders. After collection, the optional plotting runtime automatically produces the full-hour and five-minute figures for both directions; no neural training runs. The page polls for completed figures and labels every configured intersection, including sites without accepted tracks. Shaded inter-sensor regions stay unobserved; no paths are fabricated to bridge them. Damaged archive files retain readable preceding rows and record an issue in the figure index rather than preventing the other sites from rendering.
+
+The figure selector remains compatible with the earlier two-site session. Tests cover ten-site ordering/geometry and isolated failure/retry behavior, alongside the track-segmentation tests. The ten-site blank/missing-data layout was rendered separately as a software layout check; it is not published as received traffic data.

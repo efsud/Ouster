@@ -1,7 +1,7 @@
 'use strict';
 (() => {
   const el=id=>document.getElementById(id), names={'OBC-AG-SA-C257220':'Weston','OBC-AG-SA-C251071':'Signet / Arrow'};
-  let report=null;
+  let report=null, figuresLoaded=false, figuresBusy=false, captureId=null;
   const fmt=v=>Number.isFinite(v)?v.toFixed(1):'—';
   function cell(row,value){const td=document.createElement('td');td.textContent=value;row.append(td);}
   function render(){
@@ -28,21 +28,24 @@
   }
   async function refresh(){try{
     const response=await fetch('/api/deepctm');if(!response.ok)throw new Error('Status unavailable');const data=await response.json();
+    el('experiment-title').textContent=data.title||'Finch corridor recordings';
+    if(captureId!==data.capture_id){captureId=data.capture_id;figuresLoaded=false;el('recorded-figure').replaceChildren();el('recorded-figure-image').hidden=true;}
+    if(!figuresLoaded)loadFigures();
     el('capture-status').textContent=`Experiment: ${data.state}${data.error?' · '+data.error:''}`;
     el('capture-time').textContent=data.start?`Start: ${new Date(data.start*1000).toLocaleString()} · Scheduled end: ${new Date(data.end*1000).toLocaleString()}`:'';
-    el('capture-sensors').replaceChildren();for(const s of data.sensors){const row=document.createElement('tr');[names[s.site]||s.site,s.receiving_now?'Receiving now':`${s.state} · no fresh frames`,s.frames||0,s.last_receipt?new Date(s.last_receipt*1000).toLocaleString():'None'].forEach(v=>cell(row,v));el('capture-sensors').append(row);}
+    el('capture-sensors').replaceChildren();for(const s of data.sensors){const row=document.createElement('tr');[s.name||names[s.site]||s.site,s.receiving_now?'Receiving now':`${s.state}${s.error?' · '+s.error:''} · no fresh frames`,s.frames||0,s.last_receipt?new Date(s.last_receipt*1000).toLocaleString():'None'].forEach(v=>cell(row,v));el('capture-sensors').append(row);}
     el('forecast-assumptions').replaceChildren();for(const text of data.assumptions||[]){const li=document.createElement('li');li.textContent=text;el('forecast-assumptions').append(li);}
     report=data.report;render();
   }catch(e){el('capture-status').textContent=e.message;}}
   async function loadFigures(){
+    if(figuresBusy)return;figuresBusy=true;
     try {
-      const response=await fetch('/api/deepctm/figures/index.json');if(!response.ok)throw new Error('No figures available for this capture.');
-      const data=await response.json(), select=el('recorded-figure');
+      const response=await fetch('/api/deepctm/figures/index.json');if(!response.ok)throw new Error('Figures will appear here after this capture finishes and plotting completes.');
+      const data=await response.json(), select=el('recorded-figure');select.replaceChildren();figuresLoaded=true;
       for(const f of data.figures){const option=document.createElement('option');option.value=f.file;option.textContent=`${f.direction} · ${f.label} · ${f.fragments} track fragments`;select.append(option);}
-      function show(){const url='/api/deepctm/figures/'+encodeURIComponent(select.value);el('recorded-figure-image').src=url;el('recorded-figure-image').hidden=false;el('recorded-figure-link').href=url;el('recorded-figure-status').textContent='Approximate sensor separation: '+data.station_spacing_m.toFixed(0)+' m. No tracks are joined between sensors.';}
-      select.addEventListener('change',show);if(select.options.length){select.selectedIndex=Math.min(1,select.options.length-1);show();}
-    }catch(e){el('recorded-figure-status').textContent=e.message;}
+      function show(){const url='/api/deepctm/figures/'+encodeURIComponent(select.value);el('recorded-figure-image').src=url;el('recorded-figure-image').hidden=false;el('recorded-figure-link').href=url;el('recorded-figure-status').textContent='Approximate corridor span: '+data.station_spacing_m.toFixed(0)+' m. No tracks are joined between sensors.';}
+      select.onchange=show;if(select.options.length){select.selectedIndex=Math.min(1,select.options.length-1);show();}
+    }catch(e){el('recorded-figure-status').textContent=e.message;}finally{figuresBusy=false;}
   }
-  loadFigures();
   el('forecast-site').addEventListener('change',render);el('forecast-direction').addEventListener('change',render);refresh();setInterval(refresh,5000);
 })();

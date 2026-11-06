@@ -202,3 +202,7 @@ Reviewed the supplied 12-page paper, including equations/architecture; documente
 ## 2026-11-06 — Measured trajectory figures
 
 Generated full-hour and five-minute time–distance plots for both directions from the saved Weston/Signet hour. Added sensor-colored and speed-colored panels, a local gallery and indexed image endpoints. Gaps split tracks; the unobserved corridor is shaded rather than filled with invented vehicle paths. Four new extraction tests and 65 existing dashboard tests pass; browser selection/rendering verified. Field-model training remains separate and has not been represented by these figures.
+
+## 2026-11-06 — Full Finch corridor capture and speed figures
+
+Added a one-hour launcher for all ten Finch sensors with per-site failure isolation and automatic figure generation after collection. Generalized stationing, local road bearing, sensor names, multi-site plot layout and dashboard status; absent sensors remain blank and labelled. Recording-only mode avoids running the two-site neural training pipeline on corridor data. Existing captures remain unchanged.
