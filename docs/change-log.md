@@ -216,3 +216,7 @@ The plotting pipeline writes compact per-site JSON containing the same accepted 
 Worked example: select Kipling and Islington, then choose westbound 11:45–11:50. The two panels show those two sites only, colored by site and speed respectively. Gray areas have no measured trajectories. Hover shows Toronto receipt time and speed in m/s and km/h.
 
 Validation: nine existing trajectory/corridor tests pass. Browser checks cover pair selection, direction/time changes, clearing selection, Jane's missing data, all ten sites, and JavaScript errors.
+
+### Speed-only interactive view
+
+Removed the site-colored measured-track panel at the user's request. The interactive view now shows a single, larger speed panel with intersection selection and hover readouts. Original two-panel PNGs remain available as download links rather than embedded charts. No recorded data was removed. Existing browser selection, direction/window, and missing-data checks pass.
