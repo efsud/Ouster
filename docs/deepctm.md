@@ -128,3 +128,21 @@ The paper is supplied locally and is not copied into Git. Optional ML dependenci
 ### One-hour reception test
 
 Double-click `scripts/record_one_hour.command` and enter credentials privately. It uses `--seconds 3600 --record-only`, creates a new capture folder, and stops after one hour without launching training. Existing recordings are not overwritten. One hour is insufficient for this model's separate training, validation and test windows.
+
+### Recorded trajectory figures (November 6)
+
+`deepctm.figures` generates 26 PNGs from the completed November 5 one-hour session: a full-hour overview and twelve five-minute views for each direction. Each has a sensor-colored panel and a speed-colored panel. The experiment page includes a figure selector and full-resolution links.
+
+The plots use actual local vehicle track fragments, namespaced by sensor/session/ID. They split at invalid or nonpositive clock intervals, gaps above three seconds, receipt/sensor elapsed-time ratios outside [0.5,2], implausible speeds or exits from the assumed ROI. Keep fragments lasting at least two seconds, moving at least three metres longitudinally, and having net displacement at least 70% of longitudinal travel. This is provisional direction filtering, not independently annotated straight-through classification. Fragment counts are not unique vehicle counts; stopped-only fragments are excluded.
+
+For visualization the assumed ROI extends 100 m each side of the sensor along the road and 12 m laterally. This differs from the smaller 100 m total-length training ROI. Station spacing is approximately 500 m, computed from the previously supplied sensor coordinates; it is not surveyed road distance. Positions use existing rotations and road bearing. Plot samples are reduced to approximately two per second per fragment for legibility; speed uses relative sensor-time displacement before display reduction. Receipt times on the horizontal axis use America/Toronto. No tracks are joined across sensors, and the middle road is explicitly unobserved.
+
+The capture contains FRAME, PHASE_CHANGE and occupancy events. Signal phase-to-movement mapping is still unverified, so signal bars, queue annotations and LOS ratings are omitted. Red speed colors indicate low movement speed only. These plots are observations projected with provisional geometry, not neural-model predictions or inferred trajectories.
+
+Regenerate with:
+
+```sh
+MPLCONFIGDIR=/private/tmp/ouster-matplotlib .venv-deepctm/bin/python -m deepctm.figures --capture data/deepctm/20261105T140017Z
+```
+
+Generated images and index metadata remain local in the capture's `figures/` folder. Four tests verify direction/speed, gap/session splitting, stationary/ROI exclusion and westbound classification. All 65 dashboard tests pass. Browser verification confirms 26 selectable figures and successful image rendering; representative figures were visually checked for readable axes, labels and color bars.

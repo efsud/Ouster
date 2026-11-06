@@ -22,7 +22,7 @@ from .anomalies import evaluate_traffic, evaluate_health
 from .worker import start_worker
 from .site_kpis import summary as site_kpi_summary
 from .historical_ctm import analyze as historical_ctm
-from .deepctm_status import status as deepctm_status
+from .deepctm_status import status as deepctm_status, figure_asset
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT/'dashboard/static'
@@ -90,6 +90,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             q = {k:v[0] for k,v in parse_qs(parsed.query).items()}
+            if parsed.path.startswith('/api/deepctm/figures/'):
+                try:
+                    body,mime=figure_asset(parsed.path.removeprefix('/api/deepctm/figures/'))
+                    return self.send(json.loads(body) if mime=='application/json' else body,mime=mime)
+                except (OSError,ValueError):return self.send({'error':'Figure unavailable'},404)
             if parsed.path == '/api/deepctm':
                 return self.send(deepctm_status())
             if parsed.path == '/api/status':

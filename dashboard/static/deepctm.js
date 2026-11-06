@@ -34,5 +34,15 @@
     el('forecast-assumptions').replaceChildren();for(const text of data.assumptions||[]){const li=document.createElement('li');li.textContent=text;el('forecast-assumptions').append(li);}
     report=data.report;render();
   }catch(e){el('capture-status').textContent=e.message;}}
+  async function loadFigures(){
+    try {
+      const response=await fetch('/api/deepctm/figures/index.json');if(!response.ok)throw new Error('No figures available for this capture.');
+      const data=await response.json(), select=el('recorded-figure');
+      for(const f of data.figures){const option=document.createElement('option');option.value=f.file;option.textContent=`${f.direction} · ${f.label} · ${f.fragments} track fragments`;select.append(option);}
+      function show(){const url='/api/deepctm/figures/'+encodeURIComponent(select.value);el('recorded-figure-image').src=url;el('recorded-figure-image').hidden=false;el('recorded-figure-link').href=url;el('recorded-figure-status').textContent='Approximate sensor separation: '+data.station_spacing_m.toFixed(0)+' m. No tracks are joined between sensors.';}
+      select.addEventListener('change',show);if(select.options.length){select.selectedIndex=Math.min(1,select.options.length-1);show();}
+    }catch(e){el('recorded-figure-status').textContent=e.message;}
+  }
+  loadFigures();
   el('forecast-site').addEventListener('change',render);el('forecast-direction').addEventListener('change',render);refresh();setInterval(refresh,5000);
 })();

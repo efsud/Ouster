@@ -19,3 +19,17 @@ def status(root=ROOT):
         sensors.append(value)
     report_path=directory/'report.json'
     return {'state':manifest['state'],'start':manifest['start'],'end':manifest['end'],'error':manifest.get('error'),'sensors':sensors,'report':json.loads(report_path.read_text()) if report_path.exists() else None,'assumptions':json.loads((directory/'config.json').read_text())['assumptions']}
+
+
+def figure_asset(name, root=ROOT):
+    """Serve only generated, indexed figures from the current capture."""
+    base=Path(root)/'data/deepctm'
+    directory=Path(json.loads((base/'latest.json').read_text())['directory']).resolve()
+    if not directory.is_relative_to(base.resolve()):raise ValueError('Invalid experiment directory')
+    folder=directory/'figures';index=folder/'index.json'
+    if name=='index.json':return index.read_bytes(),'application/json'
+    allowed={entry['file'] for entry in json.loads(index.read_text())['figures']}
+    if name not in allowed or Path(name).name!=name:raise ValueError('Unknown figure')
+    path=(folder/name).resolve()
+    if not path.is_relative_to(folder.resolve()):raise ValueError('Invalid figure path')
+    return path.read_bytes(),'image/png'

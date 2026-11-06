@@ -2,7 +2,7 @@
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 import json
-from dashboard.deepctm_status import status
+from dashboard.deepctm_status import status,figure_asset
 
 STATIC=Path(__file__).resolve().parents[1]/'dashboard/static'
 class Handler(BaseHTTPRequestHandler):
@@ -12,6 +12,8 @@ class Handler(BaseHTTPRequestHandler):
         routes={'/':'deepctm.html','/deepctm.js':'deepctm.js','/style.css':'style.css'}
         try:
             if self.path=='/api/deepctm':body=json.dumps(status(),allow_nan=False).encode();mime='application/json'
+            elif self.path.startswith('/api/deepctm/figures/'):
+                body,mime=figure_asset(self.path.removeprefix('/api/deepctm/figures/'))
             elif self.path in routes:
                 name=routes[self.path];body=(STATIC/name).read_bytes();mime='text/html' if name.endswith('html') else 'text/javascript' if name.endswith('js') else 'text/css'
             else:self.send_error(404);return

@@ -198,3 +198,7 @@ Validation: all 63 Python tests pass, including 1,000 connection contexts with g
 ## 2026-11-04 — DeepCTM research adaptation and 24-hour capture
 
 Reviewed the supplied 12-page paper, including equations/architecture; documented missing specifications and inconsistent 60-minute RMSE tables. Added an optional PyTorch implementation, conservative CTM integration, directional messages/gating/PEC, masked features and chronological evaluation against persistence/pure CTM. Added compressed Weston/Signet recording with a fixed 24-hour deadline, restart supervision and disk guard. Added a separate read-only experiment viewer and historical-page link. All results remain provisional pending calibration and sufficient recorded data. No change to signal controls or existing map alignment.
+
+## 2026-11-06 — Measured trajectory figures
+
+Generated full-hour and five-minute time–distance plots for both directions from the saved Weston/Signet hour. Added sensor-colored and speed-colored panels, a local gallery and indexed image endpoints. Gaps split tracks; the unobserved corridor is shaded rather than filled with invented vehicle paths. Four new extraction tests and 65 existing dashboard tests pass; browser selection/rendering verified. Field-model training remains separate and has not been represented by these figures.
