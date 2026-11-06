@@ -234,3 +234,7 @@ Added SDK-named object-type filtering to the interactive speed figure. Re-export
 Worked example: select Weston and Signet, pooled Vehicles, eastbound, and enable the virtual-path layer; inspect 12:38–12:43 Toronto. Blue dashed lines are representative paths through predicted cell speeds, not identities matched across sensors. Select Car to inspect observed cars; the pooled-model layer is then hidden.
 
 Validation: model/trajectory/corridor test suite passes, including split boundaries, mask behavior, class preservation and tracer termination at missing forecasts. Browser checks cover the model layer, held-out-only display, class filtering and pooled-model restriction. Intermediate paths have no ground truth and are not field validated.
+
+### Make estimated paths easy to find
+
+Added a View estimated paths button that enables pooled-vehicle estimates and focuses the time range on available predicted paths. It preserves selected adjacent links where possible; otherwise it selects Weston–Signet (or the first available trained pair in that direction). Increased blue dashed-line contrast and corrected the observation-only caption. Loading failures now show the HTTP error instead of silently hiding the result. Browser validation confirms one-click activation, object filter, time focus and visible dashed paths.

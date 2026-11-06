@@ -89,7 +89,7 @@
         else if(!virtualData)el('virtual-status').textContent='Model results are not available yet.';
         else{
           const links=virtualData.links.filter(l=>l.direction===figure.direction&&l.sites.every(s=>selected.has(s)));
-          let paths=0;ctx.save();ctx.setLineDash([5,5]);ctx.lineWidth=1.5;ctx.strokeStyle='#243fa0';ctx.globalAlpha=.55;
+          let paths=0;ctx.save();ctx.setLineDash([5,5]);ctx.lineWidth=2.5;ctx.strokeStyle='#173cda';ctx.globalAlpha=.95;
           for(const link of links)for(const path of link.paths){const pts=path.points.filter(p=>p[0]>=start&&p[0]<=end);if(pts.length<2)continue;paths++;ctx.beginPath();pts.forEach((p,j)=>{if(j===0)ctx.moveTo(x(p[0]),y(p[1],tops[0]));else ctx.lineTo(x(p[0]),y(p[1],tops[0]));});ctx.stroke();}ctx.restore();
           const evaluated=links.filter(l=>l.report.state==='trained_provisional');
           const worse=evaluated.filter(l=>l.report.deepctm.speed_rmse_kmh>=l.report.persistence.speed_rmse_kmh).length;
@@ -111,7 +111,28 @@
     setTime(start+(end-start-span)*anchor,span);
   }
   el('object-filter').onchange=()=>{if(interactiveIndex)drawSelected(interactiveIndex);};
-  el('show-virtual').onchange=async()=>{if(!virtualData){try{const r=await fetch('/api/deepctm/figures/virtual-paths.json');if(r.ok)virtualData=await r.json();}catch(e){}}if(interactiveIndex)drawSelected(interactiveIndex);};
+  async function loadVirtual(){
+    if(!virtualData){const response=await fetch('/api/deepctm/figures/virtual-paths.json');if(!response.ok)throw Error('Cannot load estimated paths. The model-results service returned '+response.status+'.');virtualData=await response.json();}
+  }
+  el('show-virtual').onchange=async()=>{try{await loadVirtual();if(interactiveIndex)drawSelected(interactiveIndex);}catch(e){el('virtual-status').textContent=e.message;}};
+  el('view-estimates').onclick=async()=>{
+    try{
+      if(!interactiveIndex)throw Error('Wait for the recorded figures to load.');
+      await loadVirtual();
+      const selected=new Set([...el('track-sites').querySelectorAll('input:checked')].map(b=>b.value));
+      const current=interactiveIndex.figures.find(f=>f.file===el('recorded-figure').value)?.direction||'eastbound';
+      const available=virtualData.links.filter(l=>l.paths.length&&l.direction===current);
+      let links=available.filter(l=>l.sites.every(s=>selected.has(s)));
+      if(!links.length){const fallback=available.find(l=>l.names.includes('Weston')&&l.names.includes('Signet'))||available[0];if(!fallback)throw Error('No estimated paths are available for this direction.');links=[fallback];el('track-sites').querySelectorAll('input').forEach(b=>b.checked=fallback.sites.includes(b.value));}
+      el('object-filter').value='vehicles';el('show-virtual').checked=true;
+      const points=links.flatMap(l=>l.paths.flatMap(p=>p.points));
+      const start=Math.min(...points.map(p=>p[0])),end=Math.max(...points.map(p=>p[0]));
+      timeView=[start-5,end+5];
+      if(recordingBounds)timeView=[Math.max(recordingBounds[0],timeView[0]),Math.min(recordingBounds[1],timeView[1])];
+      await drawSelected(interactiveIndex);el('interactive-tracks').scrollIntoView({block:'center',behavior:'smooth'});
+    }catch(e){el('virtual-status').textContent=e.message;}
+  };
+
   el('zoom-in').onclick=()=>zoomTime(.5);
   el('zoom-out').onclick=()=>zoomTime(2);
   el('time-reset').onclick=()=>{if(recordingBounds)setTime(recordingBounds[0],recordingBounds[1]-recordingBounds[0]);};
