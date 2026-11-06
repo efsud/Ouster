@@ -35,7 +35,7 @@ def recorded_events(directory,site,issues):
     return heapq.merge(*(read(p) for p in sorted(Path(directory).glob(site+'-*.jsonl.gz'))),key=lambda r:r['received_at'])
 
 
-def trajectories(records,rotation,bearing):
+def trajectories(records,rotation,bearing,all_classes=False):
     angle=math.radians(rotation-bearing);c=math.cos(angle);s=math.sin(angle)
     active={};finished=[];kinds=Counter()
     def flush(key):
@@ -43,7 +43,7 @@ def trajectories(records,rotation,bearing):
         if len(points)<3:return
         a=np.asarray([p[:4] for p in points],dtype=float);travel=np.abs(np.diff(a[:,1])).sum();net=a[-1,1]-a[0,1]
         if a[-1,0]-a[0,0]<2 or abs(net)<3 or abs(net)<.7*travel:return
-        finished.append({'direction':'eastbound' if net>0 else 'westbound','points':a[:,[0,1,3]]})
+        finished.append({'direction':'eastbound' if net>0 else 'westbound','points':a[:,[0,1,3]],'class_type':key[2]})
     for r in records:
         e=r['payload'];kinds.update(k for k in e if k!='timestamp');frame=e.get('frame')
         if frame is None:continue
@@ -51,10 +51,10 @@ def trajectories(records,rotation,bearing):
         except (KeyError,ValueError,TypeError):continue
         t=r['received_at']
         for o in frame.get('objects',[]):
-            if str(o.get('classType')) not in VEHICLES or 'id' not in o:continue
+            if 'id' not in o or (not all_classes and str(o.get('classType')) not in VEHICLES):continue
             try:x=float(o['centerX']);y=float(o['centerY'])
             except (KeyError,TypeError,ValueError):continue
-            along=c*x-s*y;across=s*x+c*y;key=(r['session'],str(o['id']))
+            along=c*x-s*y;across=s*x+c*y;key=(r['session'],str(o['id']),str(o.get('classType','unknown')))
             if not math.isfinite(along+across) or abs(along)>100 or abs(across)>12:
                 flush(key);continue
             old=active.get(key)
@@ -127,7 +127,7 @@ def generate(directory, tracks_only=False):
     tracks=[];metadata=[]
     for i,site in enumerate(config['sites_west_to_east']):
         issues=[]
-        t,kinds=trajectories(recorded_events(directory,site,issues),config['rotation_deg'][i],bearings[i]);tracks.append(t)
+        t,kinds=trajectories(recorded_events(directory,site,issues),config['rotation_deg'][i],bearings[i],all_classes=True);tracks.append(t)
         metadata.append({'site':site,'name':names[i],'station_m':stations[i],'event_types':kinds,'accepted_fragments':len(t),'archive_issues':issues})
         print(f"{names[i]}: {kinds.get('frame',0)} frames; {len(t)} accepted fragments",flush=True)
     # Compact measured fragments for browser selection; keep raw recordings untouched.
@@ -137,9 +137,10 @@ def generate(directory, tracks_only=False):
         for tr in items:
             p=tr['points']
             pick=np.unique(np.r_[0,np.flatnonzero(np.diff(np.floor(p[:,0]*2)))+1,len(p)-1])
-            compact.append({'direction':tr['direction'],'points':[[round(float(t-manifest['start']),3),round(float(x),2),round(float(v),2)] for t,x,v in p[pick]]})
+            compact.append({'direction':tr['direction'],'class_type':tr['class_type'],'points':[[round(float(t-manifest['start']),3),round(float(x),2),round(float(v),2)] for t,x,v in p[pick]]})
         atomic(out/(metadata[i]['site']+'-tracks.json'),{'start':manifest['start'],'end':manifest['end'],'site':metadata[i], 'tracks':compact})
     if tracks_only:return
+    tracks=[[t for t in items if t['class_type'] in VEHICLES] for items in tracks]
     entries=[]
     for direction in ['eastbound','westbound']:
         name=direction+'-hour.png';count=draw(tracks,direction,manifest['start'],manifest['end'],stations,out/name,title+' · recorded hour',names)

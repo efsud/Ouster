@@ -226,3 +226,11 @@ Removed the site-colored measured-track panel at the user's request. The interac
 The speed chart now opens at the exact recorded one-hour interval. Zoom in/out buttons change the visible duration; scrolling over the chart zooms around the pointer. A time-position slider moves the zoomed window within recording boundaries. Full hour or double-click resets the interval. The minimum window is ten seconds. Intersection changes preserve the visible time interval; choosing a figure preset sets its time window. Raw data and original PNGs are unchanged.
 
 Worked example: open the chart, click Zoom in twice to see fifteen minutes, then use the slider to inspect a later period. Click Full hour to return to the complete recording. Browser validation covers the 3600-second initial window, button zoom, slider navigation, preserving time on intersection changes, wheel zoom, double-click reset, and existing site/direction selections.
+
+## Provisional virtual-cell paths and object filters
+
+Added SDK-named object-type filtering to the interactive speed figure. Re-exported measured fragments with class codes, including non-vehicle classes; retained pooled vehicle defaults. Added a one-minute-resolution adaptation of the existing DeepCTM architecture for adjacent links, with chronological splits and endpoint comparisons against persistence and pure CTM. Seven adjacent pairs trained in both directions; links involving unavailable Jane have no predictions. Dashed model tracers appear only in final held-out windows and only for pooled vehicles. The method and limitations are documented in docs/deepctm.md.
+
+Worked example: select Weston and Signet, pooled Vehicles, eastbound, and enable the virtual-path layer; inspect 12:38–12:43 Toronto. Blue dashed lines are representative paths through predicted cell speeds, not identities matched across sensors. Select Car to inspect observed cars; the pooled-model layer is then hidden.
+
+Validation: model/trajectory/corridor test suite passes, including split boundaries, mask behavior, class preservation and tracer termination at missing forecasts. Browser checks cover the model layer, held-out-only display, class filtering and pooled-model restriction. Intermediate paths have no ground truth and are not field validated.

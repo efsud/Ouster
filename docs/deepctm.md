@@ -168,3 +168,27 @@ New captures export per-site display data automatically with figure generation. 
 This reads the saved archives; it does not collect additional data or train a model.
 
 The interactive speed chart initially covers the entire recorded hour. Use Zoom in/out or scroll over a point of interest to change the time scale; use the time slider to navigate. Full hour and double-click restore the complete recording. Changing selected intersections preserves your zoom. The direction/time preset menu also remains available.
+
+## One-hour virtual-cell experiment (November 6)
+
+`deepctm.virtual_paths` adapts the existing DeepCTM physical/free branches, directed message passing, gating and physical error correction for the completed ten-site capture. It uses **60-second aggregation, four minutes of context, and a one-minute forecast**, unlike the paper's 15-minute aggregation and 15/60-minute evaluation. Twenty epochs and the existing loss weights are an exploratory choice, not a tuned or exact paper reproduction.
+
+Each adjacent pair is a separate directed chain. Observed endpoint cells are 100 m long; the distance between those cells is divided into virtual cells no longer than 150 m. Geometry uses approximate saved sensor origins and bearings. Free speed 50 km/h, backward wave speed 18 km/h and jam density 300 veh/km are assumptions. There is no verified signal gate or lateral turning-flow model. Independently trained links do not enforce consistency across the whole corridor.
+
+Inputs are Edie-style flow, density and speed from raw vehicle frames, with 80% receipt coverage and the existing gap/clock rules. Virtual cells have a false observation mask and **never receive fabricated training targets**. Chronological 60/20/20 partitions contain entire context/target windows, with no windows crossing split boundaries. Checkpoint selection uses validation normalized q/k/v error only. The final test interval is untouched by fitting or selection. Depending on coverage, only five to eight one-minute test targets remain for each fitted link, so these results have very limited statistical weight.
+
+The dashed overlay integrates representative tracers through the predicted cell-speed field at two-second steps. Tracers start every 30 seconds at the displayed upstream observation boundary and stop at the next observation boundary, missing forecast minute or end of prediction availability. Tracer count is a display sampling choice, **not predicted volume**. No identity is matched or inferred between cameras/sensors. Successive forecast minutes assimilate newly available past sensor windows: this is rolling one-step evaluation, not an hour-long open-loop forecast. Earlier training/validation periods deliberately remain blank in the overlay.
+
+Enable **Show provisional DeepCTM virtual paths** and select both endpoints of an adjacent pair. Dashed blue paths indicate the model; colored local fragments remain observations. Weston and Signet's test paths start at approximately 12:38 Toronto. Links involving Jane remain unavailable. The UI reports whether endpoint speed predictions beat persistence; no intermediate path accuracy can be assessed without ground truth there. This is not field validation, signal coordination inference, or person-level trajectory prediction.
+
+### Object filters
+
+The Object type menu uses the class definitions from `Data API/Realtime SDK/README_sub.md`, including Car, Van, Truck, Bus, SUV, Construction vehicle, Trailer, Tractor, Pedestrian, Person sitting, Cyclist, Bicycle, Person, Motorcycle and Rollerblader. SDK codes are shown because legacy and current classes can share labels. The default is pooled vehicle classes. All recorded object classes and individual classes can be displayed. Accepted fragments must still pass the directional, ROI and minimum-motion checks; this is not a complete census of stationary pedestrians or all sidewalk traffic. Classification changes split a track instead of mixing classes. The pooled vehicle model is hidden for individual-class or all-object selections because it has no class-specific predictions.
+
+Run or reproduce locally:
+
+```sh
+.venv-deepctm/bin/python -m deepctm.virtual_paths --capture data/deepctm/20261106T164305Z --epochs 20
+```
+
+Outputs remain under the capture's `virtual-model/` directory: feature/mask arrays, receipt coverage evidence, model checkpoints, and report.json with per-link train/validation/test target bins, endpoint flow/density/speed RMSE for DeepCTM/persistence/pure CTM, mass discrepancy and virtual speed fields. `figures/virtual-paths.json` supplies the read-only dashboard. Raw recordings are unchanged.

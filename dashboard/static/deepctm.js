@@ -37,10 +37,10 @@
     el('forecast-assumptions').replaceChildren();for(const text of data.assumptions||[]){const li=document.createElement('li');li.textContent=text;el('forecast-assumptions').append(li);}
     report=data.report;render();
   }catch(e){el('capture-status').textContent=e.message;}}
-  let trackCache=new Map(), plotSerial=0, hoverPoints=[], interactiveIndex=null, timeView=null, recordingBounds=null;
+  let trackCache=new Map(), plotSerial=0, hoverPoints=[], interactiveIndex=null, timeView=null, recordingBounds=null, virtualData=null;
   const toronto=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:'America/Toronto',hour12:false});
   function setupInteractive(index){
-    interactiveIndex=index;timeView=null;recordingBounds=null;trackCache=new Map();el('track-sites').replaceChildren();
+    interactiveIndex=index;timeView=null;recordingBounds=null;virtualData=null;trackCache=new Map();el('track-sites').replaceChildren();
     index.sites.forEach((s,i)=>{const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.site;box.checked=['Weston','Signet'].includes(s.name);box.addEventListener('change',()=>drawSelected(index));label.append(box,document.createTextNode(' '+s.name+(s.accepted_fragments?'':' (no data)')));el('track-sites').append(label);});
     for(const [id,checked] of [['tracks-all',true],['tracks-none',false]])el(id).onclick=()=>{el('track-sites').querySelectorAll('input').forEach(b=>b.checked=checked);drawSelected(index);};
   }
@@ -49,11 +49,16 @@
     const width=Math.max(600,canvas.clientWidth),height=500,ratio=window.devicePixelRatio||1;canvas.width=width*ratio;canvas.height=height*ratio;ctx.scale(ratio,ratio);ctx.fillStyle='white';ctx.fillRect(0,0,width,height);
     const selected=new Set([...el('track-sites').querySelectorAll('input:checked')].map(b=>b.value)),sites=index.sites.filter(s=>selected.has(s.site));
     if(!sites.length){el('interactive-status').textContent='Choose one or more intersections.';return;}
+    const objectFilter=el('object-filter').value;
+    const vehicleCodes=new Set(['1','2','3','4','5','6','7','8','9','15']);
     const figure=index.figures.find(f=>f.file===el('recorded-figure').value);if(!figure)return;
     el('interactive-status').textContent='Loading selected recorded tracks…';
     try{
       const payloads=await Promise.all(sites.map(async s=>{if(!trackCache.has(s.site))trackCache.set(s.site,fetch('/api/deepctm/figures/'+s.site+'-tracks.json').then(r=>{if(!r.ok)throw Error('Interactive tracks are unavailable; original figures remain below.');return r.json();}).catch(e=>{trackCache.delete(s.site);throw e;}));return trackCache.get(s.site);}));
       if(serial!==plotSerial)return;
+      const codes=[...new Set(payloads.flatMap(p=>p.tracks.map(t=>t.class_type||'unknown')))].sort((a,b)=>Number(a)-Number(b));
+      for(const code of codes)if(![...el('object-filter').options].some(o=>o.value===code)){const option=document.createElement('option');option.value=code;option.textContent=({0:'Pedestrian (legacy)',1:'Vehicle (legacy)',2:'Car',3:'Van',4:'Truck',5:'Bus',6:'SUV',7:'Construction vehicle',8:'Trailer',9:'Tractor',10:'Pedestrian',11:'Person sitting',12:'Cyclist',13:'Bicycle',14:'Person',15:'Motorcycle',16:'Rollerblader',17:'Cyclist'})[code]+' · SDK '+code;if(option.textContent.startsWith('undefined'))option.textContent='Unknown class · SDK '+code;el('object-filter').append(option);}
+
       const recordingStart=payloads[0].start,recordingEnd=payloads[0].end,match=figure.file.match(/-(\d+)\.png$/);
       recordingBounds=[recordingStart,recordingEnd];
       if(!timeView)timeView=match?[Math.max(recordingStart,Number(match[1])),Math.min(recordingEnd,Number(match[1])+300)]:[recordingStart,recordingEnd];
@@ -73,11 +78,24 @@
         sites.forEach(s=>{const yy=y(s.station_m,top);ctx.fillStyle='#58636e';ctx.fillText(Math.round(s.station_m)+' m',5,yy+4);ctx.strokeStyle='#c4cbd2';ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();ctx.setLineDash([]);});
       });
       sites.forEach((s,i)=>{const payload=payloads[i],color=colors[index.sites.findIndex(q=>q.site===s.site)%10];
-        for(const tr of payload.tracks){if(tr.direction!==figure.direction)continue;const points=tr.points.filter(p=>payload.start+p[0]>=start&&payload.start+p[0]<=end);if(points.length<2)continue;count++;
+        for(const tr of payload.tracks){if(tr.direction!==figure.direction || (objectFilter==='vehicles'&&!vehicleCodes.has(tr.class_type)) || (!['vehicles','all'].includes(objectFilter)&&tr.class_type!==objectFilter))continue;const points=tr.points.filter(p=>payload.start+p[0]>=start&&payload.start+p[0]<=end);if(points.length<2)continue;count++;
           for(let j=1;j<points.length;j++){const a=points[j-1],b=points[j],t=payload.start+b[0];tops.forEach((top,panel)=>{ctx.strokeStyle=`hsl(${Math.min(20,Math.max(0,b[2]))*6},75%,40%)`;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x(payload.start+a[0]),y(s.station_m+a[1],top));ctx.lineTo(x(t),y(s.station_m+b[1],top));ctx.stroke();});hoverPoints.push({x:x(t),y:y(s.station_m+b[1],tops[0]),time:t,speed:b[2],name:s.name});}
         }
         tops.forEach(top=>{ctx.fillStyle=color;ctx.fillText(s.name+(s.accepted_fragments?'':' · no data'),left+5,y(s.station_m+95,top)+12);});
       });
+      el('virtual-status').textContent='Virtual paths are experimental aggregate-flow tracers, not identified vehicles. They are available only in held-out test windows.';
+      if(el('show-virtual').checked){
+        if(objectFilter!=='vehicles')el('virtual-status').textContent='Virtual paths hidden: the model pools vehicles and cannot predict a specific object class or non-vehicle traffic.';
+        else if(!virtualData)el('virtual-status').textContent='Model results are not available yet.';
+        else{
+          const links=virtualData.links.filter(l=>l.direction===figure.direction&&l.sites.every(s=>selected.has(s)));
+          let paths=0;ctx.save();ctx.setLineDash([5,5]);ctx.lineWidth=1.5;ctx.strokeStyle='#243fa0';ctx.globalAlpha=.55;
+          for(const link of links)for(const path of link.paths){const pts=path.points.filter(p=>p[0]>=start&&p[0]<=end);if(pts.length<2)continue;paths++;ctx.beginPath();pts.forEach((p,j)=>{if(j===0)ctx.moveTo(x(p[0]),y(p[1],tops[0]));else ctx.lineTo(x(p[0]),y(p[1],tops[0]));});ctx.stroke();}ctx.restore();
+          const evaluated=links.filter(l=>l.report.state==='trained_provisional');
+          const worse=evaluated.filter(l=>l.report.deepctm.speed_rmse_kmh>=l.report.persistence.speed_rmse_kmh).length;
+          el('virtual-status').textContent=`${paths} dashed virtual paths in this window. ${evaluated.length} trained adjacent links; ${worse} do not beat persistence on held-out speed. Predictions only in final test minutes; earlier intervals and unsupported links remain blank. No intermediate ground truth or vehicle identity matching.`;
+        }
+      }
       el('interactive-status').textContent=`${sites.length} intersections · ${figure.direction} · ${toronto(start)}–${toronto(end)} Toronto · ${count} measured fragments. Approximate alignment; no paths inferred between sites.`;
     }catch(e){if(serial===plotSerial)el('interactive-status').textContent=e.message;}
   }
@@ -92,6 +110,8 @@
     const [start,end]=timeView,span=Math.min(recordingBounds[1]-recordingBounds[0],Math.max(10,(end-start)*factor));
     setTime(start+(end-start-span)*anchor,span);
   }
+  el('object-filter').onchange=()=>{if(interactiveIndex)drawSelected(interactiveIndex);};
+  el('show-virtual').onchange=async()=>{if(!virtualData){try{const r=await fetch('/api/deepctm/figures/virtual-paths.json');if(r.ok)virtualData=await r.json();}catch(e){}}if(interactiveIndex)drawSelected(interactiveIndex);};
   el('zoom-in').onclick=()=>zoomTime(.5);
   el('zoom-out').onclick=()=>zoomTime(2);
   el('time-reset').onclick=()=>{if(recordingBounds)setTime(recordingBounds[0],recordingBounds[1]-recordingBounds[0]);};
