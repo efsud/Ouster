@@ -220,3 +220,9 @@ Validation: nine existing trajectory/corridor tests pass. Browser checks cover p
 ### Speed-only interactive view
 
 Removed the site-colored measured-track panel at the user's request. The interactive view now shows a single, larger speed panel with intersection selection and hover readouts. Original two-panel PNGs remain available as download links rather than embedded charts. No recorded data was removed. Existing browser selection, direction/window, and missing-data checks pass.
+
+### Full-hour default and interactive time zoom
+
+The speed chart now opens at the exact recorded one-hour interval. Zoom in/out buttons change the visible duration; scrolling over the chart zooms around the pointer. A time-position slider moves the zoomed window within recording boundaries. Full hour or double-click resets the interval. The minimum window is ten seconds. Intersection changes preserve the visible time interval; choosing a figure preset sets its time window. Raw data and original PNGs are unchanged.
+
+Worked example: open the chart, click Zoom in twice to see fifteen minutes, then use the slider to inspect a later period. Click Full hour to return to the complete recording. Browser validation covers the 3600-second initial window, button zoom, slider navigation, preserving time on intersection changes, wheel zoom, double-click reset, and existing site/direction selections.

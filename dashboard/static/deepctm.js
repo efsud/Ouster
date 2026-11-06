@@ -37,10 +37,10 @@
     el('forecast-assumptions').replaceChildren();for(const text of data.assumptions||[]){const li=document.createElement('li');li.textContent=text;el('forecast-assumptions').append(li);}
     report=data.report;render();
   }catch(e){el('capture-status').textContent=e.message;}}
-  let trackCache=new Map(), plotSerial=0, hoverPoints=[], interactiveIndex=null;
+  let trackCache=new Map(), plotSerial=0, hoverPoints=[], interactiveIndex=null, timeView=null, recordingBounds=null;
   const toronto=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:'America/Toronto',hour12:false});
   function setupInteractive(index){
-    interactiveIndex=index;trackCache=new Map();el('track-sites').replaceChildren();
+    interactiveIndex=index;timeView=null;recordingBounds=null;trackCache=new Map();el('track-sites').replaceChildren();
     index.sites.forEach((s,i)=>{const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.site;box.checked=['Weston','Signet'].includes(s.name);box.addEventListener('change',()=>drawSelected(index));label.append(box,document.createTextNode(' '+s.name+(s.accepted_fragments?'':' (no data)')));el('track-sites').append(label);});
     for(const [id,checked] of [['tracks-all',true],['tracks-none',false]])el(id).onclick=()=>{el('track-sites').querySelectorAll('input').forEach(b=>b.checked=checked);drawSelected(index);};
   }
@@ -55,7 +55,12 @@
       const payloads=await Promise.all(sites.map(async s=>{if(!trackCache.has(s.site))trackCache.set(s.site,fetch('/api/deepctm/figures/'+s.site+'-tracks.json').then(r=>{if(!r.ok)throw Error('Interactive tracks are unavailable; original figures remain below.');return r.json();}).catch(e=>{trackCache.delete(s.site);throw e;}));return trackCache.get(s.site);}));
       if(serial!==plotSerial)return;
       const recordingStart=payloads[0].start,recordingEnd=payloads[0].end,match=figure.file.match(/-(\d+)\.png$/);
-      const start=match?Math.max(recordingStart,Number(match[1])):recordingStart,end=match?Math.min(recordingEnd,Number(match[1])+300):recordingEnd;
+      recordingBounds=[recordingStart,recordingEnd];
+      if(!timeView)timeView=match?[Math.max(recordingStart,Number(match[1])),Math.min(recordingEnd,Number(match[1])+300)]:[recordingStart,recordingEnd];
+      const [start,end]=timeView;
+      canvas.dataset.start=start;canvas.dataset.end=end;
+      el('time-position').max=Math.max(0,recordingEnd-recordingStart-(end-start));el('time-position').value=start-recordingStart;el('time-position').disabled=end-start>=recordingEnd-recordingStart;
+      el('zoom-in').disabled=end-start<=10;el('zoom-out').disabled=end-start>=recordingEnd-recordingStart;
       const min=sites[0].station_m-110,max=sites.at(-1).station_m+110,left=78,right=width-22,ph=385,tops=[50];
       const x=t=>left+(t-start)/(end-start)*(right-left),y=(station,top)=>top+ph-(station-min)/(max-min)*ph;
       const colors=['#2779ad','#d97813','#279640','#d13a42','#8652ad','#956240','#d35dba','#555','#9b9714','#279ca8'];let count=0;
@@ -77,6 +82,26 @@
     }catch(e){if(serial===plotSerial)el('interactive-status').textContent=e.message;}
   }
   el('interactive-tracks').addEventListener('mousemove',event=>{const rect=event.currentTarget.getBoundingClientRect(),xx=(event.clientX-rect.left)*Math.max(600,rect.width)/rect.width,yy=event.clientY-rect.top;let nearest=null,dist=100;for(const p of hoverPoints){const d=(p.x-xx)**2+(p.y-yy)**2;if(d<dist){nearest=p;dist=d;}}el('track-hover').textContent=nearest?`${nearest.name} · ${toronto(nearest.time)} Toronto · ${nearest.speed.toFixed(1)} m/s (${(nearest.speed*3.6).toFixed(1)} km/h)`:'Move over a track to inspect its time and speed.';});
+  function setTime(start,span){
+    if(!recordingBounds||!interactiveIndex)return;
+    const [lo,hi]=recordingBounds;span=Math.min(hi-lo,Math.max(10,span));start=Math.max(lo,Math.min(hi-span,start));
+    timeView=[start,start+span];drawSelected(interactiveIndex);
+  }
+  function zoomTime(factor,anchor=.5){
+    if(!timeView||!recordingBounds)return;
+    const [start,end]=timeView,span=Math.min(recordingBounds[1]-recordingBounds[0],Math.max(10,(end-start)*factor));
+    setTime(start+(end-start-span)*anchor,span);
+  }
+  el('zoom-in').onclick=()=>zoomTime(.5);
+  el('zoom-out').onclick=()=>zoomTime(2);
+  el('time-reset').onclick=()=>{if(recordingBounds)setTime(recordingBounds[0],recordingBounds[1]-recordingBounds[0]);};
+  el('time-position').oninput=()=>{if(timeView)setTime(recordingBounds[0]+Number(el('time-position').value),timeView[1]-timeView[0]);};
+  el('interactive-tracks').addEventListener('wheel',event=>{
+    if(!timeView)return;
+    event.preventDefault();const rect=event.currentTarget.getBoundingClientRect(),width=Math.max(600,rect.width),xx=(event.clientX-rect.left)*width/rect.width;
+    zoomTime(event.deltaY<0?.8:1.25,Math.max(0,Math.min(1,(xx-78)/(width-100))));
+  },{passive:false});
+  el('interactive-tracks').addEventListener('dblclick',()=>el('time-reset').click());
   window.addEventListener('resize',()=>{if(interactiveIndex)drawSelected(interactiveIndex);});
 
   async function loadFigures(){
@@ -85,8 +110,8 @@
       const response=await fetch('/api/deepctm/figures/index.json');if(!response.ok)throw new Error('Figures will appear here after this capture finishes and plotting completes.');
       const data=await response.json(), select=el('recorded-figure');select.replaceChildren();figuresLoaded=true;setupInteractive(data);
       for(const f of data.figures){const option=document.createElement('option');option.value=f.file;option.textContent=`${f.direction} · ${f.label} · ${f.fragments} track fragments`;select.append(option);}
-      function show(){drawSelected(data);const url='/api/deepctm/figures/'+encodeURIComponent(select.value);el('recorded-figure-image').src=url;el('recorded-figure-image').hidden=true;el('recorded-figure-link').href=url;el('recorded-figure-status').textContent='Approximate corridor span: '+data.station_spacing_m.toFixed(0)+' m. No tracks are joined between sensors.';}
-      select.onchange=show;if(select.options.length){select.selectedIndex=Math.min(1,select.options.length-1);show();}
+      function show(){timeView=null;drawSelected(data);const url='/api/deepctm/figures/'+encodeURIComponent(select.value);el('recorded-figure-image').src=url;el('recorded-figure-image').hidden=true;el('recorded-figure-link').href=url;el('recorded-figure-status').textContent='Approximate corridor span: '+data.station_spacing_m.toFixed(0)+' m. No tracks are joined between sensors.';}
+      select.onchange=show;if(select.options.length){select.selectedIndex=0;show();}
     }catch(e){el('recorded-figure-status').textContent=e.message;}finally{figuresBusy=false;}
   }
   el('forecast-site').addEventListener('change',render);el('forecast-direction').addEventListener('change',render);refresh();setInterval(refresh,5000);

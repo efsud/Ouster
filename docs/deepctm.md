@@ -166,3 +166,5 @@ New captures export per-site display data automatically with figure generation. 
 ```
 
 This reads the saved archives; it does not collect additional data or train a model.
+
+The interactive speed chart initially covers the entire recorded hour. Use Zoom in/out or scroll over a point of interest to change the time scale; use the time slider to navigate. Full hour and double-click restore the complete recording. Changing selected intersections preserves your zoom. The direction/time preset menu also remains available.
