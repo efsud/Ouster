@@ -113,7 +113,7 @@ def draw(tracks,direction,start,end,stations,path,title,names=None):
     return total
 
 
-def generate(directory):
+def generate(directory, tracks_only=False):
     directory=Path(directory);config=json.loads((directory/'config.json').read_text());manifest=json.loads((directory/'manifest.json').read_text())
     if manifest['state'] not in ['captured','experiment_complete']:raise ValueError('Use a completed capture')
     out=directory/'figures';out.mkdir(exist_ok=True)
@@ -130,6 +130,16 @@ def generate(directory):
         t,kinds=trajectories(recorded_events(directory,site,issues),config['rotation_deg'][i],bearings[i]);tracks.append(t)
         metadata.append({'site':site,'name':names[i],'station_m':stations[i],'event_types':kinds,'accepted_fragments':len(t),'archive_issues':issues})
         print(f"{names[i]}: {kinds.get('frame',0)} frames; {len(t)} accepted fragments",flush=True)
+    # Compact measured fragments for browser selection; keep raw recordings untouched.
+    from .capture import atomic
+    for i, items in enumerate(tracks):
+        compact=[]
+        for tr in items:
+            p=tr['points']
+            pick=np.unique(np.r_[0,np.flatnonzero(np.diff(np.floor(p[:,0]*2)))+1,len(p)-1])
+            compact.append({'direction':tr['direction'],'points':[[round(float(t-manifest['start']),3),round(float(x),2),round(float(v),2)] for t,x,v in p[pick]]})
+        atomic(out/(metadata[i]['site']+'-tracks.json'),{'start':manifest['start'],'end':manifest['end'],'site':metadata[i], 'tracks':compact})
+    if tracks_only:return
     entries=[]
     for direction in ['eastbound','westbound']:
         name=direction+'-hour.png';count=draw(tracks,direction,manifest['start'],manifest['end'],stations,out/name,title+' · recorded hour',names)
@@ -145,4 +155,4 @@ def generate(directory):
     atomic(out/'index.json',report);print(json.dumps({'figures':len(entries),'sites':metadata,'spacing_m':stations[-1]}))
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--capture',required=True);a=p.parse_args();generate(a.capture)
+    p=argparse.ArgumentParser();p.add_argument('--capture',required=True);p.add_argument('--tracks-only',action='store_true');a=p.parse_args();generate(a.capture,a.tracks_only)

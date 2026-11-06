@@ -154,3 +154,15 @@ Use `scripts/record_finch_hour.command` to privately authenticate and record all
 Each site has its own stream and retry budget. An exhausted site becomes unavailable while the other nine continue until the common deadline. Global disk failure still stops collection. Old recordings are preserved in their existing folders. After collection, the optional plotting runtime automatically produces the full-hour and five-minute figures for both directions; no neural training runs. The page polls for completed figures and labels every configured intersection, including sites without accepted tracks. Shaded inter-sensor regions stay unobserved; no paths are fabricated to bridge them. Damaged archive files retain readable preceding rows and record an issue in the figure index rather than preventing the other sites from rendering.
 
 The figure selector remains compatible with the earlier two-site session. Tests cover ten-site ordering/geometry and isolated failure/retry behavior, alongside the track-segmentation tests. The ten-site blank/missing-data layout was rendered separately as a software layout check; it is not published as received traffic data.
+
+### Interactive intersection selection
+
+Open the local viewer on port 8768. Under **Recorded vehicle trajectories**, check the intersections to compare and select a direction/time window. Hover over either panel to inspect the nearest displayed point's Toronto receipt time and displacement-derived speed. The original full-resolution PNGs are retained below. Actual station spacing is preserved (using approximate coordinates), so widely separated sites still have blank road between them.
+
+New captures export per-site display data automatically with figure generation. For an existing completed capture, generate only the interactive data with:
+
+```sh
+.venv-deepctm/bin/python -m deepctm.figures --capture data/deepctm/20261106T164305Z --tracks-only
+```
+
+This reads the saved archives; it does not collect additional data or train a model.

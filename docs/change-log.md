@@ -206,3 +206,13 @@ Generated full-hour and five-minute time–distance plots for both directions fr
 ## 2026-11-06 — Full Finch corridor capture and speed figures
 
 Added a one-hour launcher for all ten Finch sensors with per-site failure isolation and automatic figure generation after collection. Generalized stationing, local road bearing, sensor names, multi-site plot layout and dashboard status; absent sensors remain blank and labelled. Recording-only mode avoids running the two-site neural training pipeline on corridor data. Existing captures remain unchanged.
+
+## Interactive recorded corridor figures — November 6, 2026
+
+The recorded-trajectory viewer now lets users check individual intersections, select a direction/time window, and inspect speed by hovering over measured track points. Weston and Signet are selected initially; Select all and Clear selection are available. The plot rescales to the selected sites while preserving approximate corridor station distances. Jane stays explicitly empty. The original PNG gallery remains available below the interactive chart.
+
+The plotting pipeline writes compact per-site JSON containing the same accepted measured fragments, downsampled to approximately 2 Hz for display. Raw recordings remain intact. The viewer loads selected sites only and caches them for subsequent selections. These are measured local fragments with provisional geometry, not model predictions or inferred links between sensors.
+
+Worked example: select Kipling and Islington, then choose westbound 11:45–11:50. The two panels show those two sites only, colored by site and speed respectively. Gray areas have no measured trajectories. Hover shows Toronto receipt time and speed in m/s and km/h.
+
+Validation: nine existing trajectory/corridor tests pass. Browser checks cover pair selection, direction/time changes, clearing selection, Jane's missing data, all ten sites, and JavaScript errors.

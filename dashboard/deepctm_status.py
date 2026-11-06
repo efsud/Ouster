@@ -43,8 +43,10 @@ def figure_asset(name, root=ROOT):
     if not directory.is_relative_to(base.resolve()):raise ValueError('Invalid experiment directory')
     folder=directory/'figures';index=folder/'index.json'
     if name=='index.json':return index.read_bytes(),'application/json'
-    allowed={entry['file'] for entry in json.loads(index.read_text())['figures']}
+    metadata=json.loads(index.read_text())
+    allowed={entry['file'] for entry in metadata['figures']}
+    allowed.update(s['site']+'-tracks.json' for s in metadata['sites'])
     if name not in allowed or Path(name).name!=name:raise ValueError('Unknown figure')
     path=(folder/name).resolve()
     if not path.is_relative_to(folder.resolve()):raise ValueError('Invalid figure path')
-    return path.read_bytes(),'image/png'
+    return path.read_bytes(),'application/json' if name.endswith('-tracks.json') else 'image/png'
