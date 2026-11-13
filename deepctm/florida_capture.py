@@ -106,20 +106,27 @@ def worker(site, directory, start, end):
         atomic(path, state)
 
 
-def capture(seconds=3600):
+def private_credentials():
     if not sys.stdin.isatty() or not sys.stderr.isatty():
         raise SystemExit('Open the private Terminal launcher to enter credentials.')
-    config = json.loads(CONFIG.read_text())
     # Hide both fields, including the username, from Terminal scrollback.
     username = getpass.getpass('BlueCity API username (hidden): ').strip()
     password = getpass.getpass('BlueCity API password (hidden): ')
     if not username or not password:
         raise SystemExit('Both credentials are required.')
-    credential_message = json.dumps([username, password]) + '\n'
-    del username, password
+    return username, password
+
+
+def capture(seconds=3600):
+    credential_message = json.dumps(private_credentials()) + '\n'
+    start = time.time() + 60
+    return capture_window(credential_message, start, start + seconds)
+
+
+def capture_window(credential_message, start, end):
+    config = json.loads(CONFIG.read_text())
     now = time.time()
-    start = now + 60
-    end = start + seconds
+    seconds = end - start
     directory = BASE / (time.strftime('%Y%m%dT%H%M%SZ', time.gmtime(now)) + '-' + uuid.uuid4().hex[:6])
     directory.mkdir(mode=0o700, parents=True)
     atomic(directory / 'config.json', config)
@@ -128,7 +135,7 @@ def capture(seconds=3600):
                     restarts={}, unavailable={}, format='gzip JSONL with serialized SDK protobuf')
     atomic(directory / 'manifest.json', manifest)
     atomic(BASE / 'latest.json', {'capture_id': directory.name})
-    print(f'Checking seven sensors for actual FRAME reception; {seconds/3600:g}-hour window begins in 60 seconds.', flush=True)
+    print(f'Checking seven sensors for actual FRAME reception; {seconds/3600:g}-hour window begins in {max(0, round(start-now))} seconds.', flush=True)
     children, launched, verified = {}, {}, set()
     awake = None
 
@@ -213,6 +220,7 @@ def capture(seconds=3600):
     del credential_message
     from .florida_tracks import generate
     generate(directory)
+    return manifest['state']
 
 
 def main():
