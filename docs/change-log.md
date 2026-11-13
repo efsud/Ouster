@@ -260,3 +260,11 @@ Added `scripts/connect_finch_live.command` for the current per-intersection alig
 The network dropdown previously changed region while querying a database containing only one corridor. Added `--combined-live` to serve Toronto live snapshots from `data/finch-live.sqlite3` and Florida snapshots from `data/florida-live.sqlite3`. Historical queries retain their existing database; this mode starts no processing worker or new collectors. The selector now opens Weston or Cranes Roost at object-visible zoom and updates the URL.
 
 Run `scripts/open_combined_live.command` and use `http://127.0.0.1:8775/?region=Toronto&site=OBC-AG-SA-C257220#map`. Keep both existing collector Terminals and this viewer open. No additional login is needed for the viewer. Validated region isolation and Toronto → Florida → Toronto switching in an API test; eight focused tests passed. Browser verification showed seven Florida and eight Finch streams, with visible objects after switching back. Norfinch and Jane remain unavailable for the previously documented reasons.
+
+### Public combined live viewer
+
+Added `dashboard.public_live` and `scripts/share_combined_live.command`. The dedicated loopback origin on 8776 permits only static viewer assets, site metadata and live snapshots from both live databases. Raw/history endpoints, anomaly notes and every mutation are denied; session identifiers and credential-configuration state are removed from public responses. Public UI shows only Live network. Existing local dashboards retain all tabs.
+
+Cloudflare's official arm64 client is installed locally in ignored `data/public-live/`; the launcher prints a temporary public URL and logs it to `data/public-live/tunnel.log`. Keep this Mac awake, connected and both collector Terminals plus the sharing Terminal running. Restarting the quick tunnel generates a new URL. Anyone with the URL can view both corridors. This is a temporary live viewer, not permanent hosting.
+
+Validation: public endpoint allowlist/mutation tests; runtime 200 responses for both corridor APIs, 403 for private reads and 405 for POST. Public HTTPS browser verified Finch and Florida objects and region switching. Shell DNS could not resolve the new hostname at validation time; browser HTTPS succeeded. No credentials or raw archives were published.

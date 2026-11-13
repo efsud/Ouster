@@ -111,7 +111,7 @@ function renderNetwork(){
   for(const site of list){
     const button=document.createElement('button');button.className='site';button.dataset.siteId=site.id;
     button.innerHTML=`<strong>${escapeHTML(site.name)}</strong><small>${escapeHTML(site.id)}</small><span class="status">${site.calibration_status?.valid?'Location verified':'Location / access pending'}</span>`;
-    button.onclick=event=>{selectSite(site,button);if(event.isTrusted)$('site-kpi-panel').scrollIntoView({behavior:'smooth',block:'start'});};$('sites-list').append(button);
+    button.onclick=event=>{selectSite(site,button);if(event.isTrusted&&!state.publicLive)$('site-kpi-panel').scrollIntoView({behavior:'smooth',block:'start'});};$('sites-list').append(button);
     if((site.calibration_status?.valid||site.reference_location)&&map){
       const location=site.calibration_status?.valid?site.origin:site.reference_location;
       const point=lidarMarkerPoint(site,location);
@@ -184,7 +184,7 @@ async function refreshLive(){
 
     }
     if(visible>beforeVisible&&data.event_key&&displayedFrames.get(data.site)!==data.event_key){
-      displayedFrames.set(data.site,data.event_key);requestAnimationFrame(()=>api('/api/latency',{event_key:data.event_key,displayed_at:Date.now()/1000}).catch(()=>{}));
+      displayedFrames.set(data.site,data.event_key);if(!state.publicLive)requestAnimationFrame(()=>api('/api/latency',{event_key:data.event_key,displayed_at:Date.now()/1000}).catch(()=>{}));
     }
   }
   for(const [key,m] of movingObjects)if(!seen.has(key)){objectLayer.removeLayer(m.marker);movingObjects.delete(key);}
@@ -287,7 +287,7 @@ $('region').onchange=()=>{
 for(const id of ['approximate-objects','preview-rotation'])$(id).onchange=()=>{liveRequest++;clearObjects();action(refreshLive);};
 $('cadence').onchange=()=>action(()=>loadHistory(true));
 $('apply-filter').onclick=()=>action(()=>loadHistory());
-$('history-site').onchange=()=>{ $('approach').value='';action(()=>loadHistory(true));};
+$('history-site').onchange=()=>{ $('approach').value='';if(!state.publicLive)action(()=>loadHistory(true));};
 $('export').onclick=()=>action(async()=>{if(!$('history-site').value)throw new Error('Select a dataset');window.location.href='/api/export.csv?'+filters();});
 $('load-demo').onclick=()=>action(async()=>{
   await api('/api/demo',{});
@@ -312,7 +312,7 @@ $('collect').onclick=()=>action(async()=>{
 for(const [id,unit] of [['demand','veh/h'],['green','s'],['offset','s']])$(id).oninput=()=>$(id+'-out').textContent=$(id).value+' '+unit;
 $('run-ctm').onclick=()=>action(runCTM);
 action(async()=>{
-  const status=await api('/api/status');state.sites=status.sites;state.corridors=status.corridors||[];state.metrics=status.metrics;
+  const status=await api('/api/status');state.publicLive=Boolean(status.public_live_only);document.body.classList.toggle('public-live',state.publicLive);state.sites=status.sites;state.corridors=status.corridors||[];state.metrics=status.metrics;
   const params=new URLSearchParams(location.search);
   const target=state.sites.find(s=>s.id===params.get('site'));
   if(params.get('region')==='Florida'||target?.region==='Florida')$('region').value='Florida';
@@ -323,7 +323,7 @@ action(async()=>{
   state.sites.sort((a,b)=>(a.region==='Toronto'?0:1)-(b.region==='Toronto'?0:1));
   state.sites.forEach(s=>{$('history-site').add(new Option(s.name,s.id));$('anomaly-site').add(new Option(s.name,s.id));});
   $('history-site').add(new Option('Learning dataset · SYNTHETIC','DEMO-001'));
-  $('history-site').value=state.site?.id||state.sites.find(s=>s.region==='Toronto')?.id||'';action(()=>loadHistory(true));
+  $('history-site').value=state.site?.id||state.sites.find(s=>s.region==='Toronto')?.id||'';if(!state.publicLive)action(()=>loadHistory(true));
   setInterval(()=>refreshLive().catch(()=>{clearObjects();$('connection').textContent='Connection lost';$('object-count').textContent='—';}),250);
 });
 
@@ -404,6 +404,7 @@ $('anomaly-evaluate').onclick=()=>action(async()=>{await api('/api/anomalies/eva
 
 let siteKpiRequest=0;
 async function loadSiteKPIs(keepApproach=false,keepWindow=false){
+  if(state.publicLive)return;
   const site=state.site;if(!site)return;
   const request=++siteKpiRequest;
   $('site-kpi-panel').hidden=false;$('site-kpi-title').textContent=site.name+' · stored KPIs';
