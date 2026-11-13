@@ -54,6 +54,7 @@ function getTracks(id){
 }
 function setup(data){
   index=data;bounds=[data.start,data.end];view=[...bounds];cache=new Map();
+  el('time-reset').textContent=data.end-data.start===3600?'Full hour':'Full recording';
   el('sites').replaceChildren();
   for(const s of index.sites){
     const label=document.createElement('label'), box=document.createElement('input');

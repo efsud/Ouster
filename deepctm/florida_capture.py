@@ -106,7 +106,7 @@ def worker(site, directory, start, end):
         atomic(path, state)
 
 
-def capture():
+def capture(seconds=3600):
     if not sys.stdin.isatty() or not sys.stderr.isatty():
         raise SystemExit('Open the private Terminal launcher to enter credentials.')
     config = json.loads(CONFIG.read_text())
@@ -119,7 +119,7 @@ def capture():
     del username, password
     now = time.time()
     start = now + 60
-    end = start + 3600
+    end = start + seconds
     directory = BASE / (time.strftime('%Y%m%dT%H%M%SZ', time.gmtime(now)) + '-' + uuid.uuid4().hex[:6])
     directory.mkdir(mode=0o700, parents=True)
     atomic(directory / 'config.json', config)
@@ -128,7 +128,7 @@ def capture():
                     restarts={}, unavailable={}, format='gzip JSONL with serialized SDK protobuf')
     atomic(directory / 'manifest.json', manifest)
     atomic(BASE / 'latest.json', {'capture_id': directory.name})
-    print('Checking seven sensors for actual FRAME reception; one-hour window begins in 60 seconds.', flush=True)
+    print(f'Checking seven sensors for actual FRAME reception; {seconds/3600:g}-hour window begins in 60 seconds.', flush=True)
     children, launched, verified = {}, {}, set()
     awake = None
 
@@ -155,7 +155,7 @@ def capture():
             t = time.time()
             if t >= start and manifest['state'] == 'checking_reception':
                 manifest['state'] = 'recording'
-                print('Recording the fixed one-hour window. Keep this Terminal open.', flush=True)
+                print(f'Recording the fixed {seconds/3600:g}-hour window. Keep this Terminal open.', flush=True)
             if shutil.disk_usage(directory).free < MIN_FREE:
                 manifest['state'] = 'disk_limit'
                 break
@@ -217,6 +217,8 @@ def capture():
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--seconds', type=int, choices=(3600, 7200), default=3600,
+                   help='Length of the capture after the 60-second reception check')
     p.add_argument('--worker')
     p.add_argument('--directory', type=Path)
     p.add_argument('--start', type=float)
@@ -225,7 +227,7 @@ def main():
     if a.worker:
         worker(a.worker, a.directory, a.start, a.end)
     else:
-        capture()
+        capture(a.seconds)
 
 
 if __name__ == '__main__':
