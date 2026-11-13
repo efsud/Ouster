@@ -1,0 +1,85 @@
+{
+  "title": "SR-436 \u00b7 Altamonte Springs, Florida",
+  "timezone": "America/New_York",
+  "sites": [
+    {
+      "id": "OBC-AG-SA-C257222",
+      "name": "Cranes Roost & SR-436",
+      "station_group": "cranes_roost",
+      "station_m": 0,
+      "signal_location": {
+        "lat": 28.6619073,
+        "lon": -81.3842442,
+        "fdot_signal_id": "77112"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C257223",
+      "name": "Hattaway Dr & SR-436",
+      "station_group": "hattaway",
+      "station_m": 203.6,
+      "signal_location": {
+        "lat": 28.6622404,
+        "lon": -81.3821919,
+        "fdot_signal_id": "77113"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C251068",
+      "name": "Renaissance Dr & SR-436",
+      "station_group": "renaissance_plaza",
+      "station_m": 420.4,
+      "signal_location": {
+        "lat": 28.6630135,
+        "lon": -81.3801529,
+        "fdot_signal_id": "77114"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C257227",
+      "name": "Plaza Entrance & SR-436",
+      "station_group": "renaissance_plaza",
+      "station_m": 420.4,
+      "signal_location": {
+        "lat": 28.6630135,
+        "lon": -81.3801529,
+        "fdot_signal_id": "77114"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C257236",
+      "name": "Essex Ave & SR-436",
+      "station_group": "essex",
+      "station_m": 636.2,
+      "signal_location": {
+        "lat": 28.6636794,
+        "lon": -81.378075,
+        "fdot_signal_id": "77115"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C257225",
+      "name": "Palm Springs Dr & SR-436",
+      "station_group": "palm_springs",
+      "station_m": 1027.9,
+      "signal_location": {
+        "lat": 28.6637516,
+        "lon": -81.3740618,
+        "fdot_signal_id": "77117"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C257206",
+      "name": "Boston Ave & SR-436",
+      "station_group": "boston",
+      "station_m": 1310.5,
+      "signal_location": {
+        "lat": 28.6638103,
+        "lon": -81.3711659,
+        "fdot_signal_id": "77118"
+      }
+    }
+  ],
+  "station_source": "https://www.cflsmartroads.com/projects/design/tsp/Regional_integrated_corridor_mgmt/Detour_Maps/I-4_Implementation_Guide-RICMS.pdf",
+  "geometry_source": "https://services1.arcgis.com/O1JpcwDW8sjYuddV/ArcGIS/rest/services/Traffic_Signal_Locations_TDA/FeatureServer/0"
+}
