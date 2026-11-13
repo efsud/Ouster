@@ -86,8 +86,8 @@ function alignmentLabel(rotation){
 }
 function renderNetwork(){
   const region=$('region').value;
-  $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven intersections selected. Live data awaits API access and sensor calibration.':'Toronto · Finch West LRT corridor · Ten sensors · approximate live animation. Positions and rotation are uncalibrated; receipt freshness does not establish sensor latency.';
-  const list=state.sites.filter(s=>s.region===region);
+  $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven configured sensors · user-confirmed SDK origins; assumed 180° display rotation. Orientation and sensor latency are unverified.':'Toronto · Finch West LRT corridor · Ten sensors · approximate live animation. Positions and rotation are uncalibrated; receipt freshness does not establish sensor latency.';
+  const list=state.sites.filter(s=>s.region===region).sort((a,b)=>(a.station_m??0)-(b.station_m??0));
   state.site=null;$('site-kpi-panel').hidden=true;clearObjects();sitesLayer?.clearLayers();sensorMarkers.clear();
   $('site-count').textContent=list.length;$('inventory-count').textContent=list.length;
   $('mapped-count').textContent=list.filter(s=>s.calibration_status?.valid||s.reference_location).length;
@@ -95,7 +95,7 @@ function renderNetwork(){
   $('object-count').textContent='—';$('frame-status').textContent='Waiting for a live stream';
   $('selected-name').textContent='Choose an intersection';$('selected-detail').textContent='Verified sensor origins and read-only stream access are needed before live objects can appear.';
   $('site-state').textContent='Awaiting access';$('connection').textContent='Not connected';
-  if(map)map.setView(region==='Florida'?[28.661,-81.386]:[43.751,-79.542],13,{animate:false});
+  if(map)map.setView(region==='Florida'?[28.663,-81.378]:[43.751,-79.542],region==='Florida'?16:13,{animate:false});
   $('sites-list').replaceChildren();
   if(!list.length)$('sites-list').innerHTML='<div class="empty"><strong>No sites configured.</strong>Use the Python launcher to enter API credentials, then add verified Toronto site IDs and sensor origins. No sites have been inferred.</div>';
   for(const site of list){
@@ -105,20 +105,20 @@ function renderNetwork(){
     if((site.calibration_status?.valid||site.reference_location)&&map){
       const location=site.calibration_status?.valid?site.origin:site.reference_location;
       const point=lidarMarkerPoint(site,location);
-      const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.reference_location?.source==='user instruction'?` · User-specified LiDAR position · ${alignmentLabel(site.preview_rotation_deg??220)} · field calibration unverified`:site.region==='Toronto'?' · LiDAR — approximate intersection centre; mounting point unverified':site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
+      const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.reference_location?.source==='user instruction'?` · User-specified LiDAR position · ${alignmentLabel(site.preview_rotation_deg??220)} · field calibration unverified`:site.region==='Florida'?' · User-confirmed SDK origin; assumed 180° orientation, unverified':site.region==='Toronto'?' · LiDAR — approximate intersection centre; mounting point unverified':site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
       sensorMarkers.set(site.id,L.circleMarker(point,{radius:7,color:'#fff',weight:3,dashArray:site.calibration_status?.valid?null:'3 3',fillColor:'#197d79',fillOpacity:1}).bindTooltip(label).on('click',()=>selectSite(site,button)).addTo(sitesLayer));
     }
   }
   const referencePoints=list.map(s=>s.calibration_status?.valid?s.origin:s.reference_location).filter(Boolean);
-  if(map&&referencePoints.length)map.fitBounds(referencePoints.map(p=>[p.lat,p.lng]),{padding:[35,35],maxZoom:14,animate:false});
+  if(map&&referencePoints.length)map.fitBounds(referencePoints.map(p=>[p.lat,p.lng]),{padding:[35,35],maxZoom:region==='Florida'?17:14,animate:false});
   const paths=state.corridors.filter(c=>c.region===region);
   for(const corridor of paths){
     if(!map)break;
     const label=document.createElement('span');label.textContent=corridor.name+' · verified corridor';
     L.polyline(corridor.coordinates.map(([lng,lat])=>[lat,lng]),{color:'#197d79',weight:4,opacity:.6}).bindTooltip(label).addTo(sitesLayer);
   }
-  $('map-note').textContent=region==='Toronto'?'LiDAR and objects share each site’s reference; per-intersection alignment is not field-calibrated':paths.length?paths.length+' verified corridor paths':referencePoints.length+' approximate intersection markers; sensor origins unverified';
-  document.querySelector('.map-footer .legend-dot').parentElement.lastChild.textContent=region==='Toronto'?' Approximate LiDAR location':' Intersection reference';
+  $('map-note').textContent=region==='Toronto'?'LiDAR and objects share each site’s reference; per-intersection alignment is not field-calibrated':paths.length?paths.length+' verified corridor paths':referencePoints.length+' user-confirmed SDK origins; orientation unverified. Zoom to an intersection for live objects.';
+  document.querySelector('.map-footer .legend-dot').parentElement.lastChild.textContent=region==='Toronto'?' Approximate LiDAR location':' SDK origin (orientation unverified)';
   action(refreshLive);
 }
 function selectSite(site,button){
@@ -295,6 +295,9 @@ for(const [id,unit] of [['demand','veh/h'],['green','s'],['offset','s']])$(id).o
 $('run-ctm').onclick=()=>action(runCTM);
 action(async()=>{
   const status=await api('/api/status');state.sites=status.sites;state.corridors=status.corridors||[];state.metrics=status.metrics;
+  const params=new URLSearchParams(location.search);
+  const target=state.sites.find(s=>s.id===params.get('site'));
+  if(params.get('region')==='Florida'||target?.region==='Florida')$('region').value='Florida';
   initMap();renderNetwork();renderCards();renderChart();
   const requestedSite=new URLSearchParams(location.search).get('site');
   const requestedButton=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===requestedSite);

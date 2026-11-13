@@ -5,49 +5,112 @@
       "name": "Renaissance Dr & SR-436",
       "region": "Florida",
       "corridor": "SR-436",
-      "timezone": "America/New_York"
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.662964,
+        "lng": -81.380164,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 180,
+      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
+      "station_m": 420.2
     },
     {
       "id": "OBC-AG-SA-C257206",
       "name": "Boston Ave & SR-436",
       "region": "Florida",
       "corridor": "SR-436",
-      "timezone": "America/New_York"
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.663736,
+        "lng": -81.371171,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 180,
+      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
+      "station_m": 1313.7
     },
     {
       "id": "OBC-AG-SA-C257222",
       "name": "Cranes Roost & SR-436",
       "region": "Florida",
       "corridor": "SR-436",
-      "timezone": "America/New_York"
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.66189,
+        "lng": -81.384276,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 180,
+      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
+      "station_m": 0
     },
     {
       "id": "OBC-AG-SA-C257223",
       "name": "Hattaway Dr & SR-436",
       "region": "Florida",
       "corridor": "SR-436",
-      "timezone": "America/New_York"
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.662275,
+        "lng": -81.382154,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 180,
+      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
+      "station_m": 211.4
     },
     {
       "id": "OBC-AG-SA-C257225",
       "name": "Palm Springs Dr & SR-436",
       "region": "Florida",
       "corridor": "SR-436",
-      "timezone": "America/New_York"
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.663716,
+        "lng": -81.374096,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 180,
+      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
+      "station_m": 1028.3
     },
     {
       "id": "OBC-AG-SA-C257227",
       "name": "Plaza Entrance & SR-436",
       "region": "Florida",
       "corridor": "SR-436",
-      "timezone": "America/New_York"
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.663767,
+        "lng": -81.376086,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 180,
+      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
+      "station_m": 834.0
     },
     {
       "id": "OBC-AG-SA-C257236",
       "name": "Essex Ave & SR-436",
       "region": "Florida",
       "corridor": "SR-436",
-      "timezone": "America/New_York"
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.663678,
+        "lng": -81.378193,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 180,
+      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
+      "station_m": 628.2
     },
     {
       "id": "OBC-AG-SA-C618857",

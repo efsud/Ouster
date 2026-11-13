@@ -238,3 +238,11 @@ Validation: model/trajectory/corridor test suite passes, including split boundar
 ### Make estimated paths easy to find
 
 Added a View estimated paths button that enables pooled-vehicle estimates and focuses the time range on available predicted paths. It preserves selected adjacent links where possible; otherwise it selects Weston–Signet (or the first available trained pair in that direction). Increased blue dashed-line contrast and corrected the observation-only caption. Loading failures now show the HTTP error instead of silently hiding the result. Browser validation confirms one-click activation, object filter, time focus and visible dashed paths.
+
+## Florida live-map integration — November 13, 2026
+
+Connected the seven Florida map entries to the SDK origins already supplied in config/sr436.json. The Florida list follows corridor station order. A region=Florida URL or a Florida site ID selects the Florida map on startup. Sensor markers and approximate object projection use the same origin; the explicit 180-degree preview rotation is an assumption, not a verified calibration. Toronto retains its own rotations and origins.
+
+The connect_florida.command launcher starts the existing dashboard and seven supervised read-only collectors on port 8773 with data/florida-live.sqlite3. Credentials are prompted privately. Live-only mode updates the latest frames without creating an unlimited raw history archive. This does not change the separate Florida historical recording workflows. Objects expire after five seconds and appear at zoom 17 or greater.
+
+Validation: 65 dashboard tests pass; HTTP status confirms seven Florida origins and no falsely verified calibration. Browser inspection confirms the Florida region, seven mapped locations and west-to-east site list. Actual live reception remains pending user login.
