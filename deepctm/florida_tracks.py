@@ -202,10 +202,11 @@ def generate(directory, calibration_path=None):
     if manifest['state'] in {'checking_reception', 'recording'}:
         raise ValueError('Wait until the capture has closed its archives')
     config = json.loads((directory/'config.json').read_text())
-    # First capture predates publication of the FDOT geometry. Preserve its
-    # original config on disk and enrich the derived view by UDID only.
+    # Keep each raw capture configuration as recorded; refresh the derived
+    # view from the current reference catalog by UDID.
     catalog = {s['id']: s for s in json.loads(CONFIG.read_text())['sites']}
-    config['sites'] = [{**catalog[s['id']], **s} for s in config['sites']]
+    config['sites'] = sorted(({**s, **catalog.get(s['id'], {})} for s in config['sites']),
+                             key=lambda s:s['station_m'])
     custom = json.loads(Path(calibration_path).read_text()) if calibration_path else {}
     out = directory/'observed'
     out.mkdir(exist_ok=True)

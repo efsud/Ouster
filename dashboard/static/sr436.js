@@ -125,7 +125,7 @@ async function draw(){
     ctx.fillText(names.join(' / '),left+3,yy-4,right-left-8);
   }
   ctx.fillText('Receipt time · America/New_York',left,bottom+35);
-  ctx.fillText('Signal-station placement if uncalibrated · no estimated vehicles',left,bottom+52,right-left);
+  ctx.fillText('Sensor-station placement if uncalibrated · no estimated vehicles',left,bottom+52,right-left);
   hoverGrid=new Map();
   const lines=new Map();
   let segments=0;

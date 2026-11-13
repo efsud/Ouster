@@ -90,9 +90,9 @@ warm-up or initial-state extension before interpreting the first field bins.
 
 ## Florida geometry and recordings
 
-The field study config has six known signal stations from Cranes Roost to
-Boston and all seven UDIDs. Renaissance and Plaza Entrance remain distinct
-sensors at the same mapped signal. This is a field inventory, not a network
+The field study config has seven known reference sites from Cranes Roost to
+Boston. The confirmed SDK origin for Plaza Entrance is at Altamonte Mall
+Entrance, separate from Renaissance Dr. SDK yaw and movement gates are unverified. This is a field inventory, not a network
 ready to simulate. The `sr436-am-template.json` and
 `sr436-pm-template.json` files intentionally refuse simulation until populated
 with verified geometry and inputs.
