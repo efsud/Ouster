@@ -23,9 +23,9 @@ function objectPixelSize(kind,zoom,latitude){
   const minimum=kind==='pedestrian'?7:8,maximum=kind==='vehicle'?26:kind==='cyclist'?18:14;
   return Math.max(minimum,Math.min(maximum,length/metresPerPixel*24/22));
 }
-function objectIcon(kind,size){
+function objectIcon(kind,size,heading=null){
   const offset=['cyclist','pedestrian'].includes(kind)?-90:0;
-  return L.divIcon({className:'road-user-icon',html:`<div class="object-heading" style="width:${size}px;height:${size}px"><div style="transform:rotate(${offset}deg)">${objectSymbol(kind)}</div><span class="object-heading-tip" hidden></span></div>`,iconSize:[size,size],iconAnchor:[size/2,size/2],tooltipAnchor:[0,-size/2]});
+  return L.divIcon({className:'road-user-icon',html:`<div class="object-heading" style="width:${size}px;height:${size}px;transform:rotate(${heading??0}deg)"><div style="transform:rotate(${offset}deg)">${objectSymbol(kind)}</div><span class="object-heading-tip" hidden></span></div>`,iconSize:[size,size],iconAnchor:[size/2,size/2],tooltipAnchor:[0,-size/2]});
 }
 function movementHeading(from,to){
   const north=(to[0]-from[0])*111320;
@@ -33,14 +33,28 @@ function movementHeading(from,to){
   if(Math.hypot(north,east)<0.25)return null;
   return Math.atan2(east,north)*180/Math.PI;
 }
-function updateObjectHeading(m,target){
-  const bearing=movementHeading(m.headingAnchor,target);
+function updateObjectHeading(m,target,object){
+  const speed=object.speed_mps;
+  if(Number.isFinite(speed)){
+    // Hysteresis prevents stop/start jitter; initialization still uses SDK heading.
+    m.isMoving=m.isMoving?speed>=0.8:speed>=1.2;
+  }
+  let bearing=null;
+  if(m.heading===null||m.isMoving){
+    if(Number.isFinite(object.heading_deg))bearing=object.heading_deg;
+    else bearing=movementHeading(m.headingAnchor,target);
+  }else if(!Number.isFinite(speed)){
+    const north=(target[0]-m.headingAnchor[0])*111320;
+    const east=(target[1]-m.headingAnchor[1])*111320*Math.cos(target[0]*Math.PI/180);
+    if(Math.hypot(north,east)>=1)bearing=movementHeading(m.headingAnchor,target);
+  }
   if(bearing!==null){
     m.heading=m.heading===null?bearing:m.heading+((bearing-m.heading)%360+540)%360-180;
     m.headingAnchor=target.slice();
   }
+  if(Number.isFinite(speed)&&!m.isMoving)m.headingAnchor=target.slice();
   const el=m.marker.getElement()?.querySelector('.object-heading');
-  if(el&&m.heading!==null){el.style.transform=`rotate(${m.heading}deg)`;}
+  if(el&&m.heading!==null)el.style.transform=`rotate(${m.heading}deg)`;
 }
 for(const [kind,style] of Object.entries(objectStyles)){
   const item=document.createElement('span');item.className='object-legend-item';
@@ -96,7 +110,8 @@ function alignPreviewObject(site,object,data){
   const east=(object.lng-origin.lng)*c,north=object.lat-origin.lat;
   const angle=2*data.rotation_deg*Math.PI/180;
   return {...object,lng:origin.lng+(Math.cos(angle)*east+Math.sin(angle)*north)/c,
-    lat:origin.lat+Math.sin(angle)*east-Math.cos(angle)*north};
+    lat:origin.lat+Math.sin(angle)*east-Math.cos(angle)*north,
+    ...(Number.isFinite(object.heading_deg)?{heading_deg:((180-2*data.rotation_deg-object.heading_deg)%360+360)%360}:{})};
 }
 function alignmentLabel(rotation){
   const delta=((rotation-180+180)%360+360)%360-180;
@@ -180,11 +195,11 @@ async function refreshLive(){
       let m=movingObjects.get(key);
       const target=[o.lat,o.lng],size=objectPixelSize(o.kind,map.getZoom(),o.lat);
       if(!m){
-        const marker=L.marker(target,{icon:objectIcon(o.kind,size),title:(objectStyles[o.kind]||objectStyles.unknown).label,keyboard:false}).addTo(objectLayer);
-        m={marker,size,kind:o.kind,heading:null,headingAnchor:target.slice(),from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
+        const marker=L.marker(target,{icon:objectIcon(o.kind,size,Number.isFinite(o.heading_deg)?o.heading_deg:null),title:(objectStyles[o.kind]||objectStyles.unknown).label,keyboard:false}).addTo(objectLayer);
+        m={marker,size,kind:o.kind,heading:Number.isFinite(o.heading_deg)?o.heading_deg:null,isMoving:o.speed_mps>=1.2,headingAnchor:target.slice(),from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
       }
-      if(m.kind!==o.kind||Math.abs(m.size-size)>.2){m.marker.setIcon(objectIcon(o.kind,size));m.kind=o.kind;m.size=size;}
-      updateObjectHeading(m,target);
+      if(m.kind!==o.kind||Math.abs(m.size-size)>.2){m.marker.setIcon(objectIcon(o.kind,size,m.heading));m.kind=o.kind;m.size=size;}
+      updateObjectHeading(m,target,o);
       if(m.event!==data.event_key||m.to[0]!==o.lat||m.to[1]!==o.lng){m.from=m.marker.getLatLng();m.to=target;m.started=performance.now();m.animationDone=false;m.event=data.event_key;}
       m.expires=Date.now()+Math.max(0,5-(data.age_s||0))*1000;
       const label=document.createElement('span');label.textContent=`${data.site} · ${o.kind||o.class} ${o.id} · ${data.state==='approximate'?'APPROXIMATE · receipt time':'sensor time'} ${utcTime(o.timestamp)} · age ${number(o.age_s)} s`;

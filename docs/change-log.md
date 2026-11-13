@@ -276,3 +276,11 @@ Replaced the busy car pictogram with a simpler top-down silhouette, removed the 
 Polling now attempts updates every 150 ms instead of 250 ms, with one request in flight at a time. Position interpolation takes 120 ms instead of 250 ms, and stationary markers avoid redundant animation writes. These reduce client-added delay; upstream frame cadence and internet latency still govern freshness. No extrapolation or traffic-speed multiplier was added.
 
 Validated JavaScript syntax, zoom sizing for both corridor latitudes, and the existing coordinate-transform regression check. Reloaded the public Florida viewer and visually confirmed smaller, separated vehicle icons. The shared assets apply to Finch, Florida, local and public viewers; existing tabs need refresh.
+
+### First-frame vehicle orientation and stopped-heading stability
+
+Live snapshots now include SDK orientation projected into map bearing plus speed. Archived moving vehicle segments across both corridors supported clockwise radians from local +X (negative rotation matches displacement angle; median absolute differences approximately 0.3–1° in the sampled files). This validates the angle convention on those samples, not field calibration or every stopped object. The frontend applies the same reflection as the position correction.
+
+Icons receive their heading in the initial HTML, before display, instead of spawning north-facing and waiting for motion. Moving objects follow SDK orientation. Speed hysteresis starts heading updates at 1.2 m/s and freezes them below 0.8 m/s, avoiding stopped-position jitter. Objects first seen stopped use their reported orientation. Direction remains subject to sensor estimation and each site's provisional alignment; no forced road snapping masks turning vehicles.
+
+Reloaded the combined (8775) and public (8776) viewers without restarting collectors or changing the tunnel URL. Both corridor feeds returned headings for all objects in the validation snapshot; public Florida queues visually aligned with their approaches. Tests cover zero-valued protobuf orientation, invalid orientation, first-frame heading, stopped jitter, resuming motion and mirrored angle transforms. Legacy single-corridor server processes require restart to load the new backend fields; use the combined or public link.

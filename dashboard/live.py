@@ -1,7 +1,16 @@
 """Project stored SDK frames to map coordinates without mutating sites."""
 import time
+import math
 from .analytics import local_to_geo
 from .calibration import report
+
+def orientation_fields(obj, rotation):
+    # SDK rotation is clockwise radians from local +X (validated against tracks).
+    try:
+        angle=float(obj.get('rotation',0));speed=float(obj.get('speed',0))
+        if not math.isfinite(angle) or not math.isfinite(speed):return {}
+        return {'heading_deg':(90+math.degrees(angle)-rotation)%360,'speed_mps':max(0,speed)}
+    except (TypeError,ValueError):return {}
 
 def snapshot(store, site, now=None):
     latest=store.latest(site['id'])
@@ -40,7 +49,7 @@ def snapshot(store, site, now=None):
             lat,lng=local_to_geo(obj.get('centerX',0),obj.get('centerY',0),origin['lat'],origin['lng'],site['rotation_deg'])
             code=str(obj.get('classType','unknown'))
             kind='vehicle' if code in ['1','2','3','4','5','6','7','8','9','15'] else 'cyclist' if code in ['12','13','17'] else 'pedestrian' if code in ['0','10','11','14','16'] else 'unknown'
-            base['objects'].append({'id':obj['id'],'lat':lat,'lng':lng,'class':code,'kind':kind,'timestamp':latest['timestamp'],'age_s':age})
+            base['objects'].append({'id':obj['id'],'lat':lat,'lng':lng,'class':code,'kind':kind,'timestamp':latest['timestamp'],'age_s':age,**orientation_fields(obj,site['rotation_deg'])})
         except (ValueError,KeyError,TypeError):
             rejected+=1
     return dict(base,state='live',rejected_objects=rejected)
@@ -68,6 +77,6 @@ def approximate_snapshot(store,site,now=None,rotation=None):
             lat,lng=local_to_geo(obj.get('centerX',0),obj.get('centerY',0),origin['lat'],origin['lng'],rotation)
             code=str(obj.get('classType','unknown'))
             kind='vehicle' if code in ['1','2','3','4','5','6','7','8','9','15'] else 'cyclist' if code in ['12','13','17'] else 'pedestrian' if code in ['0','10','11','14','16'] else 'unknown'
-            base['objects'].append({'id':obj['id'],'lat':lat,'lng':lng,'kind':kind,'age_s':base['age_s'],'timestamp':row['received_at']})
+            base['objects'].append({'id':obj['id'],'lat':lat,'lng':lng,'kind':kind,'age_s':base['age_s'],'timestamp':row['received_at'],**orientation_fields(obj,rotation)})
         except (ValueError,KeyError,TypeError,AttributeError):continue
     return dict(base,state='approximate',reason='Live receipts · approximate origin and rotation · upstream delay unverified')

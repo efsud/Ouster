@@ -5,6 +5,13 @@ from dashboard.storage import Store
 from dashboard.live import approximate_snapshot,snapshot
 
 class PreviewTest(unittest.TestCase):
+    def test_sdk_orientation_projection_and_proto_defaults(self):
+        import math
+        from dashboard.live import orientation_fields
+        self.assertEqual(orientation_fields({'rotation':math.pi/2,'speed':2},90),{'heading_deg':90,'speed_mps':2})
+        self.assertEqual(orientation_fields({},90),{'heading_deg':0,'speed_mps':0})
+        self.assertEqual(orientation_fields({'rotation':float('nan')},90),{})
+
     def test_site_rotation_and_origin_with_explicit_override(self):
         from dashboard.analytics import local_to_geo
         with tempfile.TemporaryDirectory() as tmp:
