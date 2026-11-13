@@ -254,3 +254,9 @@ Checked 17 configured sensors using saved moving tracks and OpenStreetMap geomet
 ### Finch live reconnection
 
 Added `scripts/connect_finch_live.command` for the current per-intersection alignment UI on port 8774. The old 8765 process rejected the `site` rotation option and had no fresh Toronto streams. The dedicated live-only database keeps this session separate from Florida and historical captures. Validated launcher shell syntax and the virtual environment's certificate bundle; fresh reception awaits private login.
+
+### One live-map link for Finch and Florida
+
+The network dropdown previously changed region while querying a database containing only one corridor. Added `--combined-live` to serve Toronto live snapshots from `data/finch-live.sqlite3` and Florida snapshots from `data/florida-live.sqlite3`. Historical queries retain their existing database; this mode starts no processing worker or new collectors. The selector now opens Weston or Cranes Roost at object-visible zoom and updates the URL.
+
+Run `scripts/open_combined_live.command` and use `http://127.0.0.1:8775/?region=Toronto&site=OBC-AG-SA-C257220#map`. Keep both existing collector Terminals and this viewer open. No additional login is needed for the viewer. Validated region isolation and Toronto → Florida → Toronto switching in an API test; eight focused tests passed. Browser verification showed seven Florida and eight Finch streams, with visible objects after switching back. Norfinch and Jane remain unavailable for the previously documented reasons.

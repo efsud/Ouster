@@ -276,7 +276,14 @@ async function runCTM(){
 }
 const methods=[['Control delay','Mean of (arrival − entry − approach length / free-flow speed). Requires complete traversals.'],['Stopped delay','Time-integral of speed at or below the crawl threshold. Requires a complete observed traversal and valid samples.'],['Queue length · P95','95th percentile of visible queue extents on a regular time grid. Membership requires lane, spacing, and queue-region checks.'],['Arrivals on green','100 × green arrivals / all arrivals. Requires verified clock synchronization and a known signal state for every arrival.'],['Split failure','100 × complete visible cycles with a residual queue / complete visible cycles.'],['Approach volume','Unique physical trajectory entries × 3600 / window seconds. Entry events may be used without a complete traversal.'],['Discharge rate','Queued departures during effective green × 3600 / green seconds / lane count.'],['CTM vs observed KPIs','CTM propagates aggregate density. It does not directly observe individual stopped time, arrivals, or LiDAR queue geometry. Simulation outputs remain separate.']];
 $('methods').innerHTML=methods.map(([title,body])=>`<article class="panel padded"><h3>${title}</h3><p>${body}</p></article>`).join('');
-$('region').onchange=renderNetwork;
+$('region').onchange=()=>{
+  renderNetwork();
+  const id=$('region').value==='Florida'?'OBC-AG-SA-C257222':'OBC-AG-SA-C257220';
+  const site=state.sites.find(s=>s.id===id);
+  const button=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===id);
+  if(site&&button)selectSite(site,button);
+  const url=new URL(location.href);url.searchParams.set('region',$('region').value);url.searchParams.set('site',id);history.replaceState(null,'',url);
+};
 for(const id of ['approximate-objects','preview-rotation'])$(id).onchange=()=>{liveRequest++;clearObjects();action(refreshLive);};
 $('cadence').onchange=()=>action(()=>loadHistory(true));
 $('apply-filter').onclick=()=>action(()=>loadHistory());

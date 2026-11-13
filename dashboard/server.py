@@ -37,6 +37,10 @@ def sites():
         entries = list(mapping.values())
     return entries
 
+def live_store(server, site):
+    """Select a region-specific live database without changing historical storage."""
+    return getattr(server,'live_stores',{}).get(site.get('region'),server.store)
+
 def corridors():
     """Only locally supplied, verified GeoJSON-style LineStrings are exposed."""
     local=ROOT/'config/sites.local.json'
@@ -132,14 +136,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send([{**dict(r),'evidence':json.loads(r['evidence'])} for r in rows])
             if parsed.path == '/api/network-live':
                 entries=[s for s in sites() if s.get('region')==q.get('region')]
-                now=time.time()
                 requested_rotation=q.get('rotation','site')
                 rotation=None if requested_rotation=='site' else finite(float(requested_rotation),'rotation')
-                return self.send({'snapshots':[approximate_snapshot(self.server.store,s,now,rotation) if q.get('approximate')=='true' else snapshot(self.server.store,s,now) for s in entries]})
+                return self.send({'snapshots':[approximate_snapshot(live_store(self.server,s),s,None,rotation) if q.get('approximate')=='true' else snapshot(live_store(self.server,s),s) for s in entries]})
             if parsed.path == '/api/live':
                 site = next((s for s in sites() if s['id']==q.get('site')),None)
                 if not site: raise ValueError('Select a configured site')
-                return self.send(snapshot(self.server.store,site))
+                return self.send(snapshot(live_store(self.server,site),site))
             if parsed.path in ['/api/history','/api/export.csv']:
                 page_limit=max(1,min(1000,int(q.get('limit',1000))));offset=max(0,int(q.get('offset',0)))
                 rows = self.server.store.history(q.get('site'),float(q['start']) if q.get('start') else None,float(q['end']) if q.get('end') else None,q.get('source'),q.get('approach'),limit=-1 if parsed.path.endswith('.csv') else page_limit+1 if q.get('paged')=='true' else 10000,offset=0 if parsed.path.endswith('.csv') else offset,cadence=q.get('cadence'))
@@ -241,15 +244,20 @@ class Handler(BaseHTTPRequestHandler):
             self.send({'error':str(exc)},400)
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__); p.add_argument('--port',type=int,default=8765); args=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__); p.add_argument('--port',type=int,default=8765)
+    p.add_argument('--combined-live',action='store_true',help='Read Finch and Florida live databases; do not start a processing worker')
+    args=p.parse_args()
     server=ThreadingHTTPServer(('127.0.0.1',args.port),Handler)
     server.store=Store(os.getenv('OUSTER_DB',str(ROOT/'data/ouster.sqlite3')))
+    server.live_stores={region:Store(ROOT/'data'/name) for region,name in [('Toronto','finch-live.sqlite3'),('Florida','florida-live.sqlite3')]} if args.combined_live else {}
     server.signal_reader=SignalReader(server.store)
     server.bluecity=BlueCity()
-    stop_worker=start_worker(server.store,sites)
+    stop_worker=None if args.combined_live else start_worker(server.store,sites)
     print(f'Ouster dashboard: http://127.0.0.1:{args.port}',flush=True)
     try: server.serve_forever()
     except KeyboardInterrupt: pass
-    finally:stop_worker.set();server.server_close()
+    finally:
+        if stop_worker:stop_worker.set()
+        server.server_close()
 
 if __name__=='__main__': main()
