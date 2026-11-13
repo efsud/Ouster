@@ -1,0 +1,27 @@
+{
+  "name": "SR-436 AM \u2014 unverified field template",
+  "synthetic": false,
+  "peak": "AM",
+  "intersections": [
+    "cranes_roost",
+    "hattaway",
+    "renaissance_plaza",
+    "essex",
+    "palm_springs",
+    "boston"
+  ],
+  "geometry_verified": false,
+  "geometry_source": null,
+  "signal_source": null,
+  "timezone": "America/New_York",
+  "driving_side": "right",
+  "units": "SI",
+  "duration_s": 7200,
+  "output_bin_s": 300,
+  "dt_s": 1,
+  "min_cell_m": 15,
+  "sections": [],
+  "connections": [],
+  "origins": [],
+  "withdrawals": []
+}

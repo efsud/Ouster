@@ -1,0 +1,113 @@
+{
+  "name": "SR-436 Altamonte Springs \u2014 field geometry audit only",
+  "bbox_wsen": [
+    -81.386,
+    28.66,
+    -81.3695,
+    28.666
+  ],
+  "timezone": "America/New_York",
+  "peaks": {
+    "AM": [
+      "07:00",
+      "09:00"
+    ],
+    "PM": [
+      "16:00",
+      "18:00"
+    ]
+  },
+  "study_dates": [
+    "2026-11-13"
+  ],
+  "driving_side": "right",
+  "units": "SI",
+  "signal_stations": [
+    "cranes_roost",
+    "hattaway",
+    "renaissance_plaza",
+    "essex",
+    "palm_springs",
+    "boston"
+  ],
+  "sensor_catalog": [
+    {
+      "id": "OBC-AG-SA-C257222",
+      "name": "Cranes Roost & SR-436",
+      "station_group": "cranes_roost",
+      "station_m": 0,
+      "signal_location": {
+        "lat": 28.6619073,
+        "lon": -81.3842442,
+        "fdot_signal_id": "77112"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C257223",
+      "name": "Hattaway Dr & SR-436",
+      "station_group": "hattaway",
+      "station_m": 203.6,
+      "signal_location": {
+        "lat": 28.6622404,
+        "lon": -81.3821919,
+        "fdot_signal_id": "77113"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C251068",
+      "name": "Renaissance Dr & SR-436",
+      "station_group": "renaissance_plaza",
+      "station_m": 420.4,
+      "signal_location": {
+        "lat": 28.6630135,
+        "lon": -81.3801529,
+        "fdot_signal_id": "77114"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C257227",
+      "name": "Plaza Entrance & SR-436",
+      "station_group": "renaissance_plaza",
+      "station_m": 420.4,
+      "signal_location": {
+        "lat": 28.6630135,
+        "lon": -81.3801529,
+        "fdot_signal_id": "77114"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C257236",
+      "name": "Essex Ave & SR-436",
+      "station_group": "essex",
+      "station_m": 636.2,
+      "signal_location": {
+        "lat": 28.6636794,
+        "lon": -81.378075,
+        "fdot_signal_id": "77115"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C257225",
+      "name": "Palm Springs Dr & SR-436",
+      "station_group": "palm_springs",
+      "station_m": 1027.9,
+      "signal_location": {
+        "lat": 28.6637516,
+        "lon": -81.3740618,
+        "fdot_signal_id": "77117"
+      }
+    },
+    {
+      "id": "OBC-AG-SA-C257206",
+      "name": "Boston Ave & SR-436",
+      "station_group": "boston",
+      "station_m": 1310.5,
+      "signal_location": {
+        "lat": 28.6638103,
+        "lon": -81.3711659,
+        "fdot_signal_id": "77118"
+      }
+    }
+  ],
+  "geometry_verified": false
+}
