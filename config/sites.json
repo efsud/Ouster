@@ -12,9 +12,11 @@
         "source": "User-confirmed SDK trajectory origins, 2026-11-13",
         "accuracy": "user-confirmed SDK origin; orientation unverified"
       },
-      "preview_rotation_deg": 180,
-      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
-      "station_m": 420.2
+      "preview_rotation_deg": 90,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 420.2,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C257206",
@@ -28,9 +30,11 @@
         "source": "User-confirmed SDK trajectory origins, 2026-11-13",
         "accuracy": "user-confirmed SDK origin; orientation unverified"
       },
-      "preview_rotation_deg": 180,
-      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
-      "station_m": 1313.7
+      "preview_rotation_deg": 89,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 1313.7,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C257222",
@@ -44,9 +48,11 @@
         "source": "User-confirmed SDK trajectory origins, 2026-11-13",
         "accuracy": "user-confirmed SDK origin; orientation unverified"
       },
-      "preview_rotation_deg": 180,
-      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
-      "station_m": 0
+      "preview_rotation_deg": 90,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 0,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C257223",
@@ -60,9 +66,11 @@
         "source": "User-confirmed SDK trajectory origins, 2026-11-13",
         "accuracy": "user-confirmed SDK origin; orientation unverified"
       },
-      "preview_rotation_deg": 180,
-      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
-      "station_m": 211.4
+      "preview_rotation_deg": 90,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 211.4,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C257225",
@@ -76,9 +84,11 @@
         "source": "User-confirmed SDK trajectory origins, 2026-11-13",
         "accuracy": "user-confirmed SDK origin; orientation unverified"
       },
-      "preview_rotation_deg": 180,
-      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
-      "station_m": 1028.3
+      "preview_rotation_deg": 90,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 1028.3,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C257227",
@@ -92,9 +102,11 @@
         "source": "User-confirmed SDK trajectory origins, 2026-11-13",
         "accuracy": "user-confirmed SDK origin; orientation unverified"
       },
-      "preview_rotation_deg": 180,
-      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
-      "station_m": 834.0
+      "preview_rotation_deg": 90,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 834.0,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C257236",
@@ -108,9 +120,11 @@
         "source": "User-confirmed SDK trajectory origins, 2026-11-13",
         "accuracy": "user-confirmed SDK origin; orientation unverified"
       },
-      "preview_rotation_deg": 180,
-      "preview_alignment_note": "Assumed 180 degree display rotation; not field calibrated",
-      "station_m": 628.2
+      "preview_rotation_deg": 91,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 628.2,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C618857",
@@ -125,7 +139,9 @@
         "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
         "query": "Finch W & Norfinch, Toronto, Ontario, Canada",
         "retrieved": "2026-09-28"
-      }
+      },
+      "preview_alignment_note": "Alignment unresolved: opposite orientations fit similarly; prior setting retained",
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C618861",
@@ -141,7 +157,9 @@
         "retrieved": "2026-10-06"
       },
       "preview_rotation_deg": 140,
-      "preview_alignment_version": "user-2026-10-06-r2"
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_alignment_note": "Alignment unresolved: opposite orientations fit similarly; prior setting retained",
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C251071",
@@ -156,8 +174,11 @@
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 135,
-      "preview_alignment_version": "user-2026-10-06-r2"
+      "preview_rotation_deg": 268,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C351163",
@@ -172,7 +193,9 @@
         "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
         "query": "Finch W & Jane, Toronto, Ontario, Canada",
         "retrieved": "2026-09-28"
-      }
+      },
+      "preview_alignment_note": "Alignment unresolved: no recorded tracks",
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C251052",
@@ -187,8 +210,11 @@
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 145,
-      "preview_alignment_version": "user-2026-10-06-r2"
+      "preview_rotation_deg": 89,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C257220",
@@ -203,8 +229,11 @@
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 210,
-      "preview_alignment_version": "user-2026-10-06-r2"
+      "preview_rotation_deg": 91,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C257238",
@@ -219,8 +248,11 @@
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 220,
-      "preview_alignment_version": "user-2026-10-06-r2"
+      "preview_rotation_deg": 90,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C257208",
@@ -235,8 +267,11 @@
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 140,
-      "preview_alignment_version": "user-2026-10-06-r2"
+      "preview_rotation_deg": 90,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C251055",
@@ -251,8 +286,11 @@
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 135,
-      "preview_alignment_version": "user-2026-10-06-r2"
+      "preview_rotation_deg": 271,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
     },
     {
       "id": "OBC-AG-SA-C251064",
@@ -267,8 +305,11 @@
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 210,
-      "preview_alignment_version": "user-2026-10-06-r2"
+      "preview_rotation_deg": 90,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
     }
   ]
 }

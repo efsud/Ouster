@@ -80,13 +80,23 @@ function initMap(){
 function lidarMarkerPoint(site,location){
   return [location.lat,location.lng];
 }
+// Reflect the local SDK Y axis in the approximate display only. The API's
+// rotated geographic vector is transformed by R(theta) M R(-theta).
+function alignPreviewObject(site,object,data){
+  if(data.state!=='approximate'||!site?.preview_mirror_y||!site.reference_location)return object;
+  const origin=site.reference_location,c=Math.cos(origin.lat*Math.PI/180);
+  const east=(object.lng-origin.lng)*c,north=object.lat-origin.lat;
+  const angle=2*data.rotation_deg*Math.PI/180;
+  return {...object,lng:origin.lng+(Math.cos(angle)*east+Math.sin(angle)*north)/c,
+    lat:origin.lat+Math.sin(angle)*east-Math.cos(angle)*north};
+}
 function alignmentLabel(rotation){
   const delta=((rotation-180+180)%360+360)%360-180;
   return delta===0?'180° baseline':`${Math.abs(delta)}° ${delta<0?'clockwise':'anticlockwise'} (${rotation}° total)`;
 }
 function renderNetwork(){
   const region=$('region').value;
-  $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven configured sensors · user-confirmed SDK origins; assumed 180° display rotation. Orientation and sensor latency are unverified.':'Toronto · Finch West LRT corridor · Ten sensors · approximate live animation. Positions and rotation are uncalibrated; receipt freshness does not establish sensor latency.';
+  $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven configured sensors · user-confirmed SDK origins; provisional per-site road alignment. Field calibration and sensor latency remain unverified.':'Toronto · Finch West LRT corridor · Ten sensors · approximate live animation. Positions and rotation are uncalibrated; receipt freshness does not establish sensor latency.';
   const list=state.sites.filter(s=>s.region===region).sort((a,b)=>(a.station_m??0)-(b.station_m??0));
   state.site=null;$('site-kpi-panel').hidden=true;clearObjects();sitesLayer?.clearLayers();sensorMarkers.clear();
   $('site-count').textContent=list.length;$('inventory-count').textContent=list.length;
@@ -105,7 +115,7 @@ function renderNetwork(){
     if((site.calibration_status?.valid||site.reference_location)&&map){
       const location=site.calibration_status?.valid?site.origin:site.reference_location;
       const point=lidarMarkerPoint(site,location);
-      const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.reference_location?.source==='user instruction'?` · User-specified LiDAR position · ${alignmentLabel(site.preview_rotation_deg??220)} · field calibration unverified`:site.region==='Florida'?' · User-confirmed SDK origin; assumed 180° orientation, unverified':site.region==='Toronto'?' · LiDAR — approximate intersection centre; mounting point unverified':site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
+      const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.reference_location?.source==='user instruction'?` · User-specified LiDAR position · Rotation ${site.preview_rotation_deg??220}°${site.preview_mirror_y?" · SDK Y inverted":""} · ${site.preview_alignment_note||"field calibration unverified"}`:site.region==='Florida'?` · User-confirmed SDK origin · ${site.preview_rotation_deg}°${site.preview_mirror_y?' · SDK Y inverted':''} · ${site.preview_alignment_note||'unverified'}`:site.region==='Toronto'?' · LiDAR — approximate intersection centre; mounting point unverified':site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
       sensorMarkers.set(site.id,L.circleMarker(point,{radius:7,color:'#fff',weight:3,dashArray:site.calibration_status?.valid?null:'3 3',fillColor:'#197d79',fillOpacity:1}).bindTooltip(label).on('click',()=>selectSite(site,button)).addTo(sitesLayer));
     }
   }
@@ -146,11 +156,12 @@ async function refreshLive(){
     if(button)button.querySelector('.status').textContent=data.health?.error||data.state;
     if(state.site?.id===data.site){
       $('site-state').textContent=data.state;
-      $('selected-detail').textContent=(data.reason||`${data.site} · ${data.objects.length} objects · ${data.rejected_objects||0} invalid objects excluded`)+(data.rotation_deg!==undefined?` · Alignment ${alignmentLabel(data.rotation_deg)}`:'');
+      $('selected-detail').textContent=(data.reason||`${data.site} · ${data.objects.length} objects · ${data.rejected_objects||0} invalid objects excluded`)+(data.rotation_deg!==undefined?` · Rotation ${data.rotation_deg}°${state.site?.preview_mirror_y?' · SDK Y inverted':''} · ${state.site?.preview_alignment_note||'unverified'}`:'');
     }
     const beforeVisible=visible;
     const objectSite=state.sites.find(s=>s.id===data.site);
     const displayObjects=data.objects.map(o=>{
+      o=alignPreviewObject(objectSite,o,data);
       if(!objectSite||objectSite.region!=='Toronto')return o;
       const [lat,lng]=lidarMarkerPoint(objectSite,o);return {...o,lat,lng};
     });

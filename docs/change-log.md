@@ -246,3 +246,7 @@ Connected the seven Florida map entries to the SDK origins already supplied in c
 The connect_florida.command launcher starts the existing dashboard and seven supervised read-only collectors on port 8773 with data/florida-live.sqlite3. Credentials are prompted privately. Live-only mode updates the latest frames without creating an unlimited raw history archive. This does not change the separate Florida historical recording workflows. Objects expire after five seconds and appear at zoom 17 or greater.
 
 Validation: 65 dashboard tests pass; HTTP status confirms seven Florida origins and no falsely verified calibration. Browser inspection confirms the Florida region, seven mapped locations and west-to-east site list. Actual live reception remains pending user login.
+
+## Road-axis alignment audit for Florida and Finch
+
+Checked 17 configured sensors using saved moving tracks and OpenStreetMap geometry/direction tags. Corrected the provisional display transform at seven Florida and seven Finch sites, including inferred local-axis handedness. Preserved Norfinch and Driftwood because opposite orientations remain ambiguous, and Jane because no usable tracks exist. See docs/map-alignment-audit.md for individual values, holdout evidence, method, backup and limitations. Existing live collectors remain running; reload the map to use the new display transform. Historical plots/models retain their old geometry snapshots.
