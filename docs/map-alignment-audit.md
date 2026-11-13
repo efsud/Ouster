@@ -41,3 +41,9 @@ Angles are total counterclockwise rotations **after inverting local SDK Y** for 
 Previous configuration: `data/alignment/sites-before-alignment.json`. Reproduce the diagnostic with `.venv-deepctm/bin/python scripts/audit_map_rotations.py` after retaining the saved map extracts. The diagnostic itself never edits configuration.
 
 Validation: 65 dashboard tests, three rotation/direction scoring tests, and a JavaScript numerical test comparing display reflection with reflection-before-rotation. Visual review used before/after overlays against road geometry. Residual offsets remain at some Finch sites; changing the sensor origin would require separate evidence.
+
+## Opening the corrected Finch live map
+
+Run `scripts/connect_finch_live.command` and enter BlueCity credentials in its private Terminal prompt. It starts the current server and all ten configured Toronto subscriptions at `http://127.0.0.1:8774/?region=Toronto&site=OBC-AG-SA-C257220#map`, using an isolated `data/finch-live.sqlite3`. Keep Terminal open. This launcher updates live previews without creating a new raw historical archive. It does not interrupt the Florida session or replace historical recordings.
+
+The previous Finch server on port 8765 was found running older code: it rejected `rotation=site` and returned stale/unavailable frames for all ten sites. The new session loads the existing seven provisional Finch corrections. Norfinch, Driftwood and Jane retain their documented unresolved settings. Authentication and fresh reception must be verified after login; the launcher alone is not proof of live access.

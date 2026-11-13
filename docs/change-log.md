@@ -250,3 +250,7 @@ Validation: 65 dashboard tests pass; HTTP status confirms seven Florida origins 
 ## Road-axis alignment audit for Florida and Finch
 
 Checked 17 configured sensors using saved moving tracks and OpenStreetMap geometry/direction tags. Corrected the provisional display transform at seven Florida and seven Finch sites, including inferred local-axis handedness. Preserved Norfinch and Driftwood because opposite orientations remain ambiguous, and Jane because no usable tracks exist. See docs/map-alignment-audit.md for individual values, holdout evidence, method, backup and limitations. Existing live collectors remain running; reload the map to use the new display transform. Historical plots/models retain their old geometry snapshots.
+
+### Finch live reconnection
+
+Added `scripts/connect_finch_live.command` for the current per-intersection alignment UI on port 8774. The old 8765 process rejected the `site` rotation option and had no fresh Toronto streams. The dedicated live-only database keeps this session separate from Florida and historical captures. Validated launcher shell syntax and the virtual environment's certificate bundle; fresh reception awaits private login.
