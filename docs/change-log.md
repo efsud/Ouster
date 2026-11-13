@@ -268,3 +268,11 @@ Added `dashboard.public_live` and `scripts/share_combined_live.command`. The ded
 Cloudflare's official arm64 client is installed locally in ignored `data/public-live/`; the launcher prints a temporary public URL and logs it to `data/public-live/tunnel.log`. Keep this Mac awake, connected and both collector Terminals plus the sharing Terminal running. Restarting the quick tunnel generates a new URL. Anyone with the URL can view both corridors. This is a temporary live viewer, not permanent hosting.
 
 Validation: public endpoint allowlist/mutation tests; runtime 200 responses for both corridor APIs, 403 for private reads and 405 for POST. Public HTTPS browser verified Finch and Florida objects and region switching. Shell DNS could not resolve the new hostname at validation time; browser HTTPS succeeded. No credentials or raw archives were published.
+
+### Smaller objects and more responsive live animation
+
+Replaced the busy car pictogram with a simpler top-down silhouette, removed the oversized heading arrow, and made icon size follow map zoom. Vehicle sizing uses a symbolic 4.5 m reference with an 8–26 px visibility clamp, not measured vehicle dimensions; pedestrians and cyclists have smaller limits. At the normal intersection zoom, cars are roughly 9–11 px instead of 20 px. Object coordinates are unchanged, so real queues and coincident detections are not artificially spread apart.
+
+Polling now attempts updates every 150 ms instead of 250 ms, with one request in flight at a time. Position interpolation takes 120 ms instead of 250 ms, and stationary markers avoid redundant animation writes. These reduce client-added delay; upstream frame cadence and internet latency still govern freshness. No extrapolation or traffic-speed multiplier was added.
+
+Validated JavaScript syntax, zoom sizing for both corridor latitudes, and the existing coordinate-transform regression check. Reloaded the public Florida viewer and visually confirmed smaller, separated vehicle icons. The shared assets apply to Finch, Florida, local and public viewers; existing tabs need refresh.

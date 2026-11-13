@@ -8,7 +8,7 @@ let map, sitesLayer, objectLayer, toastTimer, liveRequest=0;
 const objectStyles={vehicle:{label:'Vehicle',color:'#426fba'},pedestrian:{label:'Pedestrian',color:'#17a990'},cyclist:{label:'Cyclist',color:'#a46eab'},unknown:{label:'Unknown / unclassified',color:'#87949b'}};
 // Pictograms are symbolic; heading is inferred from observed displacement.
 const objectShapes={
-  vehicle:'<g stroke="none"><rect x="5" y="5" width="3" height="5" rx="1" fill="#23313b"/><rect x="16" y="5" width="3" height="5" rx="1" fill="#23313b"/><rect x="5" y="15" width="3" height="5" rx="1" fill="#23313b"/><rect x="16" y="15" width="3" height="5" rx="1" fill="#23313b"/><rect x="7" y="1" width="10" height="22" rx="4" fill="currentColor"/><path d="M9 6h6l1 4H8zM8 16h8l-1 3H9z" fill="#c9e6f4"/><rect x="9" y="11" width="6" height="4" rx="1" fill="#ffffff" opacity=".3"/><path d="M8 3h2v2H8zm6 0h2v2h-2z" fill="#fff3be"/><path d="M8 20h2v1H8zm6 0h2v1h-2z" fill="#df6d68"/></g>',
+  vehicle:'<rect x="7" y="1" width="10" height="22" rx="3" fill="currentColor" stroke="#263c55" stroke-width=".7"/><path d="M8.5 6h7l.7 4H7.8zM8 16h8l-.7 3H8.7z" fill="#cde6ef" stroke="none"/><path d="M8 3h2m4 0h2" stroke="#fff3bf" stroke-width="1.4"/><path d="M8 21h2m4 0h2" stroke="#d74e4e" stroke-width="1.2"/>',
   pedestrian:'<circle cx="13" cy="3.5" r="2.5" fill="currentColor" stroke="none"/><path d="M12 8l-2 6 4 2 3 6M10 14l-4 7M11 9l-4 4-3 1M13 9l3 4 4 1" stroke-width="2.8"/><path d="M11 7h3l1 7-5 1z" fill="currentColor" stroke="none"/>',
   cyclist:'<g stroke="#34424d" stroke-width="1.5"><circle cx="5" cy="17.5" r="4"/><circle cx="19" cy="17.5" r="4"/></g><path d="M5 17.5l4-7 5 7H5l7-5h4l3 5.5M8 10h3" stroke-width="1.5"/><circle cx="16" cy="3.5" r="2.3" fill="currentColor" stroke="none"/><path d="M13 7l-4 4 5 3-2 6M13 7l4 3h3" stroke-width="2.8"/>',
   unknown:'<path d="M12 3l9 9-9 9-9-9z" fill="currentColor" stroke="none"/><path d="M10 9a2 2 0 1 1 3 2c-1 0-1 1-1 2m0 3v.1" stroke="white" stroke-width="1.7"/>'
@@ -17,9 +17,15 @@ function objectSymbol(kind){
   const style=objectStyles[kind]||objectStyles.unknown;
   return `<svg viewBox="0 0 24 24" aria-hidden="true" color="${style.color}" fill="none" stroke="${style.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${objectShapes[kind]||objectShapes.unknown}</svg>`;
 }
-function objectIcon(kind){
+function objectPixelSize(kind,zoom,latitude){
+  const metresPerPixel=156543.03392*Math.cos(latitude*Math.PI/180)/2**zoom;
+  const length=kind==='vehicle'?4.5:kind==='cyclist'?2:1;
+  const minimum=kind==='pedestrian'?7:8,maximum=kind==='vehicle'?26:kind==='cyclist'?18:14;
+  return Math.max(minimum,Math.min(maximum,length/metresPerPixel*24/22));
+}
+function objectIcon(kind,size){
   const offset=['cyclist','pedestrian'].includes(kind)?-90:0;
-  return L.divIcon({className:'road-user-icon',html:`<div class="object-heading"><div style="transform:rotate(${offset}deg)">${objectSymbol(kind)}</div><span class="object-heading-tip" hidden></span></div>`,iconSize:[20,20],iconAnchor:[10,10],tooltipAnchor:[0,-12]});
+  return L.divIcon({className:'road-user-icon',html:`<div class="object-heading" style="width:${size}px;height:${size}px"><div style="transform:rotate(${offset}deg)">${objectSymbol(kind)}</div><span class="object-heading-tip" hidden></span></div>`,iconSize:[size,size],iconAnchor:[size/2,size/2],tooltipAnchor:[0,-size/2]});
 }
 function movementHeading(from,to){
   const north=(to[0]-from[0])*111320;
@@ -34,7 +40,7 @@ function updateObjectHeading(m,target){
     m.headingAnchor=target.slice();
   }
   const el=m.marker.getElement()?.querySelector('.object-heading');
-  if(el&&m.heading!==null){el.style.transform=`rotate(${m.heading}deg)`;el.querySelector('.object-heading-tip').hidden=false;}
+  if(el&&m.heading!==null){el.style.transform=`rotate(${m.heading}deg)`;}
 }
 for(const [kind,style] of Object.entries(objectStyles)){
   const item=document.createElement('span');item.className='object-legend-item';
@@ -47,7 +53,9 @@ function clearObjects(){objectLayer?.clearLayers();movingObjects.clear();}
 function animateObjects(now){
   for(const [key,m] of movingObjects){
     if(Date.now()>m.expires||state.tab!=='live'||map.getZoom()<17){objectLayer.removeLayer(m.marker);movingObjects.delete(key);continue;}
-    const fraction=Math.min(1,(now-m.started)/250);
+    const fraction=Math.min(1,(now-m.started)/120);
+    if(m.animationDone)continue;
+    m.animationDone=fraction>=1;
     m.marker.setLatLng([m.from.lat+(m.to[0]-m.from.lat)*fraction,m.from.lng+(m.to[1]-m.from.lng)*fraction]);
   }
   requestAnimationFrame(animateObjects);
@@ -170,14 +178,14 @@ async function refreshLive(){
       visible++;
       const key=data.site+':'+(data.session||'')+':'+o.id;seen.add(key);
       let m=movingObjects.get(key);
-      const target=[o.lat,o.lng];
+      const target=[o.lat,o.lng],size=objectPixelSize(o.kind,map.getZoom(),o.lat);
       if(!m){
-        const marker=L.marker(target,{icon:objectIcon(o.kind),title:(objectStyles[o.kind]||objectStyles.unknown).label,keyboard:false}).addTo(objectLayer);
-        m={marker,kind:o.kind,heading:null,headingAnchor:target.slice(),from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
+        const marker=L.marker(target,{icon:objectIcon(o.kind,size),title:(objectStyles[o.kind]||objectStyles.unknown).label,keyboard:false}).addTo(objectLayer);
+        m={marker,size,kind:o.kind,heading:null,headingAnchor:target.slice(),from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
       }
-      if(m.kind!==o.kind){m.marker.setIcon(objectIcon(o.kind));m.kind=o.kind;}
+      if(m.kind!==o.kind||Math.abs(m.size-size)>.2){m.marker.setIcon(objectIcon(o.kind,size));m.kind=o.kind;m.size=size;}
       updateObjectHeading(m,target);
-      if(m.event!==data.event_key||m.to[0]!==o.lat||m.to[1]!==o.lng){m.from=m.marker.getLatLng();m.to=target;m.started=performance.now();m.event=data.event_key;}
+      if(m.event!==data.event_key||m.to[0]!==o.lat||m.to[1]!==o.lng){m.from=m.marker.getLatLng();m.to=target;m.started=performance.now();m.animationDone=false;m.event=data.event_key;}
       m.expires=Date.now()+Math.max(0,5-(data.age_s||0))*1000;
       const label=document.createElement('span');label.textContent=`${data.site} · ${o.kind||o.class} ${o.id} · ${data.state==='approximate'?'APPROXIMATE · receipt time':'sensor time'} ${utcTime(o.timestamp)} · age ${number(o.age_s)} s`;
       m.marker.bindTooltip(label);
@@ -324,7 +332,7 @@ action(async()=>{
   state.sites.forEach(s=>{$('history-site').add(new Option(s.name,s.id));$('anomaly-site').add(new Option(s.name,s.id));});
   $('history-site').add(new Option('Learning dataset · SYNTHETIC','DEMO-001'));
   $('history-site').value=state.site?.id||state.sites.find(s=>s.region==='Toronto')?.id||'';if(!state.publicLive)action(()=>loadHistory(true));
-  setInterval(()=>refreshLive().catch(()=>{clearObjects();$('connection').textContent='Connection lost';$('object-count').textContent='—';}),250);
+  setInterval(()=>refreshLive().catch(()=>{clearObjects();$('connection').textContent='Connection lost';$('object-count').textContent='—';}),150);
 });
 
 let historyOffset=null,rawCursor=null,anomalyOffset=null;
