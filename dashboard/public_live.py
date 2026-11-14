@@ -4,7 +4,7 @@ from urllib.parse import urlsplit
 from .server import Handler, ROOT
 from .storage import Store
 
-ASSETS={'/','/index.html','/app.js','/style.css','/vendor/leaflet.js','/vendor/leaflet.css',
+ASSETS={'/','/index.html','/app.js','/road-headings.json','/style.css','/vendor/leaflet.js','/vendor/leaflet.css',
         '/vendor/images/marker-icon.png','/vendor/images/marker-icon-2x.png','/vendor/images/marker-shadow.png','/vendor/images/layers.png','/vendor/images/layers-2x.png'}
 ALLOWED=ASSETS|{'/api/status','/api/network-live'}
 

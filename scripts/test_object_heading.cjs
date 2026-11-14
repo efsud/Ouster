@@ -14,3 +14,12 @@ for(const theta of [89,90,140,268,271]){
  assert(Math.abs(o.heading_deg-expected)<1e-9);
 }
 console.log('First-frame heading, stopped jitter, restart movement and mirrored heading checks passed.');
+const geometry={S:{origin:{lat:0,lng:0},segments:[{a:[0,30],b:[0,150],oneway:1}]}};
+const car={kind:'vehicle',lat:60/111320,lng:2/111320,heading_deg:15};
+assert.equal(box.roadDisplayHeading('S',car,geometry).heading_deg,0);
+for(const changed of [{heading_deg:180},{lat:10/111320},{lng:30/111320},{kind:'pedestrian'}]){
+ const input={...car,...changed};assert.equal(box.roadDisplayHeading('S',input,geometry),input);
+}
+const crossing={S:{...geometry.S,segments:[...geometry.S.segments,{a:[-25,30],b:[75,130],oneway:1}]}};
+const ambiguous={...car,heading_deg:22};assert.equal(box.roadDisplayHeading('S',ambiguous,crossing),ambiguous);
+console.log('Road heading correction preserves turns, off-road objects, opposing traffic and ambiguous roads.');

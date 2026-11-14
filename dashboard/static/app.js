@@ -33,6 +33,31 @@ function movementHeading(from,to){
   if(Math.hypot(north,east)<0.25)return null;
   return Math.atan2(east,north)*180/Math.PI;
 }
+// Cosmetic road-axis alignment only: do not change object coordinates or infer turns.
+function roadDisplayHeading(siteId,object,geometry){
+  if(object.kind!=='vehicle'||!Number.isFinite(object.heading_deg))return object;
+  const g=geometry?.[siteId];if(!g)return object;
+  const x=(object.lng-g.origin.lng)*111320*Math.cos(g.origin.lat*Math.PI/180);
+  const y=(object.lat-g.origin.lat)*111320;
+  if(Math.hypot(x,y)<30)return object; // Keep turning-area orientations measured.
+  const delta=(a,b)=>Math.abs(((a-b)%360+540)%360-180),choices=[];
+  for(const seg of g.segments){
+    const dx=seg.b[0]-seg.a[0],dy=seg.b[1]-seg.a[1],len2=dx*dx+dy*dy;
+    const t=((x-seg.a[0])*dx+(y-seg.a[1])*dy)/len2;
+    if(t<0||t>1)continue;
+    const distance=Math.hypot(x-seg.a[0]-t*dx,y-seg.a[1]-t*dy);
+    if(distance>12)continue;
+    let bearing=(Math.atan2(dx,dy)*180/Math.PI+360)%360;
+    if(seg.oneway===-1)bearing=(bearing+180)%360;
+    if(!seg.oneway&&delta(bearing+180,object.heading_deg)<delta(bearing,object.heading_deg))bearing=(bearing+180)%360;
+    const error=delta(bearing,object.heading_deg);
+    if(error<=25)choices.push({bearing,distance,error});
+  }
+  choices.sort((a,b)=>(a.distance+a.error*.2)-(b.distance+b.error*.2));
+  const best=choices[0];if(!best)return object;
+  if(choices.some(c=>c.distance<=best.distance+3&&delta(c.bearing,best.bearing)>20))return object;
+  return {...object,heading_deg:best.bearing,heading_display_source:'nearby road axis (provisional)'};
+}
 function updateObjectHeading(m,target,object){
   const speed=object.speed_mps;
   if(Number.isFinite(speed)){
@@ -48,6 +73,8 @@ function updateObjectHeading(m,target,object){
     const east=(target[1]-m.headingAnchor[1])*111320*Math.cos(target[0]*Math.PI/180);
     if(Math.hypot(north,east)>=1)bearing=movementHeading(m.headingAnchor,target);
   }
+  if(!m.isMoving&&m.isMovingBefore&&object.heading_display_source)bearing=object.heading_deg;
+  m.isMovingBefore=m.isMoving;
   if(bearing!==null){
     m.heading=m.heading===null?bearing:m.heading+((bearing-m.heading)%360+540)%360-180;
     m.headingAnchor=target.slice();
@@ -151,6 +178,7 @@ function renderNetwork(){
     L.polyline(corridor.coordinates.map(([lng,lat])=>[lat,lng]),{color:'#197d79',weight:4,opacity:.6}).bindTooltip(label).addTo(sitesLayer);
   }
   $('map-note').textContent=region==='Toronto'?'LiDAR and objects share each site’s reference; per-intersection alignment is not field-calibrated':paths.length?paths.length+' verified corridor paths':referencePoints.length+' user-confirmed SDK origins; orientation unverified. Zoom to an intersection for live objects.';
+  $('map-note').textContent+=' · Vehicle icon headings may follow a nearby road axis; this is a provisional display correction.';
   document.querySelector('.map-footer .legend-dot').parentElement.lastChild.textContent=region==='Toronto'?' Approximate LiDAR location':' SDK origin (orientation unverified)';
   action(refreshLive);
 }
@@ -184,7 +212,7 @@ async function refreshLive(){
     const beforeVisible=visible;
     const objectSite=state.sites.find(s=>s.id===data.site);
     const displayObjects=data.objects.map(o=>{
-      o=alignPreviewObject(objectSite,o,data);
+      o=roadDisplayHeading(data.site,alignPreviewObject(objectSite,o,data),state.roadHeadings);
       if(!objectSite||objectSite.region!=='Toronto')return o;
       const [lat,lng]=lidarMarkerPoint(objectSite,o);return {...o,lat,lng};
     });
@@ -196,13 +224,13 @@ async function refreshLive(){
       const target=[o.lat,o.lng],size=objectPixelSize(o.kind,map.getZoom(),o.lat);
       if(!m){
         const marker=L.marker(target,{icon:objectIcon(o.kind,size,Number.isFinite(o.heading_deg)?o.heading_deg:null),title:(objectStyles[o.kind]||objectStyles.unknown).label,keyboard:false}).addTo(objectLayer);
-        m={marker,size,kind:o.kind,heading:Number.isFinite(o.heading_deg)?o.heading_deg:null,isMoving:o.speed_mps>=1.2,headingAnchor:target.slice(),from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
+        m={marker,size,kind:o.kind,heading:Number.isFinite(o.heading_deg)?o.heading_deg:null,isMoving:o.speed_mps>=1.2,isMovingBefore:o.speed_mps>=1.2,headingAnchor:target.slice(),from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
       }
       if(m.kind!==o.kind||Math.abs(m.size-size)>.2){m.marker.setIcon(objectIcon(o.kind,size,m.heading));m.kind=o.kind;m.size=size;}
       updateObjectHeading(m,target,o);
       if(m.event!==data.event_key||m.to[0]!==o.lat||m.to[1]!==o.lng){m.from=m.marker.getLatLng();m.to=target;m.started=performance.now();m.animationDone=false;m.event=data.event_key;}
       m.expires=Date.now()+Math.max(0,5-(data.age_s||0))*1000;
-      const label=document.createElement('span');label.textContent=`${data.site} · ${o.kind||o.class} ${o.id} · ${data.state==='approximate'?'APPROXIMATE · receipt time':'sensor time'} ${utcTime(o.timestamp)} · age ${number(o.age_s)} s`;
+      const label=document.createElement('span');label.textContent=`${data.site} · ${o.kind||o.class} ${o.id} · ${data.state==='approximate'?'APPROXIMATE · receipt time':'sensor time'} ${utcTime(o.timestamp)} · age ${number(o.age_s)} s${o.heading_display_source?' · icon aligned to road (provisional)':''}`;
       m.marker.bindTooltip(label);
 
     }
@@ -335,6 +363,7 @@ $('collect').onclick=()=>action(async()=>{
 for(const [id,unit] of [['demand','veh/h'],['green','s'],['offset','s']])$(id).oninput=()=>$(id+'-out').textContent=$(id).value+' '+unit;
 $('run-ctm').onclick=()=>action(runCTM);
 action(async()=>{
+  state.roadHeadings=(await api('/road-headings.json').catch(()=>({sites:{}}))).sites;
   const status=await api('/api/status');state.publicLive=Boolean(status.public_live_only);document.body.classList.toggle('public-live',state.publicLive);state.sites=status.sites;state.corridors=status.corridors||[];state.metrics=status.metrics;
   const params=new URLSearchParams(location.search);
   const target=state.sites.find(s=>s.id===params.get('site'));
