@@ -21,7 +21,7 @@ function objectPixelSize(kind,zoom,latitude){
   const metresPerPixel=156543.03392*Math.cos(latitude*Math.PI/180)/2**zoom;
   const length=kind==='vehicle'?4.5:kind==='cyclist'?2:1;
   const minimum=kind==='pedestrian'?7:8,maximum=kind==='vehicle'?26:kind==='cyclist'?18:14;
-  return Math.max(minimum,Math.min(maximum,length/metresPerPixel*24/22));
+  return 1.2*Math.max(minimum,Math.min(maximum,length/metresPerPixel*24/22));
 }
 function objectIcon(kind,size,heading=null){
   const offset=['cyclist','pedestrian'].includes(kind)?-90:0;

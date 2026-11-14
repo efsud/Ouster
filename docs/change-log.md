@@ -284,3 +284,7 @@ Live snapshots now include SDK orientation projected into map bearing plus speed
 Icons receive their heading in the initial HTML, before display, instead of spawning north-facing and waiting for motion. Moving objects follow SDK orientation. Speed hysteresis starts heading updates at 1.2 m/s and freezes them below 0.8 m/s, avoiding stopped-position jitter. Objects first seen stopped use their reported orientation. Direction remains subject to sensor estimation and each site's provisional alignment; no forced road snapping masks turning vehicles.
 
 Reloaded the combined (8775) and public (8776) viewers without restarting collectors or changing the tunnel URL. Both corridor feeds returned headings for all objects in the validation snapshot; public Florida queues visually aligned with their approaches. Tests cover zero-valued protobuf orientation, invalid orientation, first-frame heading, stopped jitter, resuming motion and mirrored angle transforms. Legacy single-corridor server processes require restart to load the new backend fields; use the combined or public link.
+
+### Slightly larger live objects
+
+Increased every live object icon by 20% in both corridors, including zoom-dependent minimum and maximum sizes. Shared local/public assets apply the change after refresh. Position and heading logic remain unchanged. JavaScript syntax check passed.
