@@ -1,0 +1,536 @@
+'use strict';
+const $ = id => document.getElementById(id);
+const state = {sites:[],corridors:[],metrics:{},site:null,metric:'control_delay',rows:[],tab:'live'};
+const titles = {live:'Live network',history:'Historical performance',ctm:'CTM explorer',optimization:'Optimization',guide:'Methods & learning',anomalies:'Anomalies'};
+const escapeHTML = value => String(value).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const number = v => v===null || v===undefined ? '—' : Number(v).toLocaleString(undefined,{maximumFractionDigits:1});
+let map, sitesLayer, objectLayer, toastTimer, liveRequest=0;
+const objectStyles={vehicle:{label:'Vehicle',color:'#426fba'},pedestrian:{label:'Pedestrian',color:'#17a990'},cyclist:{label:'Cyclist',color:'#a46eab'},unknown:{label:'Unknown / unclassified',color:'#87949b'}};
+// Pictograms are symbolic; heading is inferred from observed displacement.
+const objectShapes={
+  vehicle:'<rect x="7" y="1" width="10" height="22" rx="3" fill="currentColor" stroke="#263c55" stroke-width=".7"/><path d="M8.5 6h7l.7 4H7.8zM8 16h8l-.7 3H8.7z" fill="#cde6ef" stroke="none"/><path d="M8 3h2m4 0h2" stroke="#fff3bf" stroke-width="1.4"/><path d="M8 21h2m4 0h2" stroke="#d74e4e" stroke-width="1.2"/>',
+  pedestrian:'<circle cx="13" cy="3.5" r="2.5" fill="currentColor" stroke="none"/><path d="M12 8l-2 6 4 2 3 6M10 14l-4 7M11 9l-4 4-3 1M13 9l3 4 4 1" stroke-width="2.8"/><path d="M11 7h3l1 7-5 1z" fill="currentColor" stroke="none"/>',
+  cyclist:'<g stroke="#34424d" stroke-width="1.5"><circle cx="5" cy="17.5" r="4"/><circle cx="19" cy="17.5" r="4"/></g><path d="M5 17.5l4-7 5 7H5l7-5h4l3 5.5M8 10h3" stroke-width="1.5"/><circle cx="16" cy="3.5" r="2.3" fill="currentColor" stroke="none"/><path d="M13 7l-4 4 5 3-2 6M13 7l4 3h3" stroke-width="2.8"/>',
+  unknown:'<path d="M12 3l9 9-9 9-9-9z" fill="currentColor" stroke="none"/><path d="M10 9a2 2 0 1 1 3 2c-1 0-1 1-1 2m0 3v.1" stroke="white" stroke-width="1.7"/>'
+};
+function objectSymbol(kind){
+  const style=objectStyles[kind]||objectStyles.unknown;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" color="${style.color}" fill="none" stroke="${style.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${objectShapes[kind]||objectShapes.unknown}</svg>`;
+}
+function objectPixelSize(kind,zoom,latitude){
+  const metresPerPixel=156543.03392*Math.cos(latitude*Math.PI/180)/2**zoom;
+  const length=kind==='vehicle'?4.5:kind==='cyclist'?2:1;
+  const minimum=kind==='pedestrian'?7:8,maximum=kind==='vehicle'?26:kind==='cyclist'?18:14;
+  return 1.2*Math.max(minimum,Math.min(maximum,length/metresPerPixel*24/22));
+}
+function objectIcon(kind,size,heading=null){
+  const offset=['cyclist','pedestrian'].includes(kind)?-90:0;
+  return L.divIcon({className:'road-user-icon',html:`<div class="object-heading" style="width:${size}px;height:${size}px;transform:rotate(${heading??0}deg)"><div style="transform:rotate(${offset}deg)">${objectSymbol(kind)}</div><span class="object-heading-tip" hidden></span></div>`,iconSize:[size,size],iconAnchor:[size/2,size/2],tooltipAnchor:[0,-size/2]});
+}
+function movementHeading(from,to){
+  const north=(to[0]-from[0])*111320;
+  const east=(to[1]-from[1])*111320*Math.cos((from[0]+to[0])*Math.PI/360);
+  if(Math.hypot(north,east)<0.25)return null;
+  return Math.atan2(east,north)*180/Math.PI;
+}
+// Cosmetic road-axis alignment only: do not change object coordinates or infer turns.
+function roadDisplayHeading(siteId,object,geometry){
+  if(object.kind!=='vehicle'||!Number.isFinite(object.heading_deg))return object;
+  const g=geometry?.[siteId];if(!g)return object;
+  const x=(object.lng-g.origin.lng)*111320*Math.cos(g.origin.lat*Math.PI/180);
+  const y=(object.lat-g.origin.lat)*111320;
+  if(Math.hypot(x,y)<30)return object; // Keep turning-area orientations measured.
+  const delta=(a,b)=>Math.abs(((a-b)%360+540)%360-180),choices=[];
+  for(const seg of g.segments){
+    const dx=seg.b[0]-seg.a[0],dy=seg.b[1]-seg.a[1],len2=dx*dx+dy*dy;
+    const t=((x-seg.a[0])*dx+(y-seg.a[1])*dy)/len2;
+    if(t<0||t>1)continue;
+    const distance=Math.hypot(x-seg.a[0]-t*dx,y-seg.a[1]-t*dy);
+    if(distance>12)continue;
+    let bearing=(Math.atan2(dx,dy)*180/Math.PI+360)%360;
+    if(seg.oneway===-1)bearing=(bearing+180)%360;
+    if(!seg.oneway&&delta(bearing+180,object.heading_deg)<delta(bearing,object.heading_deg))bearing=(bearing+180)%360;
+    const error=delta(bearing,object.heading_deg);
+    if(error<=25)choices.push({bearing,distance,error});
+  }
+  choices.sort((a,b)=>(a.distance+a.error*.2)-(b.distance+b.error*.2));
+  const best=choices[0];if(!best)return object;
+  if(choices.some(c=>c.distance<=best.distance+3&&delta(c.bearing,best.bearing)>20))return object;
+  return {...object,heading_deg:best.bearing,heading_display_source:'nearby road axis (provisional)'};
+}
+function updateObjectHeading(m,target,object){
+  const speed=object.speed_mps;
+  if(Number.isFinite(speed)){
+    // Hysteresis prevents stop/start jitter; initialization still uses SDK heading.
+    m.isMoving=m.isMoving?speed>=0.8:speed>=1.2;
+  }
+  let bearing=null;
+  if(m.heading===null||m.isMoving){
+    if(Number.isFinite(object.heading_deg))bearing=object.heading_deg;
+    else bearing=movementHeading(m.headingAnchor,target);
+  }else if(!Number.isFinite(speed)){
+    const north=(target[0]-m.headingAnchor[0])*111320;
+    const east=(target[1]-m.headingAnchor[1])*111320*Math.cos(target[0]*Math.PI/180);
+    if(Math.hypot(north,east)>=1)bearing=movementHeading(m.headingAnchor,target);
+  }
+  if(!m.isMoving&&m.isMovingBefore&&object.heading_display_source)bearing=object.heading_deg;
+  m.isMovingBefore=m.isMoving;
+  if(bearing!==null){
+    m.heading=m.heading===null?bearing:m.heading+((bearing-m.heading)%360+540)%360-180;
+    m.headingAnchor=target.slice();
+  }
+  if(Number.isFinite(speed)&&!m.isMoving)m.headingAnchor=target.slice();
+  const el=m.marker.getElement()?.querySelector('.object-heading');
+  if(el&&m.heading!==null)el.style.transform=`rotate(${m.heading}deg)`;
+}
+for(const [kind,style] of Object.entries(objectStyles)){
+  const item=document.createElement('span');item.className='object-legend-item';
+  const swatch=document.createElement('i');swatch.className='object-legend-symbol';swatch.innerHTML=objectSymbol(kind);
+  item.append(swatch,document.createTextNode(style.label));$('object-legend').append(item);
+}
+const displayedFrames=new Map(),sensorMarkers=new Map(),movingObjects=new Map();
+let liveBusy=false;
+function clearObjects(){objectLayer?.clearLayers();movingObjects.clear();}
+function animateObjects(now){
+  for(const [key,m] of movingObjects){
+    if(Date.now()>m.expires||state.tab!=='live'||map.getZoom()<17){objectLayer.removeLayer(m.marker);movingObjects.delete(key);continue;}
+    const fraction=Math.min(1,(now-m.started)/120);
+    if(m.animationDone)continue;
+    m.animationDone=fraction>=1;
+    m.marker.setLatLng([m.from.lat+(m.to[0]-m.from.lat)*fraction,m.from.lng+(m.to[1]-m.from.lng)*fraction]);
+  }
+  requestAnimationFrame(animateObjects);
+}
+requestAnimationFrame(animateObjects);
+function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,9000);}
+async function api(path, data){
+  const response=await fetch(path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const result=await response.json();if(!response.ok)throw new Error(result.error||'Request failed');return result;
+}
+async function action(fn){try{await fn();}catch(e){toast(e.message);}}
+document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{
+  state.tab=button.dataset.tab;
+  document.querySelectorAll('.page').forEach(p=>p.hidden=p.id!==state.tab);
+  document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b===button));
+  $('page-title').textContent=titles[state.tab];
+  if(state.tab==='live')setTimeout(()=>{map?.invalidateSize();action(refreshLive);},0);
+  if(state.tab==='ctm'&&!$('heatmap').children.length)action(runCTM);
+  if(state.tab==='anomalies')action(()=>loadAnomalies());
+}));
+function initMap(){
+  if(!window.L){$('map').innerHTML='<div class="empty">Map library is unavailable. Run the vendor setup in README.md.</div>';return;}
+  map=L.map('map').setView([43.751,-79.542],13);
+  let tileErrorShown=false;
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).on('tileerror',()=>{if(!tileErrorShown){$('map-note').textContent='Basemap unavailable; check network';tileErrorShown=true;}}).addTo(map);
+  sitesLayer=L.layerGroup().addTo(map);objectLayer=L.layerGroup().addTo(map);
+  map.on('moveend',()=>action(refreshLive));
+}
+// Centre placement: no additional translation of LiDAR or object coordinates.
+function lidarMarkerPoint(site,location){
+  return [location.lat,location.lng];
+}
+// Reflect the local SDK Y axis in the approximate display only. The API's
+// rotated geographic vector is transformed by R(theta) M R(-theta).
+function alignPreviewObject(site,object,data){
+  if(data.state!=='approximate'||!site?.preview_mirror_y||!site.reference_location)return object;
+  const origin=site.reference_location,c=Math.cos(origin.lat*Math.PI/180);
+  const east=(object.lng-origin.lng)*c,north=object.lat-origin.lat;
+  const angle=2*data.rotation_deg*Math.PI/180;
+  return {...object,lng:origin.lng+(Math.cos(angle)*east+Math.sin(angle)*north)/c,
+    lat:origin.lat+Math.sin(angle)*east-Math.cos(angle)*north,
+    ...(Number.isFinite(object.heading_deg)?{heading_deg:((180-2*data.rotation_deg-object.heading_deg)%360+360)%360}:{})};
+}
+function alignmentLabel(rotation){
+  const delta=((rotation-180+180)%360+360)%360-180;
+  return delta===0?'180° baseline':`${Math.abs(delta)}° ${delta<0?'clockwise':'anticlockwise'} (${rotation}° total)`;
+}
+function renderNetwork(){
+  const region=$('region').value;
+  $('global-notice').textContent=region==='Florida'?'Florida · SR-436 corridor, Altamonte Springs · Seven configured sensors · user-confirmed SDK origins; provisional per-site road alignment. Field calibration and sensor latency remain unverified.':'Toronto · Finch West LRT corridor · Ten sensors · approximate live animation. Positions and rotation are uncalibrated; receipt freshness does not establish sensor latency.';
+  const list=state.sites.filter(s=>s.region===region).sort((a,b)=>(a.station_m??0)-(b.station_m??0));
+  state.site=null;$('site-kpi-panel').hidden=true;clearObjects();sitesLayer?.clearLayers();sensorMarkers.clear();
+  $('site-count').textContent=list.length;$('inventory-count').textContent=list.length;
+  $('mapped-count').textContent=list.filter(s=>s.calibration_status?.valid||s.reference_location).length;
+  $('region-label').textContent=region==='Florida'?'SR-436 · Altamonte Springs':'Finch West LRT · Toronto';
+  $('object-count').textContent='—';$('frame-status').textContent='Waiting for a live stream';
+  $('selected-name').textContent='Choose an intersection';$('selected-detail').textContent='Verified sensor origins and read-only stream access are needed before live objects can appear.';
+  $('site-state').textContent='Awaiting access';$('connection').textContent='Not connected';
+  if(map)map.setView(region==='Florida'?[28.663,-81.378]:[43.751,-79.542],region==='Florida'?16:13,{animate:false});
+  $('sites-list').replaceChildren();
+  if(!list.length)$('sites-list').innerHTML='<div class="empty"><strong>No sites configured.</strong>Use the Python launcher to enter API credentials, then add verified Toronto site IDs and sensor origins. No sites have been inferred.</div>';
+  for(const site of list){
+    const button=document.createElement('button');button.className='site';button.dataset.siteId=site.id;
+    button.innerHTML=`<strong>${escapeHTML(site.name)}</strong><small>${escapeHTML(site.id)}</small><span class="status">${site.calibration_status?.valid?'Location verified':'Location / access pending'}</span>`;
+    button.onclick=event=>{selectSite(site,button);if(event.isTrusted&&!state.publicLive)$('site-kpi-panel').scrollIntoView({behavior:'smooth',block:'start'});};$('sites-list').append(button);
+    if((site.calibration_status?.valid||site.reference_location)&&map){
+      const location=site.calibration_status?.valid?site.origin:site.reference_location;
+      const point=lidarMarkerPoint(site,location);
+      const label=document.createElement('span');label.textContent=site.name+' · '+site.id+(site.reference_location?.source==='user instruction'?` · User-specified LiDAR position · Rotation ${site.preview_rotation_deg??220}°${site.preview_mirror_y?" · SDK Y inverted":""} · ${site.preview_alignment_note||"field calibration unverified"}`:site.region==='Florida'?` · User-confirmed SDK origin · ${site.preview_rotation_deg}°${site.preview_mirror_y?' · SDK Y inverted':''} · ${site.preview_alignment_note||'unverified'}`:site.region==='Toronto'?' · LiDAR — approximate intersection centre; mounting point unverified':site.calibration_status?.valid?' · calibrated sensor':' · approximate intersection, mounting point unverified');
+      sensorMarkers.set(site.id,L.circleMarker(point,{radius:7,color:'#fff',weight:3,dashArray:site.calibration_status?.valid?null:'3 3',fillColor:'#197d79',fillOpacity:1}).bindTooltip(label).on('click',()=>selectSite(site,button)).addTo(sitesLayer));
+    }
+  }
+  const referencePoints=list.map(s=>s.calibration_status?.valid?s.origin:s.reference_location).filter(Boolean);
+  if(map&&referencePoints.length)map.fitBounds(referencePoints.map(p=>[p.lat,p.lng]),{padding:[35,35],maxZoom:region==='Florida'?17:14,animate:false});
+  const paths=state.corridors.filter(c=>c.region===region);
+  for(const corridor of paths){
+    if(!map)break;
+    const label=document.createElement('span');label.textContent=corridor.name+' · verified corridor';
+    L.polyline(corridor.coordinates.map(([lng,lat])=>[lat,lng]),{color:'#197d79',weight:4,opacity:.6}).bindTooltip(label).addTo(sitesLayer);
+  }
+  $('map-note').textContent=region==='Toronto'?'LiDAR and objects share each site’s reference; per-intersection alignment is not field-calibrated':paths.length?paths.length+' verified corridor paths':referencePoints.length+' user-confirmed SDK origins; orientation unverified. Zoom to an intersection for live objects.';
+  $('map-note').textContent+=' · Vehicle icon headings may follow a nearby road axis; this is a provisional display correction.';
+  document.querySelector('.map-footer .legend-dot').parentElement.lastChild.textContent=region==='Toronto'?' Approximate LiDAR location':' SDK origin (orientation unverified)';
+  action(refreshLive);
+}
+function selectSite(site,button){
+  state.site=site;document.querySelectorAll('.site').forEach(b=>b.classList.toggle('selected',b===button));
+  $('selected-name').textContent=site.name;$('selected-detail').textContent=`${site.id} · ${site.corridor||site.region} · ${site.timezone||'Timezone pending'}`;
+  const location=site.calibration_status?.valid?site.origin:site.reference_location;
+  if(location)map?.setView([location.lat,location.lng],18);
+  action(refreshLive);action(()=>loadSiteKPIs());
+}
+async function refreshLive(){
+  if(state.tab!=='live'||liveBusy)return;
+  const region=$('region').value,request=++liveRequest;
+  liveBusy=true;let result;
+  try{result=await api('/api/network-live?region='+encodeURIComponent(region)+'&approximate='+$('approximate-objects').checked+'&rotation='+$('preview-rotation').value);}finally{liveBusy=false;}
+  if(request!==liveRequest||$('region').value!==region||state.tab!=='live')return;
+  const seen=new Set();
+  const fresh=result.snapshots.filter(s=>['live','approximate'].includes(s.state));
+  $('health-rows').innerHTML=result.snapshots.map(s=>`<tr><td>${escapeHTML(s.site)}</td><td>${escapeHTML(s.health?.state||'not_started')} · ${s.health?.recording_mode==='live_only'?'live only':s.health?.recording_mode==='recording'?'recording':''}</td><td>${utcTime(s.health?.last_receipt)}</td><td>${utcTime(s.health?.last_sensor_time)}</td><td>${s.health?.saved_count||0}</td><td>${escapeHTML(s.health?.error||s.calibration?.reasons?.join('; ')||s.state)}</td></tr>`).join('');
+  const receiving=result.snapshots.filter(s=>s.health?.last_receipt&&Date.now()/1000-s.health.last_receipt<5).length;
+  $('connection').textContent=receiving?`${receiving} / ${result.snapshots.length} receiving · ${fresh.length} object streams`:fresh.length?`${fresh.length} / ${result.snapshots.length} sites live`:'No verified live stream';
+  let visible=0;
+  for(const data of result.snapshots){
+    sensorMarkers.get(data.site)?.setStyle({fillColor:data.active_anomalies?'#bf643c':data.state==='live'?'#197d79':'#87949b'});
+    const button=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===data.site);
+    if(button)button.querySelector('.status').textContent=data.health?.error||data.state;
+    if(state.site?.id===data.site){
+      $('site-state').textContent=data.state;
+      $('selected-detail').textContent=(data.reason||`${data.site} · ${data.objects.length} objects · ${data.rejected_objects||0} invalid objects excluded`)+(data.rotation_deg!==undefined?` · Rotation ${data.rotation_deg}°${state.site?.preview_mirror_y?' · SDK Y inverted':''} · ${state.site?.preview_alignment_note||'unverified'}`:'');
+    }
+    const beforeVisible=visible;
+    const objectSite=state.sites.find(s=>s.id===data.site);
+    const displayObjects=data.objects.map(o=>{
+      o=roadDisplayHeading(data.site,alignPreviewObject(objectSite,o,data),state.roadHeadings);
+      if(!objectSite||objectSite.region!=='Toronto')return o;
+      const [lat,lng]=lidarMarkerPoint(objectSite,o);return {...o,lat,lng};
+    });
+    if(map&&map.getZoom()>=17&&['live','approximate'].includes(data.state))for(const o of displayObjects){
+      if(!map.getBounds().contains([o.lat,o.lng]))continue;
+      visible++;
+      const key=data.site+':'+(data.session||'')+':'+o.id;seen.add(key);
+      let m=movingObjects.get(key);
+      const target=[o.lat,o.lng],size=objectPixelSize(o.kind,map.getZoom(),o.lat);
+      if(!m){
+        const marker=L.marker(target,{icon:objectIcon(o.kind,size,Number.isFinite(o.heading_deg)?o.heading_deg:null),title:(objectStyles[o.kind]||objectStyles.unknown).label,keyboard:false}).addTo(objectLayer);
+        m={marker,size,kind:o.kind,heading:Number.isFinite(o.heading_deg)?o.heading_deg:null,isMoving:o.speed_mps>=1.2,isMovingBefore:o.speed_mps>=1.2,headingAnchor:target.slice(),from:marker.getLatLng(),to:target,started:performance.now()};movingObjects.set(key,m);
+      }
+      if(m.kind!==o.kind||Math.abs(m.size-size)>.2){m.marker.setIcon(objectIcon(o.kind,size,m.heading));m.kind=o.kind;m.size=size;}
+      updateObjectHeading(m,target,o);
+      if(m.event!==data.event_key||m.to[0]!==o.lat||m.to[1]!==o.lng){m.from=m.marker.getLatLng();m.to=target;m.started=performance.now();m.animationDone=false;m.event=data.event_key;}
+      m.expires=Date.now()+Math.max(0,5-(data.age_s||0))*1000;
+      const label=document.createElement('span');label.textContent=`${data.site} · ${o.kind||o.class} ${o.id} · ${data.state==='approximate'?'APPROXIMATE · receipt time':'sensor time'} ${utcTime(o.timestamp)} · age ${number(o.age_s)} s${o.heading_display_source?' · icon aligned to road (provisional)':''}`;
+      m.marker.bindTooltip(label);
+
+    }
+    if(visible>beforeVisible&&data.event_key&&displayedFrames.get(data.site)!==data.event_key){
+      displayedFrames.set(data.site,data.event_key);if(!state.publicLive)requestAnimationFrame(()=>api('/api/latency',{event_key:data.event_key,displayed_at:Date.now()/1000}).catch(()=>{}));
+    }
+  }
+  for(const [key,m] of movingObjects)if(!seen.has(key)){objectLayer.removeLayer(m.marker);movingObjects.delete(key);}
+  $('object-count').textContent=fresh.length?visible:'—';
+  $('frame-status').textContent=fresh.length?(map?.getZoom()<17?'Zoom to 17+ to view objects':`${fresh.length} fresh site streams`):'Waiting for a live stream';
+}
+function filters(){
+  const q=new URLSearchParams({cadence:$('cadence').value});
+  if($('history-site').value)q.set('site',$('history-site').value);
+  if($('approach').value)q.set('approach',$('approach').value);
+  for(const [id,key] of [['from','start'],['to','end']])if($(id).value)q.set(key,String(new Date($(id).value).getTime()/1000));
+  if(q.has('start')&&q.has('end')&&Number(q.get('start'))>=Number(q.get('end')))throw new Error('End must follow start');
+  return q;
+}
+function renderCards(){
+  $('kpi-cards').replaceChildren();
+  for(const [key,[name,unit]] of Object.entries(state.metrics)){
+    // Latest window per selected approach. Never average incompatible rates/quantiles.
+    const approaches=new Set(state.rows.map(r=>r.approach));
+    const latest=state.rows.at(-1);
+    const value=approaches.size<=1?latest?.values[key]:null;
+    const b=document.createElement('button');b.className='kpi-card'+(state.metric===key?' active':'');
+    b.innerHTML=`<span>${escapeHTML(name)}</span><strong>${number(value)} <small>${escapeHTML(unit)}</small></strong><small>${approaches.size>1?'Select one approach':latest?'Latest saved window':'Awaiting observations'}</small>`;
+    b.onclick=()=>{state.metric=key;renderCards();renderChart();};$('kpi-cards').append(b);
+  }
+}
+function localChartTime(t,full=false){
+  return new Date(t*1000).toLocaleString(undefined,{...(full?{year:'numeric'}:{}),month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZoneName:'short'});
+}
+function lineChart(rows,key,metricInfo=state.metrics,options={}){
+  if(!rows.length)return '<div class="empty"><strong>No saved observations in this range.</strong>Collect or import data, or load the labelled learning dataset.</div>';
+  const points=rows.filter(r=>r.values[key]!==null);
+  if(!points.length)return '<div class="empty"><strong>This KPI is unavailable.</strong>Its required observations or synchronized signal metadata are missing.</div>';
+  const W=950,H=255,L=62,R=20,T=20,B=45;
+  const minT=options.start??Math.min(...rows.map(r=>r.start)),maxT=options.end??Math.max(...rows.map(r=>r.end));
+  const timeLabel=t=>options.local?localChartTime(t):new Date(t*1000).toISOString();
+  let low=Math.min(0,...points.map(r=>r.values[key])),high=Math.max(1,...points.map(r=>r.values[key]))*1.12;
+  const x=t=>L+(t-minT)/(maxT-minT||1)*(W-L-R),y=v=>T+(high-v)/(high-low)*(H-T-B);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" role="img" data-start="${minT}" data-end="${maxT}" aria-label="${escapeHTML(metricInfo[key][0])} by reporting window in ${options.local?escapeHTML(Intl.DateTimeFormat().resolvedOptions().timeZone):'UTC'}">`;
+  for(let i=0;i<5;i++){const value=low+(high-low)*i/4,py=y(value);svg+=`<line x1="${L}" x2="${W-R}" y1="${py}" y2="${py}" stroke="#e5edeb"/><text x="${L-10}" y="${py+4}" text-anchor="end" fill="#83928d" font-size="10">${number(value)}</text>`;}
+  const colors=['#197d79','#5677ba','#b2813f','#915e9d'];
+  [...new Set(rows.map(r=>r.approach))].forEach((approach,index)=>{
+    const color=colors[index%colors.length];let last=null;
+    for(const r of rows.filter(r=>r.approach===approach)){
+      if(r.values[key]===null){last=null;continue;}
+      const cx=x(r.start),cy=y(r.values[key]);
+      if(last&&last.end===r.start)svg+=`<line x1="${last.x}" y1="${last.y}" x2="${cx}" y2="${cy}" stroke="${color}" stroke-width="2"/>`;
+      svg+=`<circle cx="${cx}" cy="${cy}" r="3" fill="${color}"><title>${escapeHTML(approach)} · ${escapeHTML(timeLabel(r.start))} → ${escapeHTML(timeLabel(r.end))} · ${number(r.values[key])} ${escapeHTML(metricInfo[key][1])} · ${escapeHTML(r.quality.status)}</title></circle>`;
+      last={x:cx,y:cy,end:r.end};
+    }
+  });
+  for(let i=0;i<5;i++){const t=minT+(maxT-minT)*i/4;svg+=`<text x="${x(t)}" y="${H-15}" text-anchor="${i===0?'start':i===4?'end':'middle'}" class="time-tick" fill="#83928d" font-size="10">${escapeHTML(options.local?localChartTime(t):new Date(t*1000).toISOString().slice(11,16))}</text>`;}
+  return svg+'</svg>';
+}
+function renderChart(){
+  $('chart-title').textContent=state.metrics[state.metric][0]+' · '+state.metrics[state.metric][1];
+  $('history-chart').innerHTML=lineChart(state.rows,state.metric);
+}
+async function loadHistory(resetApproaches=false){
+  if(!$('history-site').value){state.rows=[];renderCards();renderChart();return;}
+  const query=filters();query.set('paged','true');query.set('limit','1000');
+  const response=await api('/api/history?'+query);const rows=response.items;state.rows=rows;historyOffset=response.next_offset;
+  $('history-next').hidden=historyOffset===null;
+  if(resetApproaches){
+    $('approach').replaceChildren(new Option('All approaches',''));
+    [...new Set(rows.map(r=>r.approach))].forEach(a=>$('approach').add(new Option(a,a)));
+  }
+  const synthetic=$('history-site').value==='DEMO-001';
+  $('history-source').textContent=synthetic?'SYNTHETIC LEARNING DATA · Generated examples, not Toronto or Florida measurements. Fixed date: '+(rows[0]?new Date(rows[0].start*1000).toISOString().slice(0,10):'outside selected range'):'Annotated imports · Input quality checks are not a substitute for independent field validation.';
+  $('window-count').textContent=rows.length+' windows';renderCards();renderChart();
+  $('quality-rows').innerHTML=rows.map(r=>`<tr><td>${new Date(r.start*1000).toISOString().replace('T',' ').slice(0,19)}</td><td>${escapeHTML(r.approach)}</td><td>${r.quality.valid_tracks}</td><td>${number(r.quality.coverage*100)}%</td><td>${escapeHTML(r.quality.flags.length?r.quality.flags.join('; '):'Passes input checks · field validation pending')}</td></tr>`).join('');
+  bindEvidence();await loadAvailability();
+}
+async function runCTM(){
+  const p=new URLSearchParams({demand:$('demand').value,green:$('green').value,offset:$('offset').value,intersections:$('ctm-scale').value});
+  const result=await api('/api/ctm?'+p);
+  const W=840,H=290,L=40,T=10,B=30,cols=result.history.length,rows=result.history[0].density.length;
+  const cw=(W-L)/cols,ch=(H-T-B)/rows;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="CTM density over distance and time">`;
+  result.history.forEach((h,c)=>h.density.forEach((density,r)=>{
+    const ratio=density/result.jam_density;
+    const color=ratio<.5?`hsl(${155-ratio*100} 32% ${94-ratio*100}%)`:`hsl(${55-(ratio-.5)*100} 47% 53%)`;
+    svg+=`<rect x="${L+c*cw}" y="${T+r*ch}" width="${cw+.2}" height="${ch+.2}" fill="${color}"><title>${h.time} s · Cell ${r+1} · ${density} veh/km</title></rect>`;
+  }));
+  for(let r=0;r<=rows;r+=6){const y=T+r*ch;svg+=`<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="#fff" stroke-width="2"/><text x="${L-7}" y="${Math.min(y+4,H-B)}" text-anchor="end" fill="#798d87" font-size="10">${r*50}m</text>`;}
+  for(let i=0;i<=3;i++)svg+=`<text x="${L+(W-L)*i/3}" y="${H-6}" text-anchor="${i===3?'end':i===0?'start':'middle'}" fill="#798d87" font-size="11">${i*5} min</text>`;
+  $('heatmap').innerHTML=svg+'</svg>';
+  $('ctm-stats').innerHTML=[['VEHICLES EXITED',number(result.departed),'Fractional macroscopic vehicles'],['UPSTREAM WAITING',number(result.backlog),'Unserved demand retained'],['EXCESS VEHICLE-HOURS',number(result.excess_vehicle_hours),'Model estimate over 15 minutes'],['CONSERVATION ERROR',result.conservation_error.toExponential(1),'Entered − exited − remaining']].map(([a,b,c])=>`<article><span>${a}</span><strong>${b}</strong><small>${c}</small></article>`).join('');
+}
+const methods=[['Control delay','Mean of (arrival − entry − approach length / free-flow speed). Requires complete traversals.'],['Stopped delay','Time-integral of speed at or below the crawl threshold. Requires a complete observed traversal and valid samples.'],['Queue length · P95','95th percentile of visible queue extents on a regular time grid. Membership requires lane, spacing, and queue-region checks.'],['Arrivals on green','100 × green arrivals / all arrivals. Requires verified clock synchronization and a known signal state for every arrival.'],['Split failure','100 × complete visible cycles with a residual queue / complete visible cycles.'],['Approach volume','Unique physical trajectory entries × 3600 / window seconds. Entry events may be used without a complete traversal.'],['Discharge rate','Queued departures during effective green × 3600 / green seconds / lane count.'],['CTM vs observed KPIs','CTM propagates aggregate density. It does not directly observe individual stopped time, arrivals, or LiDAR queue geometry. Simulation outputs remain separate.']];
+$('methods').innerHTML=methods.map(([title,body])=>`<article class="panel padded"><h3>${title}</h3><p>${body}</p></article>`).join('');
+$('region').onchange=()=>{
+  renderNetwork();
+  const id=$('region').value==='Florida'?'OBC-AG-SA-C257222':'OBC-AG-SA-C257220';
+  const site=state.sites.find(s=>s.id===id);
+  const button=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===id);
+  if(site&&button)selectSite(site,button);
+  const url=new URL(location.href);url.searchParams.set('region',$('region').value);url.searchParams.set('site',id);history.replaceState(null,'',url);
+};
+for(const id of ['approximate-objects','preview-rotation'])$(id).onchange=()=>{liveRequest++;clearObjects();action(refreshLive);};
+$('cadence').onchange=()=>action(()=>loadHistory(true));
+$('apply-filter').onclick=()=>action(()=>loadHistory());
+$('history-site').onchange=()=>{ $('approach').value='';if(!state.publicLive)action(()=>loadHistory(true));};
+$('export').onclick=()=>action(async()=>{if(!$('history-site').value)throw new Error('Select a dataset');window.location.href='/api/export.csv?'+filters();});
+$('load-demo').onclick=()=>action(async()=>{
+  await api('/api/demo',{});
+  if(!Array.from($('history-site').options).some(o=>o.value==='DEMO-001'))$('history-site').add(new Option('Learning dataset · SYNTHETIC','DEMO-001'));
+  $('history-site').value='DEMO-001';$('from').value='';$('to').value='';$('approach').value='';await loadHistory(true);toast('36 synthetic windows saved. No BlueCity data was used.');
+});
+$('import-file').onchange=()=>action(async()=>{
+  const file=$('import-file').files[0];if(!file)return;
+  if(file.size>5_000_000)throw new Error('Import limit is 5 MB');
+  const data=JSON.parse(await file.text());const result=await api('/api/import',data);toast(result.saved+' annotated windows saved');await loadHistory();$('import-file').value='';
+});
+$('collect').onclick=()=>action(async()=>{
+  if(!$('history-site').value||$('history-site').value==='DEMO-001')throw new Error('Select a real configured site');
+  const payload={site:$('history-site').value,kind:$('collect-kind').value};
+  if(payload.kind==='turning_counts'){
+    if(!$('from').value||!$('to').value)throw new Error('Choose a start and end time');
+    payload.start=new Date($('from').value).toISOString();payload.end=new Date($('to').value).toISOString();
+  }
+  $('collect').disabled=true;
+  try{const result=await api('/api/collect',payload);toast(result.saved+' · '+result.note);}finally{$('collect').disabled=false;}
+});
+for(const [id,unit] of [['demand','veh/h'],['green','s'],['offset','s']])$(id).oninput=()=>$(id+'-out').textContent=$(id).value+' '+unit;
+$('run-ctm').onclick=()=>action(runCTM);
+action(async()=>{
+  state.roadHeadings=(await api('/road-headings.json').catch(()=>({sites:{}}))).sites;
+  const status=await api('/api/status');state.publicLive=Boolean(status.public_live_only);document.body.classList.toggle('public-live',state.publicLive);state.sites=status.sites;state.corridors=status.corridors||[];state.metrics=status.metrics;
+  const params=new URLSearchParams(location.search);
+  const target=state.sites.find(s=>s.id===params.get('site'));
+  if(params.get('region')==='Florida'||target?.region==='Florida')$('region').value='Florida';
+  initMap();renderNetwork();renderCards();renderChart();
+  const requestedSite=new URLSearchParams(location.search).get('site');
+  const requestedButton=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===requestedSite);
+  requestedButton?.click();
+  state.sites.sort((a,b)=>(a.region==='Toronto'?0:1)-(b.region==='Toronto'?0:1));
+  state.sites.forEach(s=>{$('history-site').add(new Option(s.name,s.id));$('anomaly-site').add(new Option(s.name,s.id));});
+  $('history-site').add(new Option('Learning dataset · SYNTHETIC','DEMO-001'));
+  $('history-site').value=state.site?.id||state.sites.find(s=>s.region==='Toronto')?.id||'';if(!state.publicLive)action(()=>loadHistory(true));
+  setInterval(()=>refreshLive().catch(()=>{clearObjects();$('connection').textContent='Connection lost';$('object-count').textContent='—';}),150);
+});
+
+let historyOffset=null,rawCursor=null,anomalyOffset=null;
+function utcTime(value){return typeof value==='number'?new Date(value*1000).toISOString().replace('T',' ').replace('Z',' UTC'):'—';}
+async function loadAvailability(){
+  const site=$('history-site').value;
+  if(!site||site==='DEMO-001'){$('recorded-summary').textContent='Synthetic data is separate from the saved sensor recording.';$('recorded-chart').replaceChildren();$('availability').textContent='Synthetic examples are separate from received observations.';$('recording-status').textContent='Choose a sensor to see recording status and available dates.';return;}
+  const recorded=await api('/api/recorded-summary?site='+encodeURIComponent(site));
+  if(site!==$('history-site').value)return;
+  $('recorded-summary').textContent=recorded.events?`${number(recorded.events)} saved SDK events · ${utcTime(recorded.start)} → ${utcTime(recorded.end)} · receipt-clock basis · ${JSON.stringify(recorded.status_counts)}`:'No recorded events for this sensor.';
+  const peak=Math.max(1,...recorded.buckets.map(b=>b.events));
+  $('recorded-chart').innerHTML=recorded.buckets.length?'<svg viewBox="0 0 720 130" role="img" aria-label="Received SDK messages per minute">'+recorded.buckets.map((b,i)=>`<rect x="${i*720/recorded.buckets.length}" y="${110-b.events/peak*100}" width="${Math.max(1,720/recorded.buckets.length-2)}" height="${b.events/peak*100}" fill="#197d79"><title>${utcTime(b.start)} · ${b.events} SDK messages</title></rect>`).join('')+'<text x="0" y="128" font-size="11">Start of saved interval</text><text x="720" y="128" text-anchor="end" font-size="11">Last saved event</text></svg>':'';
+  const a=await api('/api/availability?site='+encodeURIComponent(site));
+  if(site!==$('history-site').value)return;
+  $('recording-status').textContent=`${a.recording_active?'Recording active':'No recent saved events — recording not confirmed'} · ${a.count?`Saved range: ${utcTime(a.first_receipt)} → ${utcTime(a.last_receipt)}`:'No saved data'} · raw retention: ${a.retention_days} days. ${a.collection_error?'Collection note: '+a.collection_error+'. ':''}Select a range of up to 24 hours; gaps remain unavailable.`;
+  $('availability').textContent=`${a.count} raw events retained · sensor times ${utcTime(a.first)} to ${utcTime(a.last)} · last receipt ${utcTime(a.last_receipt)} · ${JSON.stringify(a.status_counts)}`;
+}
+function bindEvidence(){
+  Array.from($('quality-rows').rows).forEach((tr,i)=>{
+    tr.tabIndex=0;tr.title='Inspect calculation inputs and provenance';
+    const show=()=>action(async()=>{const r=state.rows[i];const q=new URLSearchParams({site:r.site,approach:r.approach,start:r.start,end:r.end,source:r.source});$('window-evidence').textContent=JSON.stringify(await api('/api/window?'+q),null,2);});
+    tr.onclick=show;tr.onkeydown=e=>{if(e.key==='Enter')show();};
+  });
+}
+$('history-next').onclick=()=>action(async()=>{
+  const q=filters();q.set('paged','true');q.set('offset',historyOffset);q.set('limit',1000);
+  const page=await api('/api/history?'+q);state.rows.push(...page.items);historyOffset=page.next_offset;$('history-next').hidden=historyOffset===null;
+  $('window-count').textContent=state.rows.length+' windows loaded';renderCards();renderChart();
+  $('quality-rows').innerHTML=state.rows.map(r=>`<tr><td>${utcTime(r.start)}</td><td>${escapeHTML(r.approach)}</td><td>${r.quality.valid_tracks}</td><td>${number(r.quality.coverage*100)}%</td><td>${escapeHTML(r.quality.flags.join('; ')||'Passes input checks · field validation pending')}</td></tr>`).join('');bindEvidence();
+});
+async function inspectRaw(next=false){
+  const site=$('history-site').value;if(!site||site==='DEMO-001')throw new Error('Select a real sensor');
+  const q=filters();q.set('limit','20');q.set('cursor',next?rawCursor:0);
+  const result=await api('/api/received?'+q);rawCursor=result.next_cursor;
+  $('raw-data').textContent=JSON.stringify(result.items,null,2);$('raw-next').hidden=rawCursor===null;
+}
+$('inspect-raw').onclick=()=>action(()=>inspectRaw());$('raw-next').onclick=()=>action(()=>inspectRaw(true));
+$('process-windows').onclick=()=>action(async()=>{
+  const q=filters();if(!q.has('start')||!q.has('end'))throw new Error('Choose a five-minute-aligned date range first');
+  const result=await api('/api/process',{site:$('history-site').value,start:Number(q.get('start')),end:Number(q.get('end')),cadence:'five_minute'});
+  toast(result.saved+' calculated windows saved');await loadHistory(true);
+});
+$('process-daily').onclick=()=>action(async()=>{
+  if(!$('process-day').value)throw new Error('Choose a Toronto calendar day');
+  const result=await api('/api/process',{site:$('history-site').value,day:$('process-day').value,cadence:'daily'});
+  toast(result.saved+' daily summaries saved');await loadHistory(true);
+});
+async function loadAnomalies(next=false){
+  const q=new URLSearchParams({site:$('anomaly-site').value,category:$('anomaly-category').value,offset:next?anomalyOffset:0});
+  const result=await api('/api/anomalies?'+q);anomalyOffset=result.next_offset;$('anomaly-next').hidden=anomalyOffset===null;
+  if(!next)$('anomaly-list').replaceChildren();
+  if(!result.items.length&&!next)$('anomaly-list').innerHTML='<div class="empty">No detected events. This does not establish normal traffic when reception or baselines are missing.</div>';
+  for(const event of result.items){
+    const panel=document.createElement('article');panel.className='anomaly-event';
+    panel.innerHTML=`<h3>${escapeHTML(event.rule)} <span class="pill">${escapeHTML(event.category)} · ${escapeHTML(event.state)}</span></h3><p>${escapeHTML(event.site)} / ${escapeHTML(event.approach||'sensor')} · ${utcTime(event.start)} → ${utcTime(event.end)}</p><p>Severity: ${escapeHTML(event.severity)} · ${event.acknowledged_at?'Acknowledged '+utcTime(event.acknowledged_at):'Not acknowledged'}</p>`;
+    const detail=document.createElement('details');const summary=document.createElement('summary');summary.textContent='Observed values, expected range and quality evidence';const pre=document.createElement('pre');pre.textContent=JSON.stringify(event.evidence,null,2);detail.append(summary,pre);panel.append(detail);
+    if(event.category==='traffic'){
+      const link=document.createElement('button');link.className='secondary';link.textContent='Open related history';link.onclick=()=>action(async()=>{
+        $('history-site').value=event.site;$('from').value='';$('to').value='';$('approach').value='';
+        document.querySelector('[data-tab=history]').click();await loadHistory(true);$('approach').value=event.approach;await loadHistory();
+        const e=event.evidence;const q=new URLSearchParams({site:event.site,approach:event.approach,start:e.window_start,end:e.window_end,source:e.source});
+        $('window-evidence').textContent=JSON.stringify(await api('/api/window?'+q),null,2);
+      });panel.append(link);
+    }
+    const note=document.createElement('textarea');note.maxLength=2000;note.placeholder='Review note';note.setAttribute('aria-label','Review note for '+event.rule);note.value=event.note||'';
+    const acknowledge=document.createElement('button');acknowledge.className='secondary';acknowledge.textContent='Acknowledge / save note';acknowledge.onclick=()=>action(async()=>{await api('/api/anomalies/acknowledge',{id:event.id,note:note.value});await loadAnomalies();});
+    panel.append(note,acknowledge);$('anomaly-list').append(panel);
+  }
+  const evaluations=await api('/api/anomaly-evaluations?site='+encodeURIComponent($('anomaly-site').value));
+  const counts={};evaluations.forEach(e=>counts[e.status]=(counts[e.status]||0)+1);
+  $('anomaly-readiness').textContent=evaluations.length?Object.entries(counts).map(([k,v])=>k+': '+v).join(' · '):'No eligible KPI windows evaluated yet. Check reception, verified geometry and historical processing.';
+}
+$('anomaly-refresh').onclick=()=>action(()=>loadAnomalies());$('anomaly-next').onclick=()=>action(()=>loadAnomalies(true));
+$('anomaly-site').onchange=()=>action(()=>loadAnomalies());$('anomaly-category').onchange=()=>action(()=>loadAnomalies());
+$('anomaly-evaluate').onclick=()=>action(async()=>{await api('/api/anomalies/evaluate',{site:$('anomaly-site').value});await loadAnomalies();toast('Evaluation complete. Detections remain provisional.');});
+
+
+let siteKpiRequest=0;
+async function loadSiteKPIs(keepApproach=false,keepWindow=false){
+  if(state.publicLive)return;
+  const site=state.site;if(!site)return;
+  const request=++siteKpiRequest;
+  $('site-kpi-panel').hidden=false;$('site-kpi-title').textContent=site.name+' · stored KPIs';
+  $('site-kpi-summary').textContent='Loading saved observations…';$('site-kpi-cards').replaceChildren();
+  const q=new URLSearchParams({site:site.id});
+  if(keepApproach&&$('site-kpi-approach').value)q.set('approach',$('site-kpi-approach').value);
+  if(keepWindow&&$('site-kpi-window').value)q.set('window',$('site-kpi-window').value);
+  let data;
+  try{data=await api('/api/site-kpis?'+q);}catch(e){if(request===siteKpiRequest)$('site-kpi-summary').textContent='Could not load stored KPIs: '+e.message;return;}
+  if(request!==siteKpiRequest||state.site?.id!==site.id)return;
+  const r=data.recorded,w=data.selected_window;
+  $('site-kpi-summary').textContent=r.events?`${number(r.events)} saved SDK messages · ${utcTime(r.start)} → ${utcTime(r.end)} (last recorded hour, receipt clock). Messages are not vehicle counts.`:'No saved sensor observations for this intersection.';
+  $('site-kpi-approach').replaceChildren(...(data.approaches.length?data.approaches.map(a=>new Option(a,a)):[new Option('No annotated approaches','')]));
+  $('site-kpi-approach').value=data.approach||'';$('site-kpi-approach').disabled=!data.approaches.length;
+  $('site-kpi-window').replaceChildren(...(data.windows.length?data.windows.map(r=>new Option(utcTime(r.start)+' → '+utcTime(r.end)+' · '+r.source,r.key)):[new Option('No calculated windows','')]));
+  if(w)$('site-kpi-window').value=data.windows.find(r=>r.start===w.start&&r.end===w.end&&r.source===w.source)?.key||'';
+  $('site-kpi-window').disabled=!data.windows.length;
+  $('site-kpi-quality').textContent=w?`${w.source} · ${w.quality.valid_tracks} valid traversals · ${number(w.quality.coverage*100)}% coverage · ${w.quality.flags.join('; ')||'Passes input checks; field validation pending'}`:'The recorded data cannot yet support these operational KPIs. Each card explains the missing inputs.';
+  $('site-kpi-cards').innerHTML=data.metrics.map(m=>`<article class="kpi-card site-kpi"><span>${escapeHTML(m.name)}</span><strong>${m.value===null?'Unavailable':number(m.value)} <small>${escapeHTML(m.unit)}</small></strong><small>${escapeHTML(m.status)} · ${escapeHTML(m.cadence)}</small><p>${escapeHTML(m.formula)}</p>${m.reasons.length?'<ul>'+m.reasons.map(reason=>'<li>'+escapeHTML(reason)+'</li>').join('')+'</ul>':''}</article>`).join('');
+}
+$('site-kpi-approach').onchange=()=>action(()=>loadSiteKPIs(true));
+$('site-kpi-window').onchange=()=>action(()=>loadSiteKPIs(true,true));
+$('site-kpi-history').onclick=()=>action(async()=>{
+  if(!state.site)return;
+  clearHistoricalCTM();$('history-site').value=state.site.id;$('from').value='';$('to').value='';$('approach').value='';
+  document.querySelector('[data-tab=history]').click();await loadHistory(true);
+});
+
+let historicalCTM=null,hctmGeneration=0;
+function clearHistoricalCTM(){
+  hctmGeneration++;historicalCTM=null;$('hctm-chart').replaceChildren();$('hctm-rows').replaceChildren();$('hctm-evidence').textContent='';$('hctm-title').textContent='';$('hctm-range').textContent='';$('hctm-download').disabled=true;
+  $('hctm-status').textContent='Selection or assumptions changed. Calculate to see matching results.';
+}
+for(const el of [$('history-site'),$('from'),$('to'),...document.querySelectorAll('[data-hctm]')])el.addEventListener('change',clearHistoricalCTM);
+function renderHistoricalCTM(){
+  if(!historicalCTM)return;
+  const r=historicalCTM,key=$('hctm-kpi').value;
+  $('hctm-title').textContent=r.labels[key]+' · provisional · '+state.metrics[key][1];
+  $('hctm-range').textContent=`${localChartTime(r.start,true)} → ${localChartTime(r.end,true)} · ${Intl.DateTimeFormat().resolvedOptions().timeZone} (same timezone as the picker). Each point represents a reporting window starting at that time; missing windows remain gaps.`;
+  const metrics=Object.fromEntries(Object.keys(r.labels).map(k=>[k,[r.labels[k],state.metrics[k][1]]]));
+  $('hctm-chart').innerHTML=lineChart(r.rows.map(b=>({...b,approach:'Assumed approach',quality:{status:'provisional'}})),key,metrics,{start:r.start,end:r.end,local:true});
+  $('hctm-rows').innerHTML=r.rows.map(b=>`<tr><td>${escapeHTML(localChartTime(b.start))} → ${escapeHTML(localChartTime(b.end))}</td><td>${number(b.values[key])}</td><td>${b.crossings}</td><td>${number(100*b.coverage)}%</td><td>${escapeHTML(b.flags.join('; '))}</td></tr>`).join('');
+}
+$('hctm-kpi').onchange=clearHistoricalCTM;
+$('hctm-latest').onclick=()=>action(async()=>{
+  const site=$('history-site').value;
+  const r=await api('/api/recorded-summary?site='+encodeURIComponent(site));
+  if(site!==$('history-site').value)return;
+  if(!r.events)throw new Error('No saved events for this intersection');
+  const local=t=>{const d=new Date(t*1000);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);};
+  $('from').value=local(r.end-3600);$('to').value=local(r.end);clearHistoricalCTM();
+  $('hctm-status').textContent='Latest recorded hour selected, rounded to minutes. Review assumptions, then calculate.';
+});
+$('hctm-run').onclick=()=>action(async()=>{
+  clearHistoricalCTM();const generation=hctmGeneration;
+  const start=new Date($('from').value).getTime()/1000,end=new Date($('to').value).getTime()/1000;
+  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start||end-start>86400){$('hctm-status').textContent='Choose a valid interval of up to 24 hours.';throw new Error('Choose a valid interval of up to 24 hours');}
+  if(!$('history-site').value||$('history-site').value==='DEMO-001'){ $('hctm-status').textContent='Choose a real intersection for CTM calculation.';return;}
+  const assumptions={};document.querySelectorAll('[data-hctm]').forEach(el=>assumptions[el.dataset.hctm]=el.dataset.hctm==='axis'?el.value:Number(el.value));
+  $('hctm-run').disabled=true;$('hctm-status').textContent='Reading saved frames and calculating CTM… Live collection continues independently.';
+  try{
+    const result=await api('/api/historical-ctm',{site:$('history-site').value,start,end,assumptions,kpi:$('hctm-kpi').value});
+    if(generation!==hctmGeneration)return;
+    historicalCTM=result;
+    $('hctm-status').textContent=`${result.site} · ${number(result.input_frames)} recorded frames · ${result.crossings} directional crossings · saved locally as ${result.saved_run}. All results are provisional.`;
+    $('hctm-evidence').textContent=JSON.stringify({assumptions:result.assumptions,limitations:result.limitations,version:result.version,max_conservation_error:result.max_conservation_error},null,2);
+    $('hctm-download').disabled=false;renderHistoricalCTM();
+  }catch(e){if(generation===hctmGeneration)$('hctm-status').textContent=e.message;throw e;}
+  finally{$('hctm-run').disabled=false;}
+});
+$('hctm-download').onclick=()=>{
+  if(!historicalCTM)return;
+  const url=URL.createObjectURL(new Blob([JSON.stringify(historicalCTM,null,2)],{type:'application/json'}));
+  const a=document.createElement('a');a.href=url;a.download=historicalCTM.saved_run;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+
+$('recording-refresh').onclick=()=>action(loadAvailability);

@@ -1,0 +1,498 @@
+{
+  "note": "User requested destination-side schematic placement. Verify live phaseNumber mapping independently per site.",
+  "sites": {
+    "OBC-AG-SA-C251068": {
+      "name": "Renaissance Dr & SR-436",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C257206": {
+      "name": "Boston Ave & SR-436",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C257222": {
+      "name": "Cranes Roost & SR-436",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C257223": {
+      "name": "Hattaway Dr & SR-436",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C257225": {
+      "name": "Palm Springs Dr & SR-436",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C257227": {
+      "name": "Plaza Entrance & SR-436",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C257236": {
+      "name": "Essex Ave & SR-436",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C618857": {
+      "name": "Finch W & Norfinch (LRT)",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C618861": {
+      "name": "Finch W & Driftwood (LRT)",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C251071": {
+      "name": "Finch W & Signet (LRT)",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C351163": {
+      "name": "Finch W & Jane (LRT)",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C251052": {
+      "name": "Finch W & Albion (LRT)",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C257220": {
+      "name": "Finch W & Weston (LRT)",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C257238": {
+      "name": "Finch W & Kipling (LRT)",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C257208": {
+      "name": "Finch W & Martin Grove (LRT)",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C251055": {
+      "name": "Finch W & York Gate (LRT)",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    },
+    "OBC-AG-SA-C251064": {
+      "name": "Finch W & Islington (LRT)",
+      "directions": {
+        "N": {
+          "movement": "SN",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "S": {
+          "movement": "NS",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "E": {
+          "movement": "WE",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        },
+        "W": {
+          "movement": "EW",
+          "phase_numbers": [],
+          "verified": false,
+          "evidence": ""
+        }
+      }
+    }
+  }
+}

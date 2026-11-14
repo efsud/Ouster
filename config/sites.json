@@ -1,0 +1,315 @@
+{
+  "sites": [
+    {
+      "id": "OBC-AG-SA-C251068",
+      "name": "Renaissance Dr & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.662964,
+        "lng": -81.380164,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 90,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 420.2,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257206",
+      "name": "Boston Ave & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.663736,
+        "lng": -81.371171,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 89,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 1313.7,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257222",
+      "name": "Cranes Roost & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.66189,
+        "lng": -81.384276,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 90,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 0,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257223",
+      "name": "Hattaway Dr & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.662275,
+        "lng": -81.382154,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 90,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 211.4,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257225",
+      "name": "Palm Springs Dr & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.663716,
+        "lng": -81.374096,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 90,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 1028.3,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257227",
+      "name": "Plaza Entrance & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.663767,
+        "lng": -81.376086,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 90,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 834.0,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257236",
+      "name": "Essex Ave & SR-436",
+      "region": "Florida",
+      "corridor": "SR-436",
+      "timezone": "America/New_York",
+      "reference_location": {
+        "lat": 28.663678,
+        "lng": -81.378193,
+        "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+        "accuracy": "user-confirmed SDK origin; orientation unverified"
+      },
+      "preview_rotation_deg": 91,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "station_m": 628.2,
+      "preview_mirror_y": true,
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C618857",
+      "name": "Finch W & Norfinch (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.755982,
+        "lng": -79.524304,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Norfinch, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      },
+      "preview_alignment_note": "Alignment unresolved: opposite orientations fit similarly; prior setting retained",
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C618861",
+      "name": "Finch W & Driftwood (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.758042,
+        "lng": -79.51351,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 140,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_alignment_note": "Alignment unresolved: opposite orientations fit similarly; prior setting retained",
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C251071",
+      "name": "Finch W & Signet (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.753306,
+        "lng": -79.536397,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 268,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C351163",
+      "name": "Finch W & Jane (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.757299,
+        "lng": -79.517862,
+        "accuracy": "approximate intersection; sensor mounting point unverified",
+        "source": "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        "query": "Finch W & Jane, Toronto, Ontario, Canada",
+        "retrieved": "2026-09-28"
+      },
+      "preview_alignment_note": "Alignment unresolved: no recorded tracks",
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C251052",
+      "name": "Finch W & Albion (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.741152,
+        "lng": -79.589252,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 89,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257220",
+      "name": "Finch W & Weston (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.75207,
+        "lng": -79.542374,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 91,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257238",
+      "name": "Finch W & Kipling (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.743273,
+        "lng": -79.582284,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 90,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257208",
+      "name": "Finch W & Martin Grove (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.736772,
+        "lng": -79.591825,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 90,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C251055",
+      "name": "Finch W & York Gate (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.756759,
+        "lng": -79.520823,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 271,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C251064",
+      "name": "Finch W & Islington (LRT)",
+      "region": "Toronto",
+      "corridor": "Finch West LRT",
+      "timezone": "America/Toronto",
+      "reference_location": {
+        "lat": 43.746175,
+        "lng": -79.568791,
+        "accuracy": "user-specified LiDAR position; field calibration unverified",
+        "source": "user instruction",
+        "retrieved": "2026-10-06"
+      },
+      "preview_rotation_deg": 90,
+      "preview_alignment_version": "user-2026-10-06-r2",
+      "preview_mirror_y": true,
+      "preview_alignment_note": "Provisional OSM road/direction fit, 2026-11-13; SDK Y inverted before rotation; field calibration unverified",
+      "preview_alignment_audit": "2026-11-13"
+    }
+  ]
+}

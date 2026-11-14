@@ -1,0 +1,121 @@
+{
+  "title": "SR-436 \u00b7 Altamonte Springs, Florida",
+  "timezone": "America/New_York",
+  "sites": [
+    {
+      "id": "OBC-AG-SA-C257222",
+      "name": "Cranes Roost & SR-436",
+      "station_group": "cranes_roost",
+      "station_m": 0,
+      "signal_location": {
+        "lat": 28.6619073,
+        "lon": -81.3842442,
+        "fdot_signal_id": "77112"
+      },
+      "sdk_origin": {
+        "lat": 28.66189,
+        "lon": -81.384276
+      },
+      "sdk_origin_source": "User-confirmed SDK trajectory origins, 2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257223",
+      "name": "Hattaway Dr & SR-436",
+      "station_group": "hattaway",
+      "station_m": 211.4,
+      "signal_location": {
+        "lat": 28.6622404,
+        "lon": -81.3821919,
+        "fdot_signal_id": "77113"
+      },
+      "sdk_origin": {
+        "lat": 28.662275,
+        "lon": -81.382154
+      },
+      "sdk_origin_source": "User-confirmed SDK trajectory origins, 2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C251068",
+      "name": "Renaissance Dr & SR-436",
+      "station_group": "renaissance",
+      "station_m": 420.2,
+      "signal_location": {
+        "lat": 28.6630135,
+        "lon": -81.3801529,
+        "fdot_signal_id": "77114"
+      },
+      "sdk_origin": {
+        "lat": 28.662964,
+        "lon": -81.380164
+      },
+      "sdk_origin_source": "User-confirmed SDK trajectory origins, 2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257236",
+      "name": "Essex Ave & SR-436",
+      "station_group": "essex",
+      "station_m": 628.2,
+      "signal_location": {
+        "lat": 28.6636794,
+        "lon": -81.378075,
+        "fdot_signal_id": "77115"
+      },
+      "sdk_origin": {
+        "lat": 28.663678,
+        "lon": -81.378193
+      },
+      "sdk_origin_source": "User-confirmed SDK trajectory origins, 2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257227",
+      "name": "Plaza Entrance (Altamonte Mall) & SR-436",
+      "station_group": "altamonte_mall_entrance",
+      "station_m": 834.0,
+      "signal_location": {
+        "lat": 28.6637498,
+        "lon": -81.376104,
+        "fdot_signal_id": "77116"
+      },
+      "sdk_origin": {
+        "lat": 28.663767,
+        "lon": -81.376086
+      },
+      "sdk_origin_source": "User-confirmed SDK trajectory origins, 2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257225",
+      "name": "Palm Springs Dr & SR-436",
+      "station_group": "palm_springs",
+      "station_m": 1028.3,
+      "signal_location": {
+        "lat": 28.6637516,
+        "lon": -81.3740618,
+        "fdot_signal_id": "77117"
+      },
+      "sdk_origin": {
+        "lat": 28.663716,
+        "lon": -81.374096
+      },
+      "sdk_origin_source": "User-confirmed SDK trajectory origins, 2026-11-13"
+    },
+    {
+      "id": "OBC-AG-SA-C257206",
+      "name": "Boston Ave & SR-436",
+      "station_group": "boston",
+      "station_m": 1313.7,
+      "signal_location": {
+        "lat": 28.6638103,
+        "lon": -81.3711659,
+        "fdot_signal_id": "77118"
+      },
+      "sdk_origin": {
+        "lat": 28.663736,
+        "lon": -81.371171
+      },
+      "sdk_origin_source": "User-confirmed SDK trajectory origins, 2026-11-13"
+    }
+  ],
+  "station_source": "https://www.cflsmartroads.com/projects/design/tsp/Regional_integrated_corridor_mgmt/Detour_Maps/I-4_Implementation_Guide-RICMS.pdf",
+  "geometry_source": "https://services1.arcgis.com/O1JpcwDW8sjYuddV/ArcGIS/rest/services/Traffic_Signal_Locations_TDA/FeatureServer/0",
+  "station_basis": "Cumulative straight-line spacing, from Cranes Roost; not surveyed distance"
+}

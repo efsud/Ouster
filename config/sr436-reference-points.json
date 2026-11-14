@@ -1,0 +1,66 @@
+{
+  "source": "User-confirmed SDK trajectory origins, 2026-11-13",
+  "coordinate_order": "latitude, longitude",
+  "coordinate_role": "Geographic location of local SDK trajectory origin (0,0); orientation is not verified",
+  "station_basis": "Cumulative straight-line spacing, from Cranes Roost; not surveyed distance",
+  "points": [
+    {
+      "reference": "cranes_roost",
+      "lat": 28.66189,
+      "lon": -81.384276,
+      "fdot_signal_candidate": "77112",
+      "approx_station_m": 0,
+      "udid": "OBC-AG-SA-C257222"
+    },
+    {
+      "reference": "hattaway",
+      "lat": 28.662275,
+      "lon": -81.382154,
+      "fdot_signal_candidate": "77113",
+      "approx_station_m": 211.4,
+      "udid": "OBC-AG-SA-C257223"
+    },
+    {
+      "reference": "renaissance",
+      "lat": 28.662964,
+      "lon": -81.380164,
+      "fdot_signal_candidate": "77114",
+      "approx_station_m": 420.2,
+      "udid": "OBC-AG-SA-C251068"
+    },
+    {
+      "reference": "essex",
+      "lat": 28.663678,
+      "lon": -81.378193,
+      "fdot_signal_candidate": "77115",
+      "approx_station_m": 628.2,
+      "udid": "OBC-AG-SA-C257236"
+    },
+    {
+      "reference": "altamonte_mall_entrance",
+      "lat": 28.663767,
+      "lon": -81.376086,
+      "fdot_signal_candidate": "77116",
+      "approx_station_m": 834.0,
+      "udid": "OBC-AG-SA-C257227"
+    },
+    {
+      "reference": "palm_springs",
+      "lat": 28.663716,
+      "lon": -81.374096,
+      "fdot_signal_candidate": "77117",
+      "approx_station_m": 1028.3,
+      "udid": "OBC-AG-SA-C257225"
+    },
+    {
+      "reference": "boston",
+      "lat": 28.663736,
+      "lon": -81.371171,
+      "fdot_signal_candidate": "77118",
+      "approx_station_m": 1313.7,
+      "udid": "OBC-AG-SA-C257206"
+    }
+  ],
+  "sensor_calibration_verified": false,
+  "sensor_origins_verified": true
+}

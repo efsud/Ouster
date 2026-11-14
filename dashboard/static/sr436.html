@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SR-436 observed traffic speeds</title>
+<style>
+:root{font:16px system-ui,sans-serif;color:#152a3d;background:#f3f6fa}body{margin:0}main{max-width:1240px;margin:auto;padding:28px}h1{margin:6px 0}h2{margin:0 0 12px}.card{background:white;border:1px solid #d8e2eb;border-radius:12px;margin:18px 0;padding:18px}.controls,#sites{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:12px 0}button,select{font:inherit;padding:.4rem .65rem;background:white;border:1px solid #9eb1c1;border-radius:5px}button:disabled{opacity:.5}canvas{width:100%;height:510px;display:block;border:1px solid #d8e2eb;box-sizing:border-box}#time-position{width:min(260px,100%)}p{line-height:1.5}.muted,small{color:#4b6175}.table{overflow:auto}table{border-collapse:collapse;width:100%;font-size:.9rem}td,th{padding:7px;text-align:left;border-bottom:1px solid #d8e2eb;white-space:nowrap}summary{cursor:pointer}@media(max-width:600px){main{padding:12px}.card{padding:10px}}
+</style>
+<main>
+<header><small>ALTAMONTE SPRINGS · FLORIDA</small><h1>SR-436 observed traffic speeds</h1>
+<p class="muted">Receipt time in America/New_York. Approximate distance from Cranes Roost. No inferred connections between sensors.</p></header>
+<section class="card" aria-labelledby="figure-title">
+<h2 id="figure-title">Speed by time and distance</h2>
+<p id="plot-status" role="status">Checking the Florida archive…</p>
+<div id="sites" aria-label="Select sensor intersections"></div>
+<div class="controls">
+<label>Direction <select id="direction"><option value="all">All directions</option><option value="eastbound">Eastbound</option><option value="westbound">Westbound</option><option value="unknown">Unknown / undetermined</option></select></label>
+<label>Object type <select id="objects"><option value="vehicles">Vehicles</option><option value="all">All SDK types</option></select></label>
+</div>
+<div class="controls">
+<button id="zoom-in">Zoom in</button><button id="zoom-out">Zoom out</button><button id="time-reset">Full hour</button>
+<label>Time position <input id="time-position" type="range" min="0" max="0" step="any" value="0"></label>
+<button id="export">Export PNG</button>
+</div>
+<canvas id="speed" aria-label="Observed speed time–distance figure"></canvas>
+<p id="hover" class="muted">Move over a segment to inspect it. Scroll to zoom around the pointer.</p>
+<p class="muted">Without sensor calibration, speed is plotted at the approximate sensor station only. Its longitudinal position and direction are unknown. Blank areas have no plotted observations.</p>
+</section>
+<section class="card">
+<h2>Recording and data quality</h2>
+<p id="recording-status" role="status"></p>
+<div class="table"><table><thead><tr><th>Sensor</th><th>Reception</th><th>Saved frames</th><th>Receipt span</th><th>Gaps &gt;3 s</th><th>Longest gap</th><th>Track diagnostics</th></tr></thead><tbody id="reception"></tbody></table></div>
+<p class="muted">A disappearance can be a field-of-view exit, occlusion, dropped detection, or a new tracking ID. Counts describe breaks, not their physical causes.</p>
+</section>
+</main>
+<script src="/sr436.js" defer></script>
+</html>
