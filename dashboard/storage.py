@@ -109,8 +109,10 @@ class Store:
         return hashlib.sha256((site+'\n'+json.dumps(event,sort_keys=True,separators=(',',':'))).encode()).hexdigest()
 
     def save_batch(self, records):
+        from .directional_signals import retain_signal_events
         inserted=0
         with self.connect() as db:
+            retain_signal_events(db,records)
             for r in records:
                 payload=json.dumps(r['event'],sort_keys=True,separators=(',',':'))
                 stamp=r.get('sensor_time')
@@ -130,8 +132,10 @@ class Store:
         return inserted
 
     def save_preview(self, records):
-        """Replace only the latest display frame; do not append raw history."""
+        """Retain current frame and signal state without appending raw history."""
+        from .directional_signals import retain_signal_events
         with self.connect() as db:
+            retain_signal_events(db,records)
             for r in records:
                 if 'frame' not in r['event'] or not (r['status']=='received' or r.get('reason')=='unknown_timezone'):continue
                 key=self.event_key(r['site'],r['session'],dict(r['event'],_clock_key=r.get('sensor_time') or r['received_at']))

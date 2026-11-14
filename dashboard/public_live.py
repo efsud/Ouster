@@ -4,9 +4,9 @@ from urllib.parse import urlsplit
 from .server import Handler, ROOT
 from .storage import Store
 
-ASSETS={'/','/index.html','/app.js','/road-headings.json','/style.css','/vendor/leaflet.js','/vendor/leaflet.css',
+ASSETS={'/','/index.html','/app.js','/directional_signals.js','/road-headings.json','/style.css','/vendor/leaflet.js','/vendor/leaflet.css',
         '/vendor/images/marker-icon.png','/vendor/images/marker-icon-2x.png','/vendor/images/marker-shadow.png','/vendor/images/layers.png','/vendor/images/layers-2x.png'}
-ALLOWED=ASSETS|{'/api/status','/api/network-live'}
+ALLOWED=ASSETS|{'/api/status','/api/network-live','/api/directional-signals'}
 
 class PublicHandler(Handler):
     def allowed_host(self):return True  # Only the explicitly allowlisted read surface below.
