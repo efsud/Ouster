@@ -4,7 +4,7 @@ const directionOffset={N:[0,38],S:[0,-38],E:[38,0],W:[-38,0]};
 const throughMovement={N:'SN',S:'NS',E:'WE',W:'EW'};
 function directionIcon(direction,status,estimated=false){
   const colours={RED:'#e34848',YELLOW:'#ffc840',GREEN:'#34c978',UNKNOWN:'#83949c'};
-  return L.divIcon({className:'direction-signal',iconSize:[30,42],iconAnchor:[15,21],html:`<div style="--signal-colour:${colours[status]||colours.UNKNOWN}"><b>${direction}${estimated?'~':''}</b><i></i><small>${throughMovement[direction][0]}→${throughMovement[direction][1]}</small>${estimated?'<em>EST</em>':''}</div>`});
+  return L.divIcon({className:'direction-signal',iconSize:[44,68],iconAnchor:[22,34],html:`<div style="--signal-colour:${colours[status]||colours.UNKNOWN}"><b>${direction}${estimated?'~':''}</b><i></i><strong>${status==='UNKNOWN'?'?':status}</strong><small>${throughMovement[direction][0]}→${throughMovement[direction][1]}</small>${estimated?'<em>EST</em>':''}</div>`});
 }
 function resetDirectionIndicators(){
   if(!map)return;
