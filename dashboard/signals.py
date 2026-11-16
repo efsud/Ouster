@@ -14,7 +14,7 @@ def apply_change(state,session,change,receipt,event_timestamp=None):
     for phase in change.get('phases',[]):
         if not isinstance(phase,dict) or phase.get('phaseNumber') is None:continue
         number=str(phase['phaseNumber']);code=phase.get('status',0)
-        stamp=phase.get('timestamp') or event_timestamp
+        stamp=phase.get('timestamp') or change.get('timestamp') or event_timestamp
         old=state['phases'].get(number)
         try:
             if old and stamp and old['sensor_timestamp'] and datetime.fromisoformat(stamp)<datetime.fromisoformat(old['sensor_timestamp']):continue

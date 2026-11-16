@@ -1,6 +1,7 @@
 """Four schematic through-movement indicators; verified or explicitly estimated movement mappings."""
 import json,time
 from .signals import apply_change
+from .phase_definitions import check_definition
 
 MOVEMENTS={'N':'SN','S':'NS','E':'WE','W':'EW'}
 
@@ -53,9 +54,12 @@ def directional_snapshot(store,site,mapping,now=None,estimates=None):
                     if len(colours)==1 and next(iter(colours)) in {'GREEN','YELLOW','RED'}:
                         colour=next(iter(colours));reason='Estimated movement mapping; received API phase state' if estimated else 'Verified through-movement mapping; received API state'
                     else:reason='Assigned phases disagree or are invalid'
+        definition=check_definition(site['id'],numbers,movement)
+        if estimated and definition['conflict']:
+            colour='UNKNOWN';reason='Vehicle estimate conflicts with saved phase-label movement; orientation or identifier join needs review'
         directions.append(dict(direction=direction,movement=movement,status=colour,reason=reason,phase_numbers=numbers,estimated=estimated,
             confidence='provisional' if estimated else 'verified' if assignment.get('verified') else 'unknown',
-            estimation=candidate))
+            estimation=candidate,definition_check=definition))
     lookup={d['direction']:d['status'] for d in directions};checks=[]
     if any(lookup[d]=='GREEN' for d in 'NS') and any(lookup[d]=='GREEN' for d in 'EW'):checks.append('Perpendicular through indicators green: review mapping and controller plan')
     for a,b in [('N','S'),('E','W')]:

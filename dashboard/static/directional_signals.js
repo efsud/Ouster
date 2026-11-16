@@ -40,7 +40,7 @@ async function refreshDirectionIndicators(){
       const item=directionIndicators.markers.get(s.site+':'+d.direction);if(!item)continue;
       if(d.status!=='UNKNOWN'){if(d.estimated)estimated++;else confirmed++;}
       item.marker.setIcon(directionIcon(d.direction,d.status,d.estimated));
-      const tip=document.createElement('span');tip.textContent=`${d.direction} indicator · ${d.movement[0]} → ${d.movement[1]} · ${d.status} · ${d.reason}. ${d.estimated?'ESTIMATED — not verified. ':''}${d.estimation?.matched_releases??0} straight-through releases; candidates: ${(d.estimation?.candidates||[]).map(c=>`${c.phase} (score ${c.score}, ${c.cycles} cycles)`).join(', ')||'none'}. Schematic location. ${s.checks.join('; ')} Vehicle/signal timing not verified.`;
+      const tip=document.createElement('span');tip.textContent=`${d.direction} indicator · ${d.movement[0]} → ${d.movement[1]} · ${d.status} · ${d.reason}. ${d.estimated?'ESTIMATED — not verified. ':''}${d.definition_check?.conflict?'DEFINITION CONFLICT — check orientation and label/number mapping. ':''}${d.estimation?.matched_releases??0} straight-through releases; candidates: ${(d.estimation?.candidates||[]).map(c=>`${c.phase} (score ${c.score}, ${c.cycles} cycles)`).join(', ')||'none'}. Schematic location. ${s.checks.join('; ')} Vehicle/signal timing not verified.`;
       item.marker.setTooltipContent(tip);
     }
     $('direction-signal-status').textContent=`${confirmed} verified, ${estimated} ESTIMATED directional colors (~). Estimates require fresh streams and repeated stop/release evidence. Gray = unknown mapping, stale or unavailable. Opposing directions are not forced to match.`;

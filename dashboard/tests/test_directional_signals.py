@@ -37,6 +37,10 @@ class DirectionalSignalTest(unittest.TestCase):
             self.assertEqual(east(101)['status'],'GREEN')
             self.assertTrue(east(101)['estimated'])
             self.assertEqual(east(101)['confidence'],'provisional')
+            from unittest.mock import patch
+            with patch('dashboard.directional_signals.check_definition',return_value={'conflict':True}):
+                self.assertEqual(east(101)['status'],'UNKNOWN')
+                self.assertIn('conflicts',east(101)['reason'])
             self.assertEqual(east(106)['status'],'UNKNOWN')
             estimates['sites']['S']['session']='wrong'
             self.assertEqual(east(101)['status'],'UNKNOWN')
