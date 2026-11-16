@@ -77,3 +77,7 @@ A new 65-second fresh-vehicle check compared current orientations against 180-de
 - Signet and Jane had no usable fresh segments during this sample.
 
 No calibration or phase mappings were promoted to verified. Collectors and the estimator remained running while only viewer processes were restarted.
+
+## Map simplification requested by user
+
+Removed all four predefined cardinal signal markers and their checkbox from both Toronto and Florida maps. The live API phase panel and its estimated-direction evidence remain available. The shared script now only polls and renders that panel; it no longer creates Leaflet signal markers. Verified both corridor maps in the browser and confirmed the Florida panel still receives phase states. JavaScript syntax and diff checks passed.

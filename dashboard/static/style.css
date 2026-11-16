@@ -18,14 +18,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;max-height:320px;
 /* Public live viewer exposes no historical, review or mutation interfaces. */
 .public-live [data-tab]:not([data-tab="live"]),.public-live #site-kpi-panel,.public-live section:not(#live){display:none!important}
 
-.direction-signal{background:none;border:0}.direction-signal>div{background:#182c34e8;border:1px solid #fff;border-radius:5px;text-align:center;color:white;font:10px sans-serif;padding:2px}.direction-signal b,.direction-signal small{display:block;font-size:9px}.direction-signal i{display:block;margin:2px auto;width:11px;height:11px;border-radius:50%;background:var(--signal-colour)}
 
-.direction-signal em {display:block;font-size:9px;font-style:normal;font-weight:800;color:#fff;background:#8a4b00;border-radius:2px;text-align:center;}
 
-/* Readable live state at intersection zoom, independent of color perception. */
-.direction-signal>div{padding:3px;box-shadow:0 1px 5px #0008}
-.direction-signal b{font-size:11px}
-.direction-signal i{width:18px;height:18px;border:1px solid #fff9}
-.direction-signal strong{display:block;font-size:9px;line-height:12px;color:var(--signal-colour)}
 
 .phase-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin:12px 0}.phase-card{display:flex;flex-direction:column;gap:5px;padding:12px;border:1px solid #d5dfe3;border-radius:8px}.phase-card strong{padding:6px;border-radius:4px;background:#e4e9ec;color:#36454e}.phase-card [data-status="GREEN"]{background:#d4f4df;color:#126334}.phase-card [data-status="RED"]{background:#ffe0e0;color:#a31b25}.phase-card [data-status="YELLOW"]{background:#fff0b3;color:#694d00}.phase-card small{font-size:11px;color:#52616c}
