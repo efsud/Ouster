@@ -26,3 +26,17 @@ class DirectionalSignalTest(unittest.TestCase):
             result=directional_snapshot(store,{'id':'S'},{},100)
             self.assertEqual({d['direction']:d['movement'] for d in result['directions']},{'E':'WE','W':'EW','N':'SN','S':'NS'})
             self.assertTrue(all(d['status']=='UNKNOWN' for d in result['directions']))
+
+    def test_estimated_colors_expire_and_remain_explicit(self):
+        with tempfile.TemporaryDirectory() as t:
+            store=Store(Path(t)/'db');site={'id':'S'}
+            store.save_preview([dict(site='S',session='s',received_at=100,status='received',event={'phaseChange':{'absolute':True,'phases':[{'phaseNumber':2,'status':1}]}})])
+            store.set_health('S',session='s')
+            estimates={'updated_at':100,'sites':{'S':{'session':'s','last_receipt':100,'directions':{'E':{'accepted':True,'phase_numbers':['2']}}}}}
+            def east(now):return next(d for d in directional_snapshot(store,site,{},now,estimates)['directions'] if d['direction']=='E')
+            self.assertEqual(east(101)['status'],'GREEN')
+            self.assertTrue(east(101)['estimated'])
+            self.assertEqual(east(101)['confidence'],'provisional')
+            self.assertEqual(east(106)['status'],'UNKNOWN')
+            estimates['sites']['S']['session']='wrong'
+            self.assertEqual(east(101)['status'],'UNKNOWN')

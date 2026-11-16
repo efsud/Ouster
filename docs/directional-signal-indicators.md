@@ -33,3 +33,19 @@ Opposing directions are not forced to match. The endpoint reports differing oppo
 - Toronto endpoint returned fresh receiving streams and initialized absolute snapshots for inspected sites; direction colors remained unknown because mappings are unverified.
 
 Implementation and software checks are complete for the indicator framework. Directional coloring and vehicle/signal coordination are not field-validated.
+
+## Estimated mode — 16 November 2026
+
+User-authorized estimated mapping is now separate from controller verification. Run `scripts/estimate_signal_directions.command` alongside the two live collectors. The combined/public viewers consume its local `data/signal-estimates.json` report. There is no credential entry in the estimator. It reads only the two small live databases, never the historical archive.
+
+Every half second it pairs a latest object frame with accumulated phase state in one SQLite read transaction. It uses observed coordinate displacement, with the same provisional rotation and Y reflection as the map, rather than the cosmetically adjusted icon heading. Tracks must stop for two seconds, release upstream within 80 metres of the assumed centre, and subsequently pass through to the opposite side. Turning, large sideways drift, excessive speed, missing initialization and gaps are rejected. Cardinal assignment permits at most 35 degrees deviation from the named direction. This may omit oblique roads and is not a verified lane classifier.
+
+For each direction and candidate phase, evidence includes green and red fractions at release, release proximity to observed green onset (0–12 seconds), green duty fraction, number of cycles, and distinct cycles with matched releases. Score = 0.6 × green release fraction + 0.4 × onset-match fraction. It is a heuristic score, NOT a probability or statistical confidence interval.
+
+Acceptance requires at least 600 seconds of observation, eight supported through releases, three observed green onsets and three distinct matched release cycles, ≥80% releases on green, ≤10% on red, ≥50% near green onset, green association ≥1.5 times background green duty, and a score margin ≥0.2 over the next candidate. Tied phases stay ambiguous. These initial thresholds need field review. Evidence uses a rolling hour, resets after outages/session changes, and is not trained from the old previews. Restarting the estimator starts a new learning window. No automatic controller verification is written to configuration.
+
+Accepted mappings use live API colors with explicit EST labels and provisional confidence in tooltips. Fresh stream, absolute snapshot, phase age and mapping-report freshness gates still apply. After five seconds without fresh input or fifteen seconds without estimator reports, inferred colors are disabled. Opposing colors are never forced to agree. Gray means insufficient, ambiguous, stale or unavailable evidence. This is an exploratory through-movement association, not physical-head identification or a safety assessment.
+
+Limitations: receipt clocks can mask transport lag; approximate origin/rotation can misclassify direction; queues unrelated to lights can produce associations; correlated phases may remain indistinguishable. The estimator reports evidence but does not prove signal/vehicle consistency. Candidate details are available in marker tooltips and the local report. Raw vehicle trajectories are not added to a historical archive; only bounded in-memory samples/tracks and derived report evidence are used.
+
+Validation: automated cases cover coordinate reflection, ambiguous headings, stop/release completion, session/gap reset, sufficient evidence and tied candidates. Real estimates remain pending fresh live collection and review. The previous controller-verified-only behavior remains available and takes priority over estimates.

@@ -107,7 +107,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send({'sites':entries,'corridors':corridors(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_configured':any(s.get('region')=='Toronto' for s in entries)})
             if parsed.path == '/api/directional-signals':
                 mappings=json.loads((ROOT/'config/signal_directions.json').read_text())['sites']
-                return self.send({'snapshots':[directional_snapshot(live_store(self.server,s),s,mappings.get(s['id'],{})) for s in sites() if s.get('region')==q.get('region')]})
+                from .signal_estimation import REPORT
+                try: estimates=json.loads(REPORT.read_text())
+                except (OSError,ValueError): estimates={}
+                return self.send({'snapshots':[directional_snapshot(live_store(self.server,s),s,mappings.get(s['id'],{}),estimates=estimates) for s in sites() if s.get('region')==q.get('region')]})
             if parsed.path == '/api/network-signals':
                 return self.send({'snapshots':[self.server.signal_reader.snapshot(s['id']) for s in sites() if s.get('region')==q.get('region')]})
             if parsed.path == '/api/signal-layouts':

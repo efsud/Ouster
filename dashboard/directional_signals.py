@@ -1,4 +1,4 @@
-"""Four schematic through-movement indicators; never infer a controller mapping."""
+"""Four schematic through-movement indicators; verified or explicitly estimated movement mappings."""
 import json,time
 from .signals import apply_change
 
@@ -21,19 +21,28 @@ def retain_signal_events(db,records):
         state['last_receipt']=stamp
     for site,state in states.items():db.execute('INSERT OR REPLACE INTO live_signal_state VALUES(?,?)',(site,json.dumps(state)))
 
-def directional_snapshot(store,site,mapping,now=None):
+def directional_snapshot(store,site,mapping,now=None,estimates=None):
     now=time.time() if now is None else now
     with store.connect() as db:
         exists=db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='live_signal_state'").fetchone()
         row=db.execute('SELECT payload FROM live_signal_state WHERE site=?',(site['id'],)).fetchone() if exists else None
     state=json.loads(row[0]) if row else {};health=store.health(site['id'])
     fresh=0<=now-state.get('last_receipt',0)<=5 and health.get('session')==state.get('session')
+    estimate=(estimates or {}).get('sites',{}).get(site['id'],{})
+    estimate_fresh=(0<=now-(estimates or {}).get('updated_at',0)<=15 and
+        estimate.get('session')==state.get('session') and
+        0<=now-(estimate.get('last_receipt') or 0)<=5)
     directions=[]
     for direction,movement in MOVEMENTS.items():
         assignment=mapping.get('directions',{}).get(direction,{})
+        candidate=estimate.get('directions',{}).get(direction,{})
+        estimated=False
+        if not assignment.get('verified') and estimate_fresh and candidate.get('accepted'):
+            assignment=dict(movement=movement,phase_numbers=candidate['phase_numbers'],evidence='Stop/release correlation')
+            estimated=True
         numbers=assignment.get('phase_numbers',[])
         reason='Movement-to-phase mapping unverified';colour='UNKNOWN'
-        if assignment.get('verified') is True and assignment.get('movement')==movement and numbers and assignment.get('evidence'):
+        if (assignment.get('verified') is True or estimated) and assignment.get('movement')==movement and numbers and assignment.get('evidence'):
             if not fresh:reason='Signal stream stale or unavailable'
             elif not state.get('initialized'):reason='Waiting for absolute phase snapshot'
             else:
@@ -42,9 +51,11 @@ def directional_snapshot(store,site,mapping,now=None):
                 else:
                     colours={p['status'] for p in phases}
                     if len(colours)==1 and next(iter(colours)) in {'GREEN','YELLOW','RED'}:
-                        colour=next(iter(colours));reason='Verified through-movement mapping; received API state'
+                        colour=next(iter(colours));reason='Estimated movement mapping; received API phase state' if estimated else 'Verified through-movement mapping; received API state'
                     else:reason='Assigned phases disagree or are invalid'
-        directions.append(dict(direction=direction,movement=movement,status=colour,reason=reason,phase_numbers=numbers))
+        directions.append(dict(direction=direction,movement=movement,status=colour,reason=reason,phase_numbers=numbers,estimated=estimated,
+            confidence='provisional' if estimated else 'verified' if assignment.get('verified') else 'unknown',
+            estimation=candidate))
     lookup={d['direction']:d['status'] for d in directions};checks=[]
     if any(lookup[d]=='GREEN' for d in 'NS') and any(lookup[d]=='GREEN' for d in 'EW'):checks.append('Perpendicular through indicators green: review mapping and controller plan')
     for a,b in [('N','S'),('E','W')]:

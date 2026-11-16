@@ -2,9 +2,9 @@
 const directionIndicators={layer:null,markers:new Map(),region:null,busy:false,updated:0};
 const directionOffset={N:[0,38],S:[0,-38],E:[38,0],W:[-38,0]};
 const throughMovement={N:'SN',S:'NS',E:'WE',W:'EW'};
-function directionIcon(direction,status){
+function directionIcon(direction,status,estimated=false){
   const colours={RED:'#e34848',YELLOW:'#ffc840',GREEN:'#34c978',UNKNOWN:'#83949c'};
-  return L.divIcon({className:'direction-signal',iconSize:[30,42],iconAnchor:[15,21],html:`<div style="--signal-colour:${colours[status]||colours.UNKNOWN}"><b>${direction}</b><i></i><small>${throughMovement[direction][0]}→${throughMovement[direction][1]}</small></div>`});
+  return L.divIcon({className:'direction-signal',iconSize:[30,42],iconAnchor:[15,21],html:`<div style="--signal-colour:${colours[status]||colours.UNKNOWN}"><b>${direction}${estimated?'~':''}</b><i></i><small>${throughMovement[direction][0]}→${throughMovement[direction][1]}</small>${estimated?'<em>EST</em>':''}</div>`});
 }
 function resetDirectionIndicators(){
   if(!map)return;
@@ -35,15 +35,15 @@ async function refreshDirectionIndicators(){
     const result=await api('/api/directional-signals?region='+encodeURIComponent(region));
     if(region!==$('region').value)return;
     directionIndicators.updated=Date.now();
-    let confirmed=0;
+    let confirmed=0,estimated=0;
     for(const s of result.snapshots)for(const d of s.directions){
       const item=directionIndicators.markers.get(s.site+':'+d.direction);if(!item)continue;
-      if(d.status!=='UNKNOWN')confirmed++;
-      item.marker.setIcon(directionIcon(d.direction,d.status));
-      const tip=document.createElement('span');tip.textContent=`${d.direction} indicator · ${d.movement[0]} → ${d.movement[1]} · ${d.status} · ${d.reason}. Schematic location. ${s.checks.join('; ')} Vehicle/signal timing not verified.`;
+      if(d.status!=='UNKNOWN'){if(d.estimated)estimated++;else confirmed++;}
+      item.marker.setIcon(directionIcon(d.direction,d.status,d.estimated));
+      const tip=document.createElement('span');tip.textContent=`${d.direction} indicator · ${d.movement[0]} → ${d.movement[1]} · ${d.status} · ${d.reason}. ${d.estimated?'ESTIMATED — not verified. ':''}${d.estimation?.matched_releases??0} straight-through releases; candidates: ${(d.estimation?.candidates||[]).map(c=>`${c.phase} (score ${c.score}, ${c.cycles} cycles)`).join(', ')||'none'}. Schematic location. ${s.checks.join('; ')} Vehicle/signal timing not verified.`;
       item.marker.setTooltipContent(tip);
     }
-    $('direction-signal-status').textContent=`${confirmed} verified directional colors. Gray = unknown mapping, stale or unavailable. Opposing directions are not forced to match.`;
+    $('direction-signal-status').textContent=`${confirmed} verified, ${estimated} ESTIMATED directional colors (~). Estimates require fresh streams and repeated stop/release evidence. Gray = unknown mapping, stale or unavailable. Opposing directions are not forced to match.`;
   }catch{
     directionIndicators.updated=0;
     for(const {marker,d} of directionIndicators.markers.values())marker.setIcon(directionIcon(d,'UNKNOWN'));
