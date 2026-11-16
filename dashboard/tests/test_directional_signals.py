@@ -44,3 +44,14 @@ class DirectionalSignalTest(unittest.TestCase):
             self.assertEqual(east(106)['status'],'UNKNOWN')
             estimates['sites']['S']['session']='wrong'
             self.assertEqual(east(101)['status'],'UNKNOWN')
+
+    def test_phase_panel_is_independent_of_direction_mapping(self):
+        with tempfile.TemporaryDirectory() as t:
+            store=Store(Path(t)/'db')
+            store.save_preview([dict(site='S',session='s',received_at=100,status='received',event={'phaseChange':{'absolute':True,'phases':[{'phaseNumber':2,'status':1},{'phaseNumber':64,'status':0}]}})])
+            store.set_health('S',session='s')
+            data=directional_snapshot(store,{'id':'S'},{},101)
+            self.assertEqual([p['status'] for p in data['phases']],['GREEN','INVALID'])
+            self.assertTrue(all(d['status']=='UNKNOWN' for d in data['directions']))
+            stale=directional_snapshot(store,{'id':'S'},{},106)
+            self.assertTrue(all(p['status']=='UNKNOWN' for p in stale['phases']))

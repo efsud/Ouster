@@ -59,3 +59,21 @@ Section 3.4.1 describes versioned phase definitions and movement metadata. It do
 A concrete conflict was found in Signet: the saved active row labeled 4 includes green movement SN, whereas the flow estimator assigned live phase 4 to NS. This does not prove which source is wrong: the label-number join, stale definitions or provisional geometric orientation could be responsible. The endpoint now compares estimated movements conditionally against saved active labels and suppresses colored estimates when they conflict. Tooltips report the conflict. Agreement is not promoted to controller verification. Florida has no saved Phase Details in this checkout, so its estimates cannot yet receive this cross-check. No opposite lights are forced to match and no thresholds were relaxed merely to produce more colors.
 
 Tests: 77 tests passed, including parent PhaseChange timestamp precedence, no phase_id/phaseNumber join, and configuration/status separation. Viewers were restarted without restarting collectors or the estimator. Vehicle-flow estimates remain exploratory: shared green timing can make multiple phases statistically indistinguishable, and an ambiguous 180-degree spatial alignment can reverse the inferred direction.
+
+## Live API phase panel and fresh alignment check
+
+The selected-intersection panel now shows received phase numbers with textual RED/YELLOW/GREEN states, independent of directional assignments and map zoom. It works for Finch and Florida. Invalid entries (code 0) are collapsed; a 64-entry payload does not mean 64 physical lights. It reports receipt freshness and absolute initialization. Unknown or stale phases lose their colors. Each phase tooltip retains the sensor timestamp with its timezone caveat; update age means time since receipt of a phase update, not necessarily upstream latency. Browser response failures clear the panel; five seconds without a dashboard update also clears displayed states.
+
+Below the phase cards, each cardinal movement shows its estimation status, reason and vehicle-departure count. Estimated map colors still use the same evidence gates and definition-conflict suppression. No guessed direction is required to see the API phase colors.
+
+Validation: 78 Python tests passed, including phase colors without movement assignments and stale-state suppression. JavaScript syntax and diff checks passed. Browser verification showed Driftwood's live phase cards with red and green states, collapsed invalid entries, and Boston's corresponding Florida panel.
+
+A new 65-second fresh-vehicle check compared current orientations against 180-degree alternatives using cached OSM road segments and oneway attributes. This is a diagnostic, not surveyed calibration. Results are saved locally at data/alignment/live-signal-alignment-review.json; scripts/check_live_signal_alignment.py reproduces the check. Samples are motion segments, not independent vehicle counts.
+
+- All seven Florida sites favored the current orientation, with median axis residuals about 0.7–1.7 degrees and median road distances about 2.3–4.1 m.
+- Norfinch: current cost 13.9 versus opposite 14.8, insufficient separation; median road distance 12.6 m.
+- Driftwood: current cost 22.2 versus opposite 21.8, essentially ambiguous; median axis residual 15.2 degrees and road distance 10.8 m. Do not flip automatically based on this comparison.
+- Other sampled Finch sites favored the current orientation, but Albion and Weston had only small cost separation. Road fit cannot establish a phase-number/label join.
+- Signet and Jane had no usable fresh segments during this sample.
+
+No calibration or phase mappings were promoted to verified. Collectors and the estimator remained running while only viewer processes were restarted.

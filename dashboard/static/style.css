@@ -27,3 +27,5 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;max-height:320px;
 .direction-signal b{font-size:11px}
 .direction-signal i{width:18px;height:18px;border:1px solid #fff9}
 .direction-signal strong{display:block;font-size:9px;line-height:12px;color:var(--signal-colour)}
+
+.phase-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin:12px 0}.phase-card{display:flex;flex-direction:column;gap:5px;padding:12px;border:1px solid #d5dfe3;border-radius:8px}.phase-card strong{padding:6px;border-radius:4px;background:#e4e9ec;color:#36454e}.phase-card [data-status="GREEN"]{background:#d4f4df;color:#126334}.phase-card [data-status="RED"]{background:#ffe0e0;color:#a31b25}.phase-card [data-status="YELLOW"]{background:#fff0b3;color:#694d00}.phase-card small{font-size:11px;color:#52616c}

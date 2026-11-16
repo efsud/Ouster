@@ -64,6 +64,14 @@ def directional_snapshot(store,site,mapping,now=None,estimates=None):
     if any(lookup[d]=='GREEN' for d in 'NS') and any(lookup[d]=='GREEN' for d in 'EW'):checks.append('Perpendicular through indicators green: review mapping and controller plan')
     for a,b in [('N','S'),('E','W')]:
         if lookup[a]!='UNKNOWN' and lookup[b]!='UNKNOWN' and lookup[a]!=lookup[b]:checks.append(f'{a}/{b} differ; not automatically an error (signal plans may serve directions separately)')
-    return dict(site=site['id'],directions=directions,checks=checks,stream_receiving=fresh,
+    phases=[]
+    for number,p in state.get('phases',{}).items():
+        age=now-p['received_at']
+        current=fresh and state.get('initialized',False) and 0<=age<=180
+        phases.append(dict(phase=number,status=p['status'] if current else 'UNKNOWN',
+            last_received_status=p['status'],age_s=round(max(0,age),1),
+            sensor_timestamp=p.get('sensor_timestamp'),current=bool(current)))
+    phases.sort(key=lambda p:(not str(p['phase']).isdigit(),int(p['phase']) if str(p['phase']).isdigit() else str(p['phase'])))
+    return dict(site=site['id'],phases=phases,phase_state_basis='API state; direction mapping separate; sensor timezone unverified',directions=directions,checks=checks,stream_receiving=fresh,
         vehicle_consistency='Not validated: verified stop lines, movement mapping and synchronized clocks required',
         placement='Schematic cardinal indicators, not surveyed physical signal heads',absolute_received=bool(state.get('initialized')))
