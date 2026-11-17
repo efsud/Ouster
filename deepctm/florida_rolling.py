@@ -68,24 +68,26 @@ def build(db,sites,end):
         output.append({'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'tracks':tracks})
     return {'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching or inferred paths.'}
 
-def read_snapshot(now=None):
+def read_snapshot(now=None,folder=None):
+    folder=FOLDER if folder is None else folder
     now=time.time() if now is None else now
     try:
-        p=json.loads((FOLDER/'snapshot.json').read_text())
+        p=json.loads((folder/'snapshot.json').read_text())
         # Do not serve a cached hour outside the 90-minute retention horizon.
         if p['start']<now-RETENTION:return {'state':'expired','message':'Snapshot expired; rolling collector must be running.'}
         p['state']='ready';return p
     except (OSError,ValueError):return {'state':'warming','message':'Collecting the first samples. Initial figure appears after about 30 seconds.'}
 
-def main():
+def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
+    folder=FOLDER if folder is None else folder
     from dashboard.server import sites
-    FOLDER.mkdir(parents=True,exist_ok=True)
+    folder.mkdir(parents=True,exist_ok=True)
     # One writer prevents competing retention and snapshot schedules.
     import fcntl
-    lock=open(FOLDER/'writer.lock','w');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-    db=connect(FOLDER/'buffer.sqlite3');source=sqlite3.connect(f'file:{ROOT}/data/florida-live.sqlite3?mode=ro',uri=True)
-    entries=[s for s in sites() if s['region']=='Florida'];ids={s['id'] for s in entries};begin=time.time();last_publish=0
-    try:last_publish=json.loads((FOLDER/'snapshot.json').read_text())['generated_at']
+    lock=open(folder/'writer.lock','w');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    db=connect(folder/'buffer.sqlite3');source=sqlite3.connect(f'file:{ROOT}/data/{source_name}?mode=ro',uri=True)
+    entries=[s for s in sites() if s['region']==region];ids={s['id'] for s in entries};begin=time.time();last_publish=0
+    try:last_publish=json.loads((folder/'snapshot.json').read_text())['generated_at']
     except (OSError,ValueError,KeyError):pass
     purge(db,begin)
     while True:
@@ -95,9 +97,9 @@ def main():
                 db.execute('INSERT OR IGNORE INTO frames VALUES(?,?,?,?,?)',(site,session,key,receipt,payload))
         purge(db,now)
         if (not last_publish and now-begin>=30) or (last_publish and now>=last_publish+REFRESH):
-            result=build(db,entries,now);temp=FOLDER/'snapshot.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(FOLDER/'snapshot.json');last_publish=now
+            result=build(db,entries,now);temp=folder/'snapshot.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'snapshot.json');last_publish=now
         health={'updated_at':time.time(),'buffer_start':db.execute('SELECT min(received) FROM frames').fetchone()[0],'buffer_end':db.execute('SELECT max(received) FROM frames').fetchone()[0],'next_update':last_publish+REFRESH if last_publish else begin+30}
-        temp=FOLDER/'status.tmp';temp.write_text(json.dumps(health));temp.replace(FOLDER/'status.json')
+        temp=folder/'status.tmp';temp.write_text(json.dumps(health));temp.replace(folder/'status.json')
         time.sleep(.5)
 
 if __name__=='__main__':main()

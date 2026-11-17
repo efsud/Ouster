@@ -1,7 +1,8 @@
 'use strict';
 const el=id=>document.getElementById(id),vehicle=new Set(['1','2','3','4','5','6','7','8','9','15']);
+const corridor=document.body.dataset.corridor||'florida',regionName=corridor==='finch'?'Toronto':'Florida';
 let data=null,view=null,points=[],version=0;
-const clock=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:'America/New_York',hour12:false});
+const clock=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:corridor==='finch'?'America/Toronto':'America/New_York',hour12:false});
 function color(v){const t=Math.max(0,Math.min(1,v/20));return `hsl(${t*120},75%,40%)`;}
 function draw(){
  if(!data)return;const selected=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value)),sites=data.sites.filter(s=>selected.has(s.id));
@@ -17,11 +18,11 @@ function draw(){
   const filter=el('objects').value,code=tr.class_type;if(tr.direction!==el('direction').value)continue;
   if(filter==='vehicles'&&!vehicle.has(code)||filter==='pedestrians'&&!['0','10','11','14','16'].includes(code)||filter==='cyclists'&&!['12','13','17'].includes(code))continue;
   let seen=false;for(let i=1;i<tr.points.length;i++){const a=tr.points[i-1],b=tr.points[i],ta=data.start+a[0],tb=data.start+b[0];if(tb<view[0]||ta>view[1])continue;seen=true;c.strokeStyle=color(b[2]);c.lineWidth=1;c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],name:s.name});}if(seen)count++;
- }c.restore();el('coverage').textContent=`${count} visible local fragments · Window ${clock(view[0])}–${clock(view[1])} Florida time. `+sites.map(s=>`${s.name}: ${s.frames} sampled frames`).join(' · ');
+ }c.restore();el('coverage').textContent=`${count} visible local fragments · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time. `+sites.map(s=>`${s.name}: ${s.frames} sampled frames`).join(' · ');
 }
 function zoom(f){if(!data)return;const span=Math.max(20,Math.min(3600,(view[1]-view[0])*f)),center=(view[0]+view[1])/2,start=Math.max(data.start,Math.min(data.end-span,center-span/2));view=[start,start+span];draw();}
-async function refresh(){if(data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch('/api/florida-rolling');if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
- el('message').textContent=`Figure updated ${clock(next.generated_at)} · Next update ${clock(next.next_update)} Florida time. Shows ${clock(next.start)}–${clock(next.end)}; early collection may cover less than one hour.`;
+async function refresh(){if(data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(`/api/${corridor}-rolling`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
+ el('message').textContent=`Figure updated ${clock(next.generated_at)} · Next update ${clock(next.next_update)} ${regionName} time. Shows ${clock(next.start)}–${clock(next.end)}; early collection may cover less than one hour.`;
  if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();
  }catch(e){el('message').textContent=e.message;}}
 el('direction').onchange=draw;el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
