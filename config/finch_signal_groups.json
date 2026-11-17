@@ -1,0 +1,1539 @@
+{
+  "source": "Toronto_signal_decoder.docx",
+  "source_sha256": "2f50629de56cdd749652bab1b3768aefe6b1f3e4af9125d2830cd5d2bfce6d14",
+  "configuration_date": "2026-10-02",
+  "identifier_join": "ASSUMED phase_label = phaseNumber, not verified",
+  "sites": {
+    "OBC-AG-SA-C618857": [
+      {
+        "labels": [
+          "1",
+          "11"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EN",
+            "statuses": [
+              "R"
+            ]
+          },
+          {
+            "movement": "ES",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "2"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "WS",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "4"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SE",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "SN",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "5",
+          "12"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "WS",
+            "statuses": [
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "6"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EN",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "7"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SE",
+            "statuses": [
+              "R"
+            ]
+          },
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "8"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NS",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NW",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "10"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "14"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      }
+    ],
+    "OBC-AG-SA-C618861": [
+      {
+        "labels": [
+          "1",
+          "11"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "ES",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "2"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "WS",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "4"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SE",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "SN",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "5",
+          "12"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "6"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EN",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "8"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NS",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NW",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "10"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "14"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      }
+    ],
+    "OBC-AG-SA-C251071": [
+      {
+        "labels": [
+          "1",
+          "11"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "ES",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "2"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "WS",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "3"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "4"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SE",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "SN",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "5",
+          "12"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "6"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EN",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "7"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "8"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NS",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NW",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "10"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "14"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      }
+    ],
+    "OBC-AG-SA-C351163": [
+      {
+        "labels": [
+          "1",
+          "11"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "ES",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "2"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "WS",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "3"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "4"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SE",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "SN",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "5",
+          "12"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "6"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EN",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "7"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "8"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NS",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NW",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "10"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "14"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      }
+    ],
+    "OBC-AG-SA-C251052": [
+      {
+        "labels": [
+          "1",
+          "11"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "3"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "5",
+          "12"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "7"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "ES",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "10"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "14"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NS",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      }
+    ],
+    "OBC-AG-SA-C257220": [
+      {
+        "labels": [
+          "1",
+          "11"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "ES",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "2"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "WS",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "3"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "4"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SE",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "SN",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "5",
+          "12"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "6"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EN",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "7"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "8"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NS",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NW",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "14"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      }
+    ],
+    "OBC-AG-SA-C257238": [
+      {
+        "labels": [
+          "1",
+          "11"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "ES",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "2"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "WS",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "3"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "4"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SE",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "SN",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "5",
+          "12"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "6"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EN",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "8"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NS",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NW",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "10"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "14"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      }
+    ],
+    "OBC-AG-SA-C257208": [
+      {
+        "labels": [
+          "1",
+          "11"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "ES",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "5",
+          "12"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "10"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "14"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      }
+    ],
+    "OBC-AG-SA-C251055": [
+      {
+        "labels": [
+          "2"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "WS",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "4"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SE",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "SN",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "5",
+          "12"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "6"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EN",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "8"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NS",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NW",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "10"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "14"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EN",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      }
+    ],
+    "OBC-AG-SA-C251064": [
+      {
+        "labels": [
+          "1",
+          "11"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "ES",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "2"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "WS",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "3"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "4"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SE",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "SN",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "5",
+          "12"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WN",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "6"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EN",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          },
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "7"
+        ],
+        "entry": "South",
+        "associations": [
+          {
+            "movement": "SW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "8"
+        ],
+        "entry": "North",
+        "associations": [
+          {
+            "movement": "NE",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NS",
+            "statuses": [
+              "G"
+            ]
+          },
+          {
+            "movement": "NW",
+            "statuses": [
+              "G",
+              "R"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "10"
+        ],
+        "entry": "West",
+        "associations": [
+          {
+            "movement": "WE",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      },
+      {
+        "labels": [
+          "14"
+        ],
+        "entry": "East",
+        "associations": [
+          {
+            "movement": "EW",
+            "statuses": [
+              "G"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

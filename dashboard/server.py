@@ -110,7 +110,17 @@ class Handler(BaseHTTPRequestHandler):
                 from .signal_estimation import REPORT
                 try: estimates=json.loads(REPORT.read_text())
                 except (OSError,ValueError): estimates={}
-                return self.send({'snapshots':[directional_snapshot(live_store(self.server,s),s,mappings.get(s['id'],{}),estimates=estimates) for s in sites() if s.get('region')==q.get('region')]})
+                from .finch_groups import snapshot as group_snapshot,EVIDENCE
+                try: group_evidence=json.loads(EVIDENCE.read_text())
+                except (OSError,ValueError): group_evidence={}
+                result=[]
+                for site in sites():
+                    if site.get('region')!=q.get('region'):continue
+                    store=live_store(self.server,site)
+                    item=directional_snapshot(store,site,mappings.get(site['id'],{}),estimates=estimates)
+                    item['movement_groups']=group_snapshot(site,item,group_evidence,estimates.get('sites',{}).get(site['id'],{}),store.health(site['id']).get('session'))
+                    result.append(item)
+                return self.send({'snapshots':result})
             if parsed.path == '/api/network-signals':
                 return self.send({'snapshots':[self.server.signal_reader.snapshot(s['id']) for s in sites() if s.get('region')==q.get('region')]})
             if parsed.path == '/api/signal-layouts':
