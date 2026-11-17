@@ -9,9 +9,12 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
     def do_GET(self):
         if self.headers.get('Host') not in {'127.0.0.1:8768','localhost:8768'}:self.send_error(403);return
-        routes={'/':'deepctm.html','/deepctm.js':'deepctm.js','/style.css':'style.css'}
+        routes={'/florida':'florida_rolling.html','/florida-rolling.js':'florida-rolling.js','/':'deepctm.html','/deepctm.js':'deepctm.js','/style.css':'style.css'}
         try:
-            if self.path=='/api/deepctm':body=json.dumps(status(),allow_nan=False).encode();mime='application/json'
+            if self.path=='/api/florida-rolling':
+                from .florida_rolling import read_snapshot
+                body=json.dumps(read_snapshot(),allow_nan=False).encode();mime='application/json'
+            elif self.path=='/api/deepctm':body=json.dumps(status(),allow_nan=False).encode();mime='application/json'
             elif self.path.startswith('/api/deepctm/figures/'):
                 body,mime=figure_asset(self.path.removeprefix('/api/deepctm/figures/'))
             elif self.path in routes:
