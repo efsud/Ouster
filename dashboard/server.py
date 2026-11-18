@@ -83,7 +83,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Length',str(len(body)))
         self.send_header('Cache-Control','no-store')
         self.send_header('X-Content-Type-Options','nosniff')
-        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; frame-ancestors 'none'")
+        frame_policy = "'self'" if urlparse(self.path).path in {"/finch_rolling.html", "/florida_rolling.html"} else "'none'"
+        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; frame-ancestors " + frame_policy)
         if attachment: self.send_header('Content-Disposition',f'attachment; filename="{attachment}"')
         self.end_headers(); self.wfile.write(body)
 
@@ -95,6 +96,12 @@ class Handler(BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             q = {k:v[0] for k,v in parse_qs(parsed.query).items()}
+            if parsed.path in {'/api/finch-rolling','/api/florida-rolling'}:
+                if parsed.path == '/api/finch-rolling':
+                    from deepctm.finch_rolling import read_snapshot
+                else:
+                    from deepctm.florida_rolling import read_snapshot
+                return self.send(read_snapshot())
             if parsed.path.startswith('/api/deepctm/figures/'):
                 try:
                     body,mime=figure_asset(parsed.path.removeprefix('/api/deepctm/figures/'))

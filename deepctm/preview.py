@@ -9,7 +9,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
     def do_GET(self):
         if self.headers.get('Host') not in {'127.0.0.1:8768','localhost:8768'}:self.send_error(403);return
-        routes={'/finch':'finch_rolling.html','/florida':'florida_rolling.html','/florida-rolling.js':'florida-rolling.js','/':'deepctm.html','/deepctm.js':'deepctm.js','/style.css':'style.css'}
+        routes={'/finch_rolling.html':'finch_rolling.html','/florida_rolling.html':'florida_rolling.html','/deepctm.html':'deepctm.html','/finch':'finch_rolling.html','/florida':'florida_rolling.html','/florida-rolling.js':'florida-rolling.js','/':'deepctm.html','/deepctm.js':'deepctm.js','/style.css':'style.css'}
         try:
             if self.path=='/api/finch-rolling':
                 from .finch_rolling import read_snapshot

@@ -114,6 +114,7 @@ document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener(
   document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b===button));
   $('page-title').textContent=titles[state.tab];
   if(state.tab==='live')setTimeout(()=>{map?.invalidateSize();action(refreshLive);},0);
+  if(state.tab==='history')document.querySelectorAll('[data-rolling-src]').forEach(frame=>{if(!frame.getAttribute('src'))frame.src=frame.dataset.rollingSrc;});
   if(state.tab==='ctm'&&!$('heatmap').children.length)action(runCTM);
   if(state.tab==='anomalies')action(()=>loadAnomalies());
 }));
