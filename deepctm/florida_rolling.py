@@ -33,7 +33,7 @@ def geometry(sites):
 def build(db,sites,end):
     start=end-WINDOW;output=[]
     for s in geometry(sites):
-        active={};tracks=[];first=None;last=None;frames=0
+        active={};tracks=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
         def flush(key):
             points=active.pop(key,[])
             if len(points)<3:return
@@ -41,8 +41,10 @@ def build(db,sites,end):
             if points[-1][0]-points[0][0]<2 or abs(net)<3 or abs(net)<.7*travel:return
             tracks.append({'class_type':key[2],'direction':'eastbound' if net>0 else 'westbound','points':[[round(p[0]-start,2),round(p[1]+s['station_m'],2),round(p[3],2)] for p in points]})
         angle=math.radians(s.get('preview_rotation_deg',220))-s['bearing'];c=math.cos(angle);sn=math.sin(angle)
-        for session,receipt,payload in db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)):
+        for session,receipt,payload in db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall():
             e=json.loads(payload);frames+=1;first=first or receipt;last=receipt
+            second=int(receipt-start)
+            if 0<=second<3600:coverage[second//60].add(second%60)
             try:stamp=datetime.fromisoformat(e.get('frame',{}).get('timestamp') or e['timestamp'])
             except (ValueError,KeyError,TypeError):continue
             for o in e.get('frame',{}).get('objects',[]):
@@ -65,8 +67,11 @@ def build(db,sites,end):
             for key in list(active):
                 if receipt-active[key][-1][0]>3:flush(key)
         for key in list(active):flush(key)
-        output.append({'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'tracks':tracks})
-    return {'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching or inferred paths.'}
+        output.append({'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'tracks':tracks,'coverage':[len(v)/60 for v in coverage]})
+    result={'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching.'}
+    from .rolling_estimates import estimate,gap_validation
+    result['estimates']=estimate(result);result['gap_validation']=gap_validation(result)
+    return result
 
 def read_snapshot(now=None,folder=None):
     folder=FOLDER if folder is None else folder
@@ -81,23 +86,33 @@ def read_snapshot(now=None,folder=None):
 def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
     folder=FOLDER if folder is None else folder
     from dashboard.server import sites
+    from concurrent.futures import ThreadPoolExecutor
     folder.mkdir(parents=True,exist_ok=True)
     # One writer prevents competing retention and snapshot schedules.
     import fcntl
     lock=open(folder/'writer.lock','w');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     db=connect(folder/'buffer.sqlite3');source=sqlite3.connect(f'file:{ROOT}/data/{source_name}?mode=ro',uri=True)
     entries=[s for s in sites() if s['region']==region];ids={s['id'] for s in entries};begin=time.time();last_publish=0
-    try:last_publish=json.loads((folder/'snapshot.json').read_text())['generated_at']
+    try:
+        previous=json.loads((folder/'snapshot.json').read_text())
+        last_publish=previous['generated_at'] if 'estimates' in previous else 0
     except (OSError,ValueError,KeyError):pass
     purge(db,begin)
+    pool=ThreadPoolExecutor(max_workers=1);pending=None
+    def compute(end):
+        reader=sqlite3.connect(f'file:{folder}/buffer.sqlite3?mode=ro',uri=True,timeout=20)
+        try:return build(reader,entries,end)
+        finally:reader.close()
     while True:
         now=time.time()
         for site,session,key,receipt,payload in source.execute('SELECT site,session,event_key,received_at,payload FROM preview_frames'):
             if site in ids and 0<=now-receipt<=3:
                 db.execute('INSERT OR IGNORE INTO frames VALUES(?,?,?,?,?)',(site,session,key,receipt,payload))
         purge(db,now)
-        if (not last_publish and now-begin>=30) or (last_publish and now>=last_publish+REFRESH):
-            result=build(db,entries,now);temp=folder/'snapshot.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'snapshot.json');last_publish=now
+        if pending is not None and pending.done():
+            result=pending.result();temp=folder/'snapshot.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'snapshot.json');pending=None
+        if pending is None and ((not last_publish and now-begin>=30) or (last_publish and now>=last_publish+REFRESH)):
+            pending=pool.submit(compute,now);last_publish=now
         health={'updated_at':time.time(),'buffer_start':db.execute('SELECT min(received) FROM frames').fetchone()[0],'buffer_end':db.execute('SELECT max(received) FROM frames').fetchone()[0],'next_update':last_publish+REFRESH if last_publish else begin+30}
         temp=folder/'status.tmp';temp.write_text(json.dumps(health));temp.replace(folder/'status.json')
         time.sleep(.5)
