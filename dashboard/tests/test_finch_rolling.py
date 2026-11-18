@@ -11,8 +11,9 @@ class FinchRollingTest(unittest.TestCase):
             folder = Path(tmp)
             with patch.object(finch_rolling, 'FOLDER', folder):
                 self.assertEqual(finch_rolling.read_snapshot(6400)['state'], 'warming')
-                (folder / 'snapshot.json').write_text(json.dumps({'start':1000,'sites':[{'id':'finch'}]}))
+                (folder / 'snapshot.json').write_text(json.dumps({'start':1000,'sites':[{'id':'finch'}],'estimates':{'links':[{'paths':['old inter-site path']}]}}))
                 result = finch_rolling.read_snapshot(6400)
                 self.assertEqual(result['sites'][0]['id'], 'finch')
                 self.assertEqual(result['state'], 'ready')
+                self.assertEqual(result['estimates']['links'], [])
                 self.assertEqual(finch_rolling.read_snapshot(6401)['state'], 'expired')

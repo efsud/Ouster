@@ -69,8 +69,8 @@ def build(db,sites,end):
         for key in list(active):flush(key)
         output.append({'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'tracks':tracks,'coverage':[len(v)/60 for v in coverage]})
     result={'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching.'}
-    from .rolling_estimates import estimate,gap_validation
-    result['estimates']=estimate(result);result['gap_validation']=gap_validation(result)
+    from .rolling_estimates import gap_validation
+    result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)
     return result
 
 def read_snapshot(now=None,folder=None):
@@ -80,6 +80,7 @@ def read_snapshot(now=None,folder=None):
         p=json.loads((folder/'snapshot.json').read_text())
         # Do not serve a cached hour outside the 90-minute retention horizon.
         if p['start']<now-RETENTION:return {'state':'expired','message':'Snapshot expired; rolling collector must be running.'}
+        p['estimates']={'method':'Local within-track interpolation only','links':[]}
         p['state']='ready';return p
     except (OSError,ValueError):return {'state':'warming','message':'Collecting the first samples. Initial figure appears after about 30 seconds.'}
 

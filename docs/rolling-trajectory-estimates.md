@@ -1,3 +1,13 @@
+# Current display: local intersection gaps only
+
+At the user's request, inter-intersection CTM tracer rendering and computation have been removed from the rolling figures. The older prototype below is retained as methodology history, not the active method.
+
+The current dashed overlay interpolates only 1.5–3 second gaps inside one accepted track, already namespaced by sensor, collector session, object ID and class. Both endpoints must exist. Existing clock/displacement plausibility filters remain in force; longer gaps and split or differently identified tracks are not connected. Speed color is the absolute along-road endpoint displacement divided by the receipt-time gap. This is endpoint interpolation, not a trained DeepCTM or CTM trajectory estimate. Zooming into an individual intersection makes these short segments visible. All object filters remain applicable.
+
+The API suppresses older inter-intersection paths even if a previous snapshot still contains them. New snapshots do not compute them. Raw recordings and the 60/30/90-minute schedule are unchanged.
+
+## Previous prototype (disabled)
+
 # Rolling trajectory reconstruction: methodology and limits
 
 ## Paper review
