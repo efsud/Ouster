@@ -1,14 +1,14 @@
-"""Declared Finch reimplementation; see docs/deepctm.md for paper/choice mapping."""
+"""Independent DeepCTM adaptation; see docs/deepctm.md and the Florida pair method notes."""
 import math
 import torch
 from torch import nn
 
 
-def ctm_step(density, demand, lengths, dt_hours=.25, v=50., w=18., jam=300.):
+def ctm_step(density, demand, lengths, dt_hours=.25, v=50., w=18., jam=300., signal_mask=None, downstream_density=None):
     """Conservative open chain. k veh/km; boundary flows veh/h; lengths km.
 
     Substep by CFL. Return end density, time-averaged boundary flows, and q/k
-    speed proxy. No signal or lateral source term is assumed.
+    speed proxy. Optional signal masks and downstream supply are explicit; no lateral sources.
     """
     if dt_hours<=0 or v<=0 or w<=0 or jam<=0 or bool((lengths<=0).any()):raise ValueError('Positive physical parameters required')
     steps=math.ceil(dt_hours*max(v,w)/float(lengths.min()))
@@ -18,6 +18,12 @@ def ctm_step(density, demand, lengths, dt_hours=.25, v=50., w=18., jam=300.):
         send=torch.minimum(k*v,torch.full_like(k,cap))
         receive=torch.minimum((jam-k).clamp_min(0)*w,torch.full_like(k,cap))
         flow=torch.cat([torch.minimum(demand.clamp_min(0),receive[...,0]).unsqueeze(-1),torch.minimum(send[...,:-1],receive[...,1:]),send[...,-1:]],-1)
+        if downstream_density is not None:
+            tail=torch.minimum(flow[...,-1],((jam-downstream_density).clamp_min(0)*w).clamp_max(cap))
+            flow=torch.cat([flow[...,:-1],tail.unsqueeze(-1)],-1)
+        if signal_mask is not None:
+            if bool(((signal_mask<0)|(signal_mask>1)).any()):raise ValueError('Signal mask must be between zero and one')
+            flow=flow*signal_mask
         k=k+(flow[...,:-1]-flow[...,1:])*dt/lengths
         total=total+flow*dt
     flows=total/dt_hours
@@ -46,9 +52,12 @@ class DeepCTM(nn.Module):
         k,flows,v=ctm_step(state[...,1]*self.scales[1],state[...,0,0]*self.scales[0],self.lengths,c['interval_s']/3600,c['free_speed_kmh'],c['wave_speed_kmh'],c['jam_density_veh_km'])
         return torch.stack([flows[...,1:],k,v],-1)/self.scales,flows
 
-    def forward(self,x,mask,horizon):
+    def forward(self,x,mask,horizon,feature_mask=None):
         """x [batch,context,nodes,3], mask [batch,context,nodes]. No future inputs."""
         batch=x.shape[0];c=self.config;state=x[:,0].clone()/self.scales
+        initial_mask=mask[:,0,:,None].expand_as(state) if feature_mask is None else (feature_mask[:,0]&mask[:,0,:,None])
+        prior=torch.zeros_like(state);prior[...,2]=1
+        state=torch.where(initial_mask,state,prior)
         # Virtual initial state is interpolation, never a supervised label.
         for i in range(1,self.n-1):state[:,i]=state[:,0]+(state[:,-1]-state[:,0])*i/(self.n-1)
         h=torch.tanh(self.encoder(state));f=x.new_zeros(batch,self.n,c['free_dim']);cell=torch.zeros_like(f)
@@ -56,12 +65,13 @@ class DeepCTM(nn.Module):
         for t in range(x.shape[1]+horizon-1):
             if t<x.shape[1]:
                 obs=x[:,t]/self.scales;valid=mask[:,t,:,None]
-                error=self.pec(torch.cat([h,(state-obs)*valid],-1))
+                observed=valid.expand_as(obs) if feature_mask is None else (feature_mask[:,t]&valid)
+                error=self.pec(torch.cat([h,(state-obs)*observed],-1))
                 target=(state.detach()-obs)
-                pec_terms.append(((error-target).square()*valid).sum()/valid.sum().clamp_min(1)/3)
-                state=(state-c['pec_alpha']*error*valid).clamp_min(0)
+                pec_terms.append(((error-target).square()*observed).sum()/observed.sum().clamp_min(1))
+                state=(state-c['pec_alpha']*error*observed).clamp_min(0)
                 # Assimilation only at known context times; future rollout gets no observations.
-                state=torch.where(valid,.5*obs+.5*state,state)
+                state=torch.where(observed,.5*obs+.5*state,state)
                 state=torch.stack([state[...,0].clamp(0,3),state[...,1].clamp(0,1),state[...,2].clamp(0,1)],-1)
                 h=torch.tanh(self.encoder(state))
             else:valid=torch.zeros_like(mask[:,0,:,None])
@@ -83,9 +93,9 @@ class DeepCTM(nn.Module):
                 outputs.append(state*self.scales);physics.append(phys*self.scales);flows_list.append(flows);previous.append(old*self.scales)
         return {'prediction':torch.stack(outputs,1),'physics':torch.stack(physics,1),'flows':torch.stack(flows_list,1),'previous':torch.stack(previous,1),'pec':torch.stack(pec_terms).mean()}
 
-    def loss(self,result,target,mask):
-        valid=mask[...,None];pred=result['prediction'];scale=self.scales
-        mse=(((pred-target)/scale).square()*valid).sum()/(valid.sum().clamp_min(1)*3)
+    def loss(self,result,target,mask,feature_mask=None):
+        valid=mask[...,None].expand_as(target) if feature_mask is None else (feature_mask&mask[...,None]);pred=result['prediction'];scale=self.scales
+        mse=(((pred-target)/scale).square()*valid).sum()/valid.sum().clamp_min(1)
         phys=((pred-result['physics'])/scale).square().mean()
         smooth=((pred[:,:,1:]-pred[:,:,:-1])/scale).square().mean()
         terms=[mse,phys,smooth,result['pec']]

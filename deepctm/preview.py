@@ -9,9 +9,12 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
     def do_GET(self):
         if self.headers.get('Host') not in {'127.0.0.1:8768','localhost:8768'}:self.send_error(403);return
-        routes={'/finch_rolling.html':'finch_rolling.html','/florida_rolling.html':'florida_rolling.html','/deepctm.html':'deepctm.html','/finch':'finch_rolling.html','/florida':'florida_rolling.html','/florida-rolling.js':'florida-rolling.js','/':'deepctm.html','/deepctm.js':'deepctm.js','/style.css':'style.css'}
+        routes={'/florida-pair.html':'florida-pair.html','/florida-pair.js':'florida-pair.js','/finch_rolling.html':'finch_rolling.html','/florida_rolling.html':'florida_rolling.html','/deepctm.html':'deepctm.html','/finch':'finch_rolling.html','/florida':'florida_rolling.html','/florida-rolling.js':'florida-rolling.js','/':'deepctm.html','/deepctm.js':'deepctm.js','/style.css':'style.css'}
         try:
-            if self.path=='/api/finch-rolling':
+            if self.path=='/api/florida-pair':
+                from .pair_view import read
+                body=json.dumps(read(),allow_nan=False).encode();mime='application/json'
+            elif self.path=='/api/finch-rolling':
                 from .finch_rolling import read_snapshot
                 body=json.dumps(read_snapshot(),allow_nan=False).encode();mime='application/json'
             elif self.path=='/api/florida-rolling':

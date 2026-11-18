@@ -60,10 +60,10 @@ def extract_site(records,start,end,rotation,config):
         for obj in frame.get('objects',[]):
             if str(obj.get('classType')) not in VEHICLES or 'id' not in obj:continue
             try:
-                x=float(obj['centerX']);y=float(obj['centerY'])
+                x=float(obj['centerX']);y=float(obj['centerY'])*(-1 if config.get('mirror_y',False) else 1)
                 if not math.isfinite(x+y) or math.hypot(x,y)>500:continue
             except (KeyError,TypeError,ValueError):continue
-            point=(co*x-si*y,si*x+co*y);key=(session,str(obj['id']));old=previous.get(key)
+            point=(co*x-si*y,si*x+co*y);key=(session,str(obj['id']),str(obj.get('classType')));old=previous.get(key)
             previous[key]=(point,clock,receipt,old[3] if old else None)
             if not old:continue
             try:dt=(clock-old[1]).total_seconds()
@@ -96,8 +96,11 @@ def extract_site(records,start,end,rotation,config):
     density=duration/(length*step)
     flow=distance/1000/(length*step)*3600
     speed=np.divide(distance/1000,duration/3600,out=np.zeros_like(distance),where=duration>0)
-    valid=(coverage[:,None]/step>=config['minimum_coverage']) & (duration>0)
-    return np.stack([flow,density,speed],-1),valid,{'frames':frames.tolist(),'coverage':(coverage/step).tolist(),'invalid_clock_frames':rejected,'unclassified_stopped_tracks_excluded':True}
+    speed_observed=duration>0
+    valid=np.broadcast_to(coverage[:,None]/step>=config['minimum_coverage'],duration.shape).copy()
+    if not config.get('empty_bins_valid',False):valid &= speed_observed
+    else:speed=np.where(speed_observed,speed,config['free_speed_kmh'])
+    return np.stack([flow,density,speed],-1),valid,{'frames':frames.tolist(),'coverage':(coverage/step).tolist(),'invalid_clock_frames':rejected,'unclassified_stopped_tracks_excluded':True,'speed_observed':speed_observed.tolist()}
 
 
 def prepare(directory,config,start,end):
