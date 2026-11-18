@@ -1,10 +1,18 @@
 # Current display: local intersection gaps only
 
-At the user's request, inter-intersection CTM tracer rendering and computation have been removed from the rolling figures. The older prototype below is retained as methodology history, not the active method.
+The rolling figures estimate missing vehicle motion only within one intersection. Inter-intersection CTM paths remain disabled.
 
-The current dashed overlay interpolates only 1.5–3 second gaps inside one accepted track, already namespaced by sensor, collector session, object ID and class. Both endpoints must exist. Existing clock/displacement plausibility filters remain in force; longer gaps and split or differently identified tracks are not connected. Speed color is the absolute along-road endpoint displacement divided by the receipt-time gap. This is endpoint interpolation, not a trained DeepCTM or CTM trajectory estimate. Zooming into an individual intersection makes these short segments visible. All object filters remain applicable.
+## Longer gaps: 3–30 seconds
 
-The API suppresses older inter-intersection paths even if a previous snapshot still contains them. New snapshots do not compute them. Raw recordings and the 60/30/90-minute schedule are unchanged.
+Fragments are grouped only by the same sensor, collector session, object ID and class. Explicit region-of-interest exits and clock or speed failures break the chain. A timeout may retain a candidate for later interpolation; it does not imply a match is accepted.
+
+For each candidate, use up to five samples before and after the gap (at least three, spanning one second on each side). Median along/across velocity components supply the endpoint tangents of a cubic Hermite curve. The curve exactly meets both observed endpoints; its derivative supplies the speed colors. Samples every roughly half-second are dashed throughout.
+
+Conservative checks reject: gaps over 30 seconds; sensor/receipt elapsed-time ratios outside 0.8–1.2; reversed motion; lateral displacement over 4 m; stopped endpoints displaced more than 5 m; displacement inconsistent with endpoint speeds; curve speed over 35 m/s; acceleration over 4 m/s²; or curves leaving the existing intersection region. These are provisional engineering thresholds, not field-calibrated limits. Identity reuse that happens to satisfy these checks remains possible. Curves do not prove that a vehicle took the estimated path.
+
+Short 1.5–3 second gaps retain linear endpoint interpolation. Longer-gap estimates are for vehicle classes only. Other classes retain their short-gap treatment. Different object IDs are not joined. Observed fragments remain unchanged, and inferred samples are stored separately in each site's `local_estimates` list. They are not used as observed KPI or model-training inputs.
+
+Unit tests verify constant-speed curves, exact endpoints, maximum duration, rejection of reversals/lateral jumps/clock mismatches, and isolation of collector sessions and object IDs. Both figures show the estimates and keep the original 60-minute window / 30-minute update / 90-minute retention schedule.
 
 ## Previous prototype (disabled)
 

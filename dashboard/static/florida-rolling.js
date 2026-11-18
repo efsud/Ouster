@@ -13,28 +13,28 @@ function draw(){
  c.font='12px sans-serif';c.fillStyle='#52636d';c.strokeStyle='#dbe3e8';
  for(let i=0;i<=6;i++){const t=view[0]+i*(view[1]-view[0])/6;c.beginPath();c.moveTo(x(t),20);c.lineTo(x(t),h-50);c.stroke();c.fillText(clock(t),Math.min(w-65,x(t)-25),h-25);}
  for(const s of sites){c.fillStyle='#263b46';c.fillText(s.name,95,y(s.station_m)-8);c.fillText(Math.round(s.station_m)+' m',4,y(s.station_m));c.strokeStyle='#c3cdd3';c.beginPath();c.moveTo(90,y(s.station_m));c.lineTo(w-20,y(s.station_m));c.stroke();}
- c.save();c.beginPath();c.rect(90,20,w-110,h-70);c.clip();let count=0,estimatedCount=0;
- function paint(tr,name){let seen=false,dashDistance=0;
-  for(let i=1;i<tr.points.length;i++){const a=tr.points[i-1],b=tr.points[i],ta=data.start+a[0],tb=data.start+b[0],gap=b[0]-a[0]>1.5,estimated=gap;
+ c.save();c.beginPath();c.rect(90,20,w-110,h-70);c.clip();let count=0,estimatedCount=0,longGapCount=0;
+ function paint(tr,name,localEstimate=false){let seen=false,dashDistance=0;
+  for(let i=1;i<tr.points.length;i++){const a=tr.points[i-1],b=tr.points[i],ta=data.start+a[0],tb=data.start+b[0],gap=b[0]-a[0]>1.5,estimated=localEstimate||gap;
    const length=Math.hypot(x(tb)-x(ta),y(b[1])-y(a[1]));
    if(tb>=view[0]&&ta<=view[1]&&(!estimated||el('estimates').checked)){
     if(b[0]-a[0]>3)continue;
-    if(gap)estimatedCount++;
+    if(gap&&!localEstimate)estimatedCount++;
     seen=true;const speed=gap?Math.abs(b[1]-a[1])/(b[0]-a[0]):b[2];
-    c.strokeStyle=color(speed);c.lineWidth=gap?1.8:1;c.setLineDash(estimated?[7,5]:[]);c.lineDashOffset=-dashDistance;
+    c.strokeStyle=color(speed);c.lineWidth=estimated?1.8:1;c.setLineDash(estimated?[7,5]:[]);c.lineDashOffset=-dashDistance;
     c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();
-    points.push({x:x(tb),y:y(b[1]),time:tb,speed,name:(gap?'EST local interpolation · ':'Observed · ')+name});
+    points.push({x:x(tb),y:y(b[1]),time:tb,speed,name:(estimated?'EST local interpolation · ':'Observed · ')+name});
    }dashDistance+=length;
   }c.setLineDash([]);c.lineDashOffset=0;return seen;
  }
- for(const s of sites)for(const tr of s.tracks){
+ for(const s of sites)for(const tr of [...s.tracks,...(s.local_estimates||[])]){
   const filter=el('objects').value,code=tr.class_type;if(tr.direction!==el('direction').value)continue;
   if(filter==='vehicles'&&!vehicle.has(code)||filter==='pedestrians'&&!['0','10','11','14','16'].includes(code)||filter==='cyclists'&&!['12','13','17'].includes(code))continue;
-  if(paint(tr,s.name))count++;
- }c.restore();el('coverage').textContent=`${count} visible local fragments · ${estimatedCount} dashed local gaps · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time. `+sites.map(s=>`${s.name}: ${s.frames} sampled frames`).join(' · ');
+  if(paint(tr,s.name+(tr.method?` · ${tr.gap_seconds.toFixed(1)} s gap`:""),Boolean(tr.method))){if(tr.method){estimatedCount++;longGapCount++;}else count++;}
+ }c.restore();el('coverage').textContent=`${count} visible local fragments · ${estimatedCount} dashed local gaps (${longGapCount} longer than 3 s) · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time. `+sites.map(s=>`${s.name}: ${s.frames} sampled frames`).join(' · ');
  const validation=data.gap_validation;
- el('estimate-note').textContent='Local interpolation only: same intersection, sensor session, object ID and class; gaps of 1.5–3 seconds with observations on both sides. Longer gaps and separate tracks stay blank. Zoom in to inspect these short dashed segments. '+
- (validation?.count?`Masked-point diagnostic: ${validation.count} points, interpolation MAE ${validation.interpolation_mae_m.toFixed(2)} m. This diagnostic does not establish accuracy for every real gap.`:'Insufficient data for a local masked-point diagnostic.');
+ el('estimate-note').textContent='Local interpolation only: same intersection, sensor session, object ID and class; short gaps plus accepted vehicle gaps up to 30 seconds using movement before and after the gap. Speed/direction checks reject inconsistent bridges. Different tracks are never matched. Zoom in to inspect these short dashed segments. '+
+ (validation?.count?`Short-gap masked-point diagnostic: ${validation.count} points, interpolation MAE ${validation.interpolation_mae_m.toFixed(2)} m. This does not validate the longer-gap estimates.`:'Insufficient data for a local masked-point diagnostic.');
 }
 function zoom(f){if(!data)return;const span=Math.max(20,Math.min(3600,(view[1]-view[0])*f)),center=(view[0]+view[1])/2,start=Math.max(data.start,Math.min(data.end-span,center-span/2));view=[start,start+span];draw();}
 async function refresh(){if(data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(`/api/${corridor}-rolling`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}

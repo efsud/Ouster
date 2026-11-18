@@ -33,12 +33,15 @@ def geometry(sites):
 def build(db,sites,end):
     start=end-WINDOW;output=[]
     for s in geometry(sites):
-        active={};tracks=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
-        def flush(key):
+        active={};tracks=[];chunks={};epochs={};local_estimates=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
+        def flush(key,break_chain=True):
             points=active.pop(key,[])
+            epoch=epochs.get(key,0)
+            if break_chain:epochs[key]=epoch+1
             if len(points)<3:return
             net=points[-1][1]-points[0][1];travel=sum(abs(b[1]-a[1]) for a,b in zip(points,points[1:]))
             if points[-1][0]-points[0][0]<2 or abs(net)<3 or abs(net)<.7*travel:return
+            chunks.setdefault((key,epoch),[]).append(points)
             tracks.append({'class_type':key[2],'direction':'eastbound' if net>0 else 'westbound','points':[[round(p[0]-start,2),round(p[1]+s['station_m'],2),round(p[3],2)] for p in points]})
         angle=math.radians(s.get('preview_rotation_deg',220))-s['bearing'];c=math.cos(angle);sn=math.sin(angle)
         for session,receipt,payload in db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall():
@@ -59,15 +62,25 @@ def build(db,sites,end):
                     try:dt=(stamp-old[-1][4]).total_seconds()
                     except TypeError:dt=0
                     dr=receipt-old[-1][0]
-                    if not(0<dt<=3 and 0<dr<=3 and .5<=dt/dr<=2):flush(key)
+                    if not(0<dt<=3 and 0<dr<=3 and .5<=dt/dr<=2):
+                        flush(key,break_chain=not(3<dr<=30 and .8<=dt/dr<=1.2))
                     else:
                         speed=math.hypot(along-old[-1][1],across-old[-1][2])/dt
                         if speed>60:flush(key);speed=0
                 active.setdefault(key,[]).append((receipt,along,across,speed,stamp))
             for key in list(active):
-                if receipt-active[key][-1][0]>3:flush(key)
+                if receipt-active[key][-1][0]>3:flush(key,break_chain=False)
         for key in list(active):flush(key)
-        output.append({'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'tracks':tracks,'coverage':[len(v)/60 for v in coverage]})
+        from .local_gaps import bridge,VEHICLES
+        for (key,epoch),parts in chunks.items():
+            if key[2] not in VEHICLES:continue
+            for before,after in zip(parts,parts[1:]):
+                estimated=bridge(before,after)
+                if estimated is not None:
+                    local_estimates.append({'class_type':key[2],'direction':'eastbound' if estimated[-1][1]>=estimated[0][1] else 'westbound',
+                        'gap_seconds':after[0][0]-before[-1][0], 'method':'motion-constrained local Hermite interpolation',
+                        'points':[[round(t-start,2),round(x+s['station_m'],2),round(v,2)] for t,x,v in estimated]})
+        output.append({'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'tracks':tracks,'local_estimates':local_estimates,'coverage':[len(v)/60 for v in coverage]})
     result={'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching.'}
     from .rolling_estimates import gap_validation
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)
@@ -96,7 +109,7 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
     entries=[s for s in sites() if s['region']==region];ids={s['id'] for s in entries};begin=time.time();last_publish=0
     try:
         previous=json.loads((folder/'snapshot.json').read_text())
-        last_publish=previous['generated_at'] if 'estimates' in previous else 0
+        last_publish=previous.get('next_update',previous['generated_at']+REFRESH)-REFRESH if 'estimates' in previous else 0
     except (OSError,ValueError,KeyError):pass
     purge(db,begin)
     pool=ThreadPoolExecutor(max_workers=1);pending=None
