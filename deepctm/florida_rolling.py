@@ -30,7 +30,7 @@ def geometry(sites):
         out.append(dict(s,station_m=station,bearing=bearing))
     return out
 
-def build(db,sites,end):
+def build(db,sites,end,track_observer=None):
     start=end-WINDOW;output=[]
     for s in geometry(sites):
         active={};tracks=[];chunks={};epochs={};local_estimates=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
@@ -42,6 +42,7 @@ def build(db,sites,end):
             net=points[-1][1]-points[0][1];travel=sum(abs(b[1]-a[1]) for a,b in zip(points,points[1:]))
             if points[-1][0]-points[0][0]<2 or abs(net)<3 or abs(net)<.7*travel:return
             chunks.setdefault((key,epoch),[]).append(points)
+            if track_observer is not None:track_observer(s,key,points)
             tracks.append({'class_type':key[2],'direction':'eastbound' if net>0 else 'westbound','points':[[round(p[0]-start,2),round(p[1]+s['station_m'],2),round(p[3],2)] for p in points]})
         angle=math.radians(s.get('preview_rotation_deg',220))-s['bearing'];c=math.cos(angle);sn=math.sin(angle)
         for session,receipt,payload in db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall():

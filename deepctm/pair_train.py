@@ -45,7 +45,9 @@ def run(directory,epochs=None):
             loss.backward();torch.nn.utils.clip_grad_norm_(model.parameters(),5);opt.step();model.eval()
             with torch.no_grad():
                 predicted=model(val[0],val[1],h,val[2])['prediction']
-                metric=(((predicted-val[3])/model.scales).square()[val[5]]).mean().item()
+                scale=predicted.new_tensor(cfg.get('data_loss_scales',model.scales.tolist()))
+                errors=((predicted-val[3])/scale).square();feature_counts=val[5].sum(dim=(0,1,2))
+                metric=(((errors*val[5]).sum(dim=(0,1,2))/feature_counts.clamp_min(1))[feature_counts>0].mean() if cfg.get('balanced_features',False) else errors[val[5]].mean()).item()
             history.append({'epoch':epoch+1,'loss':float(loss.detach()),'validation_normalized_mse':metric})
             if metric<best:best=metric;weights=copy.deepcopy(model.state_dict());best_epoch=epoch+1
             if epoch%10==0:print(direction,'epoch',epoch+1,'validation',round(metric,5),flush=True)

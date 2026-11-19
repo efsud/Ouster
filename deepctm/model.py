@@ -95,7 +95,12 @@ class DeepCTM(nn.Module):
 
     def loss(self,result,target,mask,feature_mask=None):
         valid=mask[...,None].expand_as(target) if feature_mask is None else (feature_mask&mask[...,None]);pred=result['prediction'];scale=self.scales
-        mse=(((pred-target)/scale).square()*valid).sum()/valid.sum().clamp_min(1)
+        loss_scale=pred.new_tensor(self.config.get('data_loss_scales',self.scales.tolist()))
+        squared=((pred-target)/loss_scale).square()*valid
+        if self.config.get('balanced_features',False):
+            counts=valid.sum(dim=(0,1,2));available=counts>0
+            mse=(squared.sum(dim=(0,1,2))/counts.clamp_min(1))[available].mean() if available.any() else squared.sum()*0
+        else:mse=squared.sum()/valid.sum().clamp_min(1)
         phys=((pred-result['physics'])/scale).square().mean()
         smooth=((pred[:,:,1:]-pred[:,:,:-1])/scale).square().mean()
         terms=[mse,phys,smooth,result['pec']]
