@@ -26,3 +26,17 @@ class SpatialTests(unittest.TestCase):
         self.assertTrue(any(v==0 for t,x,v in p));self.assertTrue(all(b[1]>=a[1] for a,b in zip(p,p[1:])))
     def test_nonfinite_boundaries_rejected(self):
         self.assertIsNone(curve({'t':0,'x':float('nan'),'v':10},{'t':10,'x':100,'v':10}))
+    def test_corridor_movement_gate_rejects_wrong_side_links(self):
+        from dashboard.movements import route
+        from deepctm.spatial_bridges import reconstruct
+        def site(identifier,arrival,code):
+            tracks=[]
+            for i in range(10):
+                points=[[40*i+(7 if arrival else 0)+j*.5,(100 if arrival else 30)+5*j,10] for j in range(5)]
+                tracks.append({'direction':'eastbound','class_type':'1','points':points,'movement':{'movement':code,**route(code)}})
+            return {'id':identifier,'name':identifier,'movement_summary':{},'tracks':tracks}
+        def count(a,b):return sum(len(l['paths']) for l in reconstruct({'sites':[site('up',False,a),site('down',True,b)]})['links'])
+        self.assertEqual(count('WE','WE'),10)
+        self.assertEqual(count('NE','WN'),10)  # joins upstream, leaves downstream
+        self.assertEqual(count('WN','WE'),0)   # already leaving upstream
+        self.assertEqual(count('WE','NE'),0)   # newly joining downstream

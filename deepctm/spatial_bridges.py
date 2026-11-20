@@ -106,8 +106,14 @@ def reconstruct(snapshot):
                 group=[]
                 for index,tr in enumerate(site['tracks']):
                     if tr['direction']!=direction or tr['class_type'] not in VEHICLES:continue
+                    movement=tr.get('movement',{})
+                    if site.get('movement_summary') is not None:
+                        # Leaving SR-436 ends a corridor path; joining starts one.
+                        flag='can_match_next' if is_exit else 'can_match_previous'
+                        route_direction='outgoing_direction' if is_exit else 'incoming_direction'
+                        if not movement.get(flag) or movement.get(route_direction)!=direction:continue
                     ep=endpoint(tr['points'],is_exit)
-                    if ep and ep['v']*sign>=1:group.append(dict(ep,class_type=tr['class_type'],fragment=index))
+                    if ep and ep['v']*sign>=1:group.append(dict(ep,class_type=tr['class_type'],fragment=index,movement=movement))
                 groups.append(group)
             left,right=groups
             if len(left)<10 or len(right)<10:continue
@@ -115,6 +121,6 @@ def reconstruct(snapshot):
             # Actual fragment ends near each site's outer coverage edge, not station centers.
             left=[e for e in left if abs(e['x']*sign-out)<=30];right=[e for e in right if abs(e['x']*sign-entry)<=30]
             matches=associate(left,right)
-            paths=[{'points':m['points'],'class_type':left[m['left']]['class_type'],'direction':direction,'association_cost':m['cost'],'ambiguity_margin':m['margin'],'upstream_fragment':left[m['left']]['fragment'],'downstream_fragment':right[m['right']]['fragment']} for m in matches]
+            paths=[{'points':m['points'],'class_type':left[m['left']]['class_type'],'direction':direction,'association_cost':m['cost'],'ambiguity_margin':m['margin'],'upstream_movement':left[m['left']].get('movement',{}),'downstream_movement':right[m['right']].get('movement',{}),'upstream_fragment':left[m['left']]['fragment'],'downstream_fragment':right[m['right']]['fragment']} for m in matches]
             links.append({'sites':[up['id'],down['id']],'names':[up['name'],down['name']],'direction':direction,'departure_candidates':len(left),'arrival_candidates':len(right),'paths':paths})
     return {'method':'Estimated cross-sensor associations and monotone endpoint-constrained motion; not verified identities or DeepCTM forecasts','links':links,'limitations':['Unknown clock offsets, turning traffic and occlusion can invalidate associations.','Only unambiguous supported candidates are drawn; missing associations remain blank.','No signal state is inferred. Colors are estimated speed.']}

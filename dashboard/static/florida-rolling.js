@@ -6,6 +6,7 @@ const clock=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:corridor===
 function color(v){const t=Math.max(0,Math.min(1,v/20));return `hsl(${t*120},75%,40%)`;}
 function draw(){
  if(!data)return;const panRange=data.end-data.start-(view[1]-view[0]);el('time').value=panRange>0?1000*(view[0]-data.start)/panRange:0;const selected=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value)),sites=data.sites.filter(s=>selected.has(s.id));
+ renderMovements(sites);
  const canvas=el('plot'),w=canvas.clientWidth,h=650,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);points=[];
  if(!sites.length){c.fillText('Select an intersection.',30,40);return;}
  const lo=Math.min(...sites.map(s=>s.station_m))-130,hi=Math.max(...sites.map(s=>s.station_m))+130;
@@ -45,6 +46,17 @@ function draw(){
  const validation=data.gap_validation;
  el('estimate-note').textContent='Local interpolation only: same intersection, sensor session, object ID and class; short gaps plus accepted vehicle gaps up to 30 seconds using movement before and after the gap. Speed/direction checks reject inconsistent bridges. Different tracks are never matched. Zoom in to inspect these short dashed segments. '+
  (validation?.count?`Short-gap masked-point diagnostic: ${validation.count} points, interpolation MAE ${validation.interpolation_mae_m.toFixed(2)} m. This does not validate the longer-gap estimates.`:'Insufficient data for a local masked-point diagnostic.');
+}
+function renderMovements(sites){
+ const host=el('movement-summary');if(!host)return;host.replaceChildren();
+ for(const site of sites){
+  const title=document.createElement('h3');title.textContent=site.name;host.append(title);
+  const summary=site.movement_summary;if(!summary){host.append(document.createTextNode('Collecting movement evidence.'));continue;}
+  const note=document.createElement('p');note.textContent=`${summary.unknown_tracks} incomplete/ambiguous tracks excluded from spatial matching; ${summary.phase_samples} recorded phase snapshots. Geometry and phase assignments are estimates.`;host.append(note);
+  const table=document.createElement('table'),head=document.createElement('tr');
+  for(const label of ['From → To','Turn','Classified fragments','Corridor role','Phase mapping']){const th=document.createElement('th');th.textContent=label;head.append(th);}table.append(head);
+  for(const m of summary.movements){const row=document.createElement('tr');for(const value of [m.from+' → '+m.to,m.turn,m.observed_tracks,(['E','W'].includes(m.from)?(['E','W'].includes(m.to)?'Through · both links':'Exiting · previous link only'):(['E','W'].includes(m.to)?'Entering · next link only':'Cross street · no corridor link')),m.phase_numbers.length?'EST phase '+m.phase_numbers.join(', '):'Not decoded · '+m.qualifying_releases+' releases']){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}table.append(row);}host.append(table);
+ }
 }
 function zoom(f,fraction=.5){
  if(!data||!view)return;

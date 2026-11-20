@@ -42,3 +42,24 @@ A fourth candidate brakes to zero, waits, accelerates and cruises to the visible
 - Seven spatial software tests cover exact endpoints/speed, direction, hidden-truth isolation, ambiguous rejection, one-to-one matching, queue distance and nonfinite rejection. The 54-test model suite passed before the last two spatial tests were added; all seven spatial tests then passed. JavaScript syntax passed. The static comparison figure was visually inspected. Browser inspection on 19 November showed dashed connections in the formerly empty bands. On 20 November the refreshed figure API was checked again.
 
 Historical startup recovery now waits for 30 seconds of fresh samples when the cached snapshot is expired, rather than immediately publishing a nearly empty snapshot. API collectors are separate and are not restarted for this operation.
+
+## Florida movement-aware reconstruction — 20 November 2026
+
+The rolling processor now retains full two-dimensional vehicle paths before cropping the corridor figure. It classifies twelve FROM-arm → TO-arm movements from approach and departure geometry. N/S are provisional road-relative arms; E/W follow the corridor alignment. A label is not assigned when the visible path is incomplete, discontinuous, or ambiguous. Counts are track fragments, not deduplicated vehicle totals.
+
+| From | Straight | Left | Right |
+| --- | --- | --- | --- |
+| North | NS | NE | NW |
+| South | SN | SW | SE |
+| East | EW | ES | EN |
+| West | WE | WN | WS |
+
+Through traffic can match both adjacent intersections. Side-road entries can match onward only; corridor exits can match backward only. Cross-street paths and unknown movements cannot form inter-sensor connections. Example: NE enters eastbound and may match a WE or WN path at the next intersection. WN leaves eastbound and must not be linked onward. This prevents geometry-incompatible associations without claiming vehicle identity.
+
+The buffer also retains receipt-timed phase snapshots for 90 minutes. Phase evidence is matched only within the same collector session. A qualifying release needs at least two seconds stopped, subsequent motion of at least 2 m/s, and entry into the central area within 20 seconds. We use the final qualifying release before entry to reduce queue-creep confusion. No saved phase-label/phaseNumber equality is assumed.
+
+An estimated assignment requires at least ten minutes of phase observations, eight releases over three green-onset cycles, at least 80% green agreement, at most 10% red disagreement, at least 50% releases near green onset, enrichment over green duty, and a 0.2 score margin over the next candidate. Synchronized phases, permissive turns, geometry uncertainty and receipt-clock differences can prevent decoding. One phase may correlate with several movements; this does not establish a physical signal-head location or protected permission for each turn.
+
+The selected-site movement table shows all twelve movements, corridor eligibility and estimated phase assignments. In the checked snapshot, 15 assignments passed across six sites; Renaissance had none. All 1,052 proposed spatial connections passed the directional entry/exit invariant. These are current-window results, not permanent mappings. No forced joins are created for missing evidence.
+
+Validation: 103 dashboard tests and 57 DeepCTM tests passed; JavaScript syntax passed. Tests include all twelve turn labels, stopped approaches, incomplete tracks, wrong sessions, correlated phases, distant queue creep and asymmetric entry/exit matching. The new movement and phase inference has software validation, but not manually labelled field accuracy. The prior masked spatial benchmark remains separate and does not validate these new phase assignments. Further work requires annotated turns, independent release review and held-out identity association checks.
