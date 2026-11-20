@@ -63,3 +63,22 @@ An estimated assignment requires at least ten minutes of phase observations, eig
 The selected-site movement table shows all twelve movements, corridor eligibility and estimated phase assignments. In the checked snapshot, 15 assignments passed across six sites; Renaissance had none. All 1,052 proposed spatial connections passed the directional entry/exit invariant. These are current-window results, not permanent mappings. No forced joins are created for missing evidence.
 
 Validation: 103 dashboard tests and 57 DeepCTM tests passed; JavaScript syntax passed. Tests include all twelve turn labels, stopped approaches, incomplete tracks, wrong sessions, correlated phases, distant queue creep and asymmetric entry/exit matching. The new movement and phase inference has software validation, but not manually labelled field accuracy. The prior masked spatial benchmark remains separate and does not validate these new phase assignments. Further work requires annotated turns, independent release review and held-out identity association checks.
+
+## Additional matching layer — 20 November 2026
+
+The original matcher allowed a physically impossible curve to compete with a feasible connection. It also kept occupied endpoints as competitors. Experiments resolving all such conflicts increased coverage but also false matches, so unrestricted iterative assignment is not deployed.
+
+The deployed `augmented` method preserves original matches. It adds only mutually best physically feasible candidates with cost ≤0.15 and an ambiguity margin ≥0.5, with no endpoint reuse. It keeps original competitors visible and performs no recursive reassignment for these additions. Entry/exit gates remain unchanged. Additional paths are flagged in the snapshot and can be hidden using **Include additional experimental matches**. Speed colors and dashes retain their meaning. Per-link diagnostics now record movement rejections, unusable endpoints, endpoints away from the coverage edge and unmatched candidates.
+
+`python -m deepctm.validate_association --snapshot data/florida-rolling/snapshot.json --output data/validation/NEW/report.json` runs masks of 20, 50 and 100 m. Identities are hidden from the matcher; arrival ordering is reversed. Missing-arrival, missing-departure and missing-both cases are assessed separately. The late 20% was used during development. The disjoint early 20% was checked afterward with fixed parameters (`--partition early`); it is a same-recording check, not independent-day validation.
+
+| Early-block scenario | Original correct / matched | Additional layer correct / matched | Precision before → after |
+| --- | --- | --- | --- |
+| Both ends present | 2166 / 2207 | 2454 / 2505 | 98.14% → 97.96% |
+| Missing arrivals | 1690 / 1739 | 1897 / 1958 | 97.18% → 96.88% |
+| Missing departures | 1770 / 1814 | 1998 / 2052 | 97.57% → 97.37% |
+| Missing both | 1424 / 1497 | 1585 / 1671 | 95.12% → 94.85% |
+
+This improves recall at a small measured precision cost; it does not eliminate false associations. Mask widths overlap and must not be counted as independent vehicles. Same-sensor masks do not validate cross-sensor timing or intermediate vehicle identities. On the checked rolling snapshot, connections increased from 956 to 1162. All proposed links were checked for unique endpoints and corridor entry/exit eligibility. These totals change with subsequent windows.
+
+Saved quantitative reports: `data/validation/20261120-association/report.json` and `early-report.json`. These contain aggregate metrics, not raw trajectories. Tests cover tie rejection, removal of impossible competing curves, assignment rounds and preservation of baseline pairs without endpoint reuse. Many blanks remain because geometry is incomplete, arrivals are missing, vehicle identities are ambiguous, or the observed travel time is inconsistent with endpoint speeds. Do not fill those without further evidence.

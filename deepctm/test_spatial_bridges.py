@@ -40,3 +40,26 @@ class SpatialTests(unittest.TestCase):
         self.assertEqual(count('NE','WN'),10)  # joins upstream, leaves downstream
         self.assertEqual(count('WN','WE'),0)   # already leaving upstream
         self.assertEqual(count('WE','NE'),0)   # newly joining downstream
+
+class ResidualAssociationTests(unittest.TestCase):
+    def test_resolves_competitor_after_its_endpoint_is_assigned(self):
+        from unittest.mock import patch
+        costs={(0,0):.1,(1,0):.5,(1,1):.6}
+        endpoints=[{'id':0},{'id':1}]
+        with patch('deepctm.spatial_bridges.pair_cost',side_effect=lambda a,b:costs.get((a['id'],b['id']))),patch('deepctm.spatial_bridges.curve',return_value=[[0,0,1],[1,1,1]]):
+            result=associate(endpoints,endpoints,method='residual')
+        self.assertEqual([(r['left'],r['right'],r['assignment_round']) for r in result],[(0,0,1),(1,1,2)])
+    def test_equal_cost_ties_stay_unmatched(self):
+        a={'t':0,'x':0,'v':10,'class_type':'1'};b={'t':10,'x':100,'v':10,'class_type':'1'}
+        self.assertEqual(associate([a,a],[b,b],method='residual'),[])
+    def test_impossible_curves_do_not_block_feasible_candidates(self):
+        from unittest.mock import patch
+        with patch('deepctm.spatial_bridges.pair_cost',return_value=.1),patch('deepctm.spatial_bridges.curve',side_effect=lambda a,b:None if b['id']==0 else [[0,0,1],[1,1,1]]):
+            result=associate([{'id':0}],[{'id':0},{'id':1}],method='residual')
+        self.assertEqual([(r['left'],r['right']) for r in result],[(0,1)])
+    def test_augmented_preserves_baseline_and_never_reuses_endpoints(self):
+        left=[{'t':40*i,'x':0,'v':10,'class_type':'1'} for i in range(12)]
+        right=[dict(t=a['t']+10,x=100,v=10,class_type='1') for a in left]
+        base=associate(left,right);new=associate(left,right,method='augmented')
+        self.assertTrue({(m['left'],m['right']) for m in base}<={(m['left'],m['right']) for m in new})
+        self.assertEqual(len(new),len({m['left'] for m in new}));self.assertEqual(len(new),len({m['right'] for m in new}))

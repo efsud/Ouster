@@ -75,7 +75,18 @@ def pair_cost(a,b):
     if abs(dx)/dt>35:return None
     return abs(dt-expected)/max(2,.35*expected)+abs(abs(a['v'])-abs(b['v']))/15+(0 if a['class_type']==b['class_type'] else .75)
 
-def associate(left,right,threshold=1.5,margin=.25):
+def associate(left,right,threshold=1.5,margin=.25,method="legacy"):
+    if method=="augmented":
+        baseline=associate(left,right,threshold,margin,method="legacy")
+        used_a={m['left'] for m in baseline};used_b={m['right'] for m in baseline}
+        # Keep competitors visible even when occupied: avoid a cascade of false
+        # certainty caused by treating earlier identity hypotheses as ground truth.
+        proposed=associate_residual(left,right,threshold,margin,max_rounds=1)
+        extra=[m for m in proposed if m['left'] not in used_a and m['right'] not in used_b and m['cost']<=.15 and m['margin']>=.5]
+        for m in extra:m['assignment_round']=1;m['additional']=True
+        return baseline+extra
+    if method=="residual":return associate_residual(left,right,threshold,margin)
+    if method!="legacy":raise ValueError("Unknown association method")
     candidates=[];by_left={};by_right={}
     for i,a in enumerate(left):
         for j,b in enumerate(right):
@@ -95,32 +106,70 @@ def associate(left,right,threshold=1.5,margin=.25):
         used_a.add(i);used_b.add(j);accepted.append({'left':i,'right':j,'cost':cost,'margin':separation,'points':points})
     return accepted
 
-def reconstruct(snapshot):
+def associate_residual(left,right,threshold=1.5,margin=.25,max_rounds=None):
+    """Resolve mutual-best matches in rounds; remove occupied endpoints from rivals.
+
+    Infeasible curves cannot compete. Never relax cost/margin gates, reuse an
+    endpoint, or break ties merely to increase coverage. Round > 1 is conditional
+    on earlier hypotheses, not independent additional identity evidence.
+    """
+    candidates={}
+    for i,a in enumerate(left):
+        for j,b in enumerate(right):
+            cost=pair_cost(a,b)
+            if cost is None or cost>threshold:continue
+            points=curve(a,b)
+            if points is not None:candidates[i,j]=(cost,points)
+    accepted=[];round_number=0
+    while candidates and (max_rounds is None or round_number<max_rounds):
+        round_number+=1;by_a={};by_b={}
+        for (i,j),(cost,points) in candidates.items():
+            by_a.setdefault(i,[]).append((cost,j));by_b.setdefault(j,[]).append((cost,i))
+        for group in (*by_a.values(),*by_b.values()):group.sort()
+        selected=[]
+        for i,options in by_a.items():
+            cost,j=options[0];reverse=by_b[j]
+            if reverse[0][1]!=i:continue
+            separation=min(options[1][0]-cost if len(options)>1 else 99,reverse[1][0]-cost if len(reverse)>1 else 99)
+            if separation<margin:continue
+            selected.append((i,j));accepted.append(dict(left=i,right=j,cost=cost,margin=separation,points=candidates[i,j][1],assignment_round=round_number))
+        if not selected:break
+        used_a={i for i,j in selected};used_b={j for i,j in selected}
+        candidates={k:v for k,v in candidates.items() if k[0] not in used_a and k[1] not in used_b}
+    return accepted
+
+def reconstruct(snapshot,association_method="augmented"):
     from statistics import quantiles
     links=[]
     for west,east in zip(snapshot['sites'],snapshot['sites'][1:]):
         for direction in ['eastbound','westbound']:
             sign=1 if direction=='eastbound' else -1;up,down=(west,east) if sign==1 else (east,west)
-            groups=[]
+            groups=[];diagnostics=[]
             for site,is_exit in [(up,True),(down,False)]:
-                group=[]
+                group=[];counts=dict(vehicle_fragments=0,movement_rejected=0,endpoint_rejected=0)
                 for index,tr in enumerate(site['tracks']):
                     if tr['direction']!=direction or tr['class_type'] not in VEHICLES:continue
+                    counts['vehicle_fragments']+=1
                     movement=tr.get('movement',{})
                     if site.get('movement_summary') is not None:
                         # Leaving SR-436 ends a corridor path; joining starts one.
                         flag='can_match_next' if is_exit else 'can_match_previous'
                         route_direction='outgoing_direction' if is_exit else 'incoming_direction'
-                        if not movement.get(flag) or movement.get(route_direction)!=direction:continue
+                        if not movement.get(flag) or movement.get(route_direction)!=direction:
+                            counts['movement_rejected']+=1;continue
                     ep=endpoint(tr['points'],is_exit)
                     if ep and ep['v']*sign>=1:group.append(dict(ep,class_type=tr['class_type'],fragment=index,movement=movement))
-                groups.append(group)
+                    else:counts['endpoint_rejected']+=1
+                diagnostics.append(counts);groups.append(group)
             left,right=groups
-            if len(left)<10 or len(right)<10:continue
+            if len(left)<10 or len(right)<10:
+                links.append(dict(sites=[up['id'],down['id']],names=[up['name'],down['name']],direction=direction,departure_candidates=len(left),arrival_candidates=len(right),diagnostics=diagnostics,paths=[],reason='Insufficient endpoints for coverage-edge estimation'));continue
             out=quantiles([e['x']*sign for e in left],n=10)[-1];entry=quantiles([e['x']*sign for e in right],n=10)[0]
             # Actual fragment ends near each site's outer coverage edge, not station centers.
+            before_edge=[len(left),len(right)]
             left=[e for e in left if abs(e['x']*sign-out)<=30];right=[e for e in right if abs(e['x']*sign-entry)<=30]
-            matches=associate(left,right)
-            paths=[{'points':m['points'],'class_type':left[m['left']]['class_type'],'direction':direction,'association_cost':m['cost'],'ambiguity_margin':m['margin'],'upstream_movement':left[m['left']].get('movement',{}),'downstream_movement':right[m['right']].get('movement',{}),'upstream_fragment':left[m['left']]['fragment'],'downstream_fragment':right[m['right']]['fragment']} for m in matches]
-            links.append({'sites':[up['id'],down['id']],'names':[up['name'],down['name']],'direction':direction,'departure_candidates':len(left),'arrival_candidates':len(right),'paths':paths})
+            for counts,before,after in zip(diagnostics,before_edge,[len(left),len(right)]):counts['away_from_coverage_edge']=before-after
+            matches=associate(left,right,method=association_method)
+            paths=[{'points':m['points'],'class_type':left[m['left']]['class_type'],'direction':direction,'association_cost':m['cost'],'ambiguity_margin':m['margin'],'assignment_round':m.get('assignment_round',1),'additional':m.get('additional',False),'upstream_movement':left[m['left']].get('movement',{}),'downstream_movement':right[m['right']].get('movement',{}),'upstream_fragment':left[m['left']]['fragment'],'downstream_fragment':right[m['right']]['fragment']} for m in matches]
+            links.append({'sites':[up['id'],down['id']],'names':[up['name'],down['name']],'direction':direction,'departure_candidates':len(left),'arrival_candidates':len(right),'diagnostics':diagnostics,'unmatched_departures':len(left)-len(paths),'unmatched_arrivals':len(right)-len(paths),'paths':paths})
     return {'method':'Estimated cross-sensor associations and monotone endpoint-constrained motion; not verified identities or DeepCTM forecasts','links':links,'limitations':['Unknown clock offsets, turning traffic and occlusion can invalidate associations.','Only unambiguous supported candidates are drawn; missing associations remain blank.','No signal state is inferred. Colors are estimated speed.']}

@@ -33,14 +33,14 @@ function draw(){
   if(filter==='vehicles'&&!vehicle.has(code)||filter==='pedestrians'&&!['0','10','11','14','16'].includes(code)||filter==='cyclists'&&!['12','13','17'].includes(code))continue;
   if(paint(tr,s.name+(tr.method?` · ${tr.gap_seconds.toFixed(1)} s gap`:""),Boolean(tr.method))){if(tr.method){estimatedCount++;longGapCount++;}else count++;}
  }
- let spatialCount=0;
+ let spatialCount=0,additionalCount=0;
  if(el('spatial-estimates')?.checked&&['all','vehicles'].includes(el('objects').value)){
   for(const link of data.spatial_estimates?.links||[]){
    if(link.direction!==el('direction').value||!link.sites.every(id=>selected.has(id)))continue;
-   for(const path of link.paths){if(paint(path,link.names.join(' → ')+' · identity unverified',true,'spatial association'))spatialCount++;}
+   for(const path of link.paths){if(path.additional&&el('additional-matches')&&!el('additional-matches').checked)continue;if(paint(path,link.names.join(' → ')+(path.additional?' · additional experimental match':'')+' · identity unverified',true,'spatial association')){spatialCount++;if(path.additional)additionalCount++;}}
   }
  }
- if(el('spatial-note'))el('spatial-note').textContent=`${spatialCount} visible estimated spatial connections. These are hypotheses across sensors, not verified identities. Ambiguous matches stay blank; speed colors do not indicate certainty.`;
+ if(el('spatial-note'))el('spatial-note').textContent=`${spatialCount} visible estimated spatial connections (${additionalCount} additional experimental matches). These are hypotheses across sensors, not verified identities. Ambiguous matches stay blank; speed colors do not indicate certainty.`;
  c.restore();el('coverage').textContent=`${count} visible local fragments · ${estimatedCount} dashed local gaps (${longGapCount} longer than 3 s) · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time. `+sites.map(s=>`${s.name}: ${s.frames} sampled frames`).join(' · ');
  el('estimate-note').hidden=!el('estimates').checked;
  const validation=data.gap_validation;
@@ -76,3 +76,5 @@ el('estimates').onchange=draw;el('direction').onchange=draw;el('objects').onchan
 el('time').oninput=()=>{if(data){const span=view[1]-view[0],start=data.start+(data.end-data.start-span)*Number(el('time').value)/1000;view=[start,start+span];draw();}};
 el('plot').addEventListener('wheel',e=>{e.preventDefault();if(!e.deltaY)return;const canvas=el('plot'),rect=canvas.getBoundingClientRect();if(rect.width<=0||canvas.clientWidth<=110)return;const pointerX=(e.clientX-rect.left)*canvas.clientWidth/rect.width;zoom(e.deltaY>0?1.25:.8,(pointerX-90)/(canvas.clientWidth-110));},{passive:false});el('plot').ondblclick=()=>el('reset').click();
 el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`:'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();setInterval(refresh,15000);
+
+if(el("additional-matches"))el("additional-matches").onchange=draw;
