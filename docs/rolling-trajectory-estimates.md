@@ -47,3 +47,9 @@ Unit tests check conservative mass balance, nonnegative/jam-bounded density, bou
 ## Storage and use
 
 Snapshot computation runs in a background worker thread so the sampler continues during modeling; per-site query results release their read cursor before trajectory processing. The two existing rolling buffers retain 90 minutes. Figures cover one hour and regenerate every 30 minutes. Each snapshot contains estimates, assumptions, boundary support and local mask validation; no extra long-lived trajectory archive is created. Open Historical Performance on the original dashboard, or /finch and /florida on the figure viewer. Toggle estimates, select adjacent sites and zoom to inspect dashed paths.
+
+### Mouse-anchored historical zoom
+
+Both Finch and Florida use the shared rolling figure renderer. Mouse-wheel zoom now keeps the time under the pointer fixed on screen, accounting for the chart margins and displayed canvas size. For example, scrolling at 95% of the timeline keeps that time near the right edge rather than moving the view toward the midpoint. Zoom buttons remain centered; the time slider stays synchronized, and zoom-out stops at the recorded window boundaries.
+
+Validation: JavaScript syntax check passed; executed the zoom function at left, center, and right anchors, checked zoom-out bounds and centered button behavior. Confirmed the dashboard on port 8775 serves the updated script. Browser visual inspection was not performed for this change.

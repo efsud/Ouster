@@ -85,6 +85,9 @@ def build(db,sites,end,track_observer=None):
     result={'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching.'}
     from .rolling_estimates import gap_validation
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)
+    if sites and sites[0].get('region')=='Florida':
+        from .spatial_bridges import reconstruct
+        result['spatial_estimates']=reconstruct(result)
     return result
 
 def read_snapshot(now=None,folder=None):
@@ -112,6 +115,8 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
         previous=json.loads((folder/'snapshot.json').read_text())
         last_publish=previous.get('next_update',previous['generated_at']+REFRESH)-REFRESH if 'estimates' in previous else 0
     except (OSError,ValueError,KeyError):pass
+    # Expired snapshots need a fresh warm-up, not an immediate near-empty publication.
+    if last_publish and begin-last_publish>REFRESH:last_publish=0
     purge(db,begin)
     pool=ThreadPoolExecutor(max_workers=1);pending=None
     def compute(end):
