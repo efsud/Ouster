@@ -14,39 +14,24 @@ function draw(){
  c.font='12px sans-serif';c.fillStyle='#52636d';c.strokeStyle='#dbe3e8';
  for(let i=0;i<=6;i++){const t=view[0]+i*(view[1]-view[0])/6;c.beginPath();c.moveTo(x(t),20);c.lineTo(x(t),h-50);c.stroke();c.fillText(clock(t),Math.min(w-65,x(t)-25),h-25);}
  for(const s of sites){c.fillStyle='#263b46';c.fillText(s.name,95,y(s.station_m)-8);c.fillText(Math.round(s.station_m)+' m',4,y(s.station_m));c.strokeStyle='#c3cdd3';c.beginPath();c.moveTo(90,y(s.station_m));c.lineTo(w-20,y(s.station_m));c.stroke();}
- c.save();c.beginPath();c.rect(90,20,w-110,h-70);c.clip();let count=0,estimatedCount=0,longGapCount=0;
- function paint(tr,name,localEstimate=false,kind='local interpolation'){let seen=false,dashDistance=0;
-  for(let i=1;i<tr.points.length;i++){const a=tr.points[i-1],b=tr.points[i],ta=data.start+a[0],tb=data.start+b[0],gap=b[0]-a[0]>1.5,estimated=localEstimate||gap;
-   const length=Math.hypot(x(tb)-x(ta),y(b[1])-y(a[1]));
-   if(tb>=view[0]&&ta<=view[1]&&(!estimated||kind==='spatial association'||el('estimates').checked)){
-    if(b[0]-a[0]>3)continue;
-    if(gap&&!localEstimate)estimatedCount++;
-    seen=true;const speed=gap?Math.abs(b[1]-a[1])/(b[0]-a[0]):b[2];
-    c.strokeStyle=color(speed);c.lineWidth=estimated?1.8:1;c.setLineDash(estimated?[7,5]:[]);c.lineDashOffset=-dashDistance;
-    c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();
-    points.push({x:x(tb),y:y(b[1]),time:tb,speed,name:(estimated?'EST '+kind+' · ':'Observed · ')+name});
-   }dashDistance+=length;
-  }c.setLineDash([]);c.lineDashOffset=0;return seen;
- }
- for(const s of sites)for(const tr of [...s.tracks,...(s.local_estimates||[])]){
+ c.save();c.beginPath();c.rect(90,20,w-110,h-70);c.clip();let count=0;
+ for(const site of sites)for(const tr of site.tracks){
   const filter=el('objects').value,code=tr.class_type;if(tr.direction!==el('direction').value)continue;
   if(filter==='vehicles'&&!vehicle.has(code)||filter==='pedestrians'&&!['0','10','11','14','16'].includes(code)||filter==='cyclists'&&!['12','13','17'].includes(code))continue;
-  if(paint(tr,s.name+(tr.method?` · ${tr.gap_seconds.toFixed(1)} s gap`:""),Boolean(tr.method))){if(tr.method){estimatedCount++;longGapCount++;}else count++;}
- }
- let spatialCount=0,additionalCount=0;
- if(el('spatial-estimates')?.checked&&['all','vehicles'].includes(el('objects').value)){
-  for(const link of data.spatial_estimates?.links||[]){
-   if(link.direction!==el('direction').value||!link.sites.every(id=>selected.has(id)))continue;
-   for(const path of link.paths){if(path.additional&&el('additional-matches')&&!el('additional-matches').checked)continue;if(paint(path,link.names.join(' → ')+(path.additional?' · additional experimental match':'')+' · identity unverified',true,'spatial association')){spatialCount++;if(path.additional)additionalCount++;}}
+  if(tr.method)continue;
+  let seen=false;
+  for(let i=1;i<tr.points.length;i++){
+   const a=tr.points[i-1],b=tr.points[i],ta=data.start+a[0],tb=data.start+b[0],dt=b[0]-a[0];
+   if(dt<=0||dt>1.5||tb<view[0]||ta>view[1])continue;
+   seen=true;c.strokeStyle=color(b[2]);c.lineWidth=1;c.setLineDash([]);
+   c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();
+   points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],name:'Observed · '+site.name});
   }
+  if(seen)count++;
  }
- if(el('spatial-note'))el('spatial-note').textContent=`${spatialCount} visible estimated spatial connections (${additionalCount} additional experimental matches). These are hypotheses across sensors, not verified identities. Ambiguous matches stay blank; speed colors do not indicate certainty.`;
- c.restore();el('coverage').textContent=`${count} visible local fragments · ${estimatedCount} dashed local gaps (${longGapCount} longer than 3 s) · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time. `+sites.map(s=>`${s.name}: ${s.frames} sampled frames`).join(' · ');
- el('estimate-note').hidden=!el('estimates').checked;
- const validation=data.gap_validation;
- el('estimate-note').textContent='Local interpolation only: same intersection, sensor session, object ID and class; short gaps plus accepted vehicle gaps up to 30 seconds using movement before and after the gap. Speed/direction checks reject inconsistent bridges. Different tracks are never matched. Zoom in to inspect these short dashed segments. '+
- (validation?.count?`Short-gap masked-point diagnostic: ${validation.count} points, interpolation MAE ${validation.interpolation_mae_m.toFixed(2)} m. This does not validate the longer-gap estimates.`:'Insufficient data for a local masked-point diagnostic.');
+ c.restore();el('coverage').textContent=`${count} visible recorded fragments · Observations only · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time. `+sites.map(s=>`${s.name}: ${s.frames} sampled frames`).join(' · ');
 }
+
 function renderMovements(sites){
  const host=el('movement-summary');if(!host)return;host.replaceChildren();
  for(const site of sites){
@@ -72,7 +57,7 @@ async function refresh(){if(data&&Date.now()/1000-data.start>5400){data=null;poi
  if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();
  }catch(e){el('message').textContent=e.message;}}
 if(el('spatial-estimates'))el('spatial-estimates').onchange=draw;
-el('estimates').onchange=draw;el('direction').onchange=draw;el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
+el('direction').onchange=draw;el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
 el('time').oninput=()=>{if(data){const span=view[1]-view[0],start=data.start+(data.end-data.start-span)*Number(el('time').value)/1000;view=[start,start+span];draw();}};
 el('plot').addEventListener('wheel',e=>{e.preventDefault();if(!e.deltaY)return;const canvas=el('plot'),rect=canvas.getBoundingClientRect();if(rect.width<=0||canvas.clientWidth<=110)return;const pointerX=(e.clientX-rect.left)*canvas.clientWidth/rect.width;zoom(e.deltaY>0?1.25:.8,(pointerX-90)/(canvas.clientWidth-110));},{passive:false});el('plot').ondblclick=()=>el('reset').click();
 el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`:'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();setInterval(refresh,15000);
