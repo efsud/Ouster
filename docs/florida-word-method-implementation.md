@@ -43,3 +43,19 @@ Use the existing `.venv-deepctm` environment with the pinned SciPy dependency in
 Reports contain aggregate metrics and provenance, not a duplicate raw-frame archive. Existing raw retention remains 90 minutes. The study fails closed if training, validation or test support is inadequate. Validation selects the method before test inference; the optimizer never receives masked ground-truth samples.
 
 Initial software checks: twelve tests pass for exact kinematics, bounded optimization, infeasible rejection, Newell shift/coverage, missing leader and signal evidence, temporal/spatial separation, hidden-truth isolation, red outflow suppression, side-flow conservation and finite storage. These synthetic checks do not establish field reconstruction accuracy.
+
+## First completed comparison and two-layer display
+
+The collection runner subsequently met its fixed readiness thresholds: at least 30 qualifying car fragments in each partition and at least ten eligible 5 s and ten 10 s masks per partition. It retained 147 training, 125 validation and 166 test fragments. Validation supplied 115 masks; 113 were accepted by every candidate. Test supplied 154 masks. Counts across mask lengths are correlated and do not represent independent vehicles.
+
+Validation selected the bounded-acceleration kinematic ablation with smoothness 0.01. Its held-out mean per-gap position MAE was 0.860 m, versus 1.236 m for Hermite and 2.634 m for linear interpolation. Speed MAEs were 0.553, 0.690 and 0.930 m/s respectively. The kinematic model had zero violations of the tested speed/acceleration bounds. Stop-event precision/recall were 0.964/0.915; those thresholds describe a stop lasting at least two seconds within a masked interval. It is not full M4: leader, CTM and verified signal priors remain unavailable to this field comparison.
+
+Training-only empirical bounds were vmax 24.5174 m/s, amin -6 and amax 4 m/s². Acceleration quantiles reached the declared guardrails, indicating sensitivity to detector noise. These are provisional numerical limits, not independently validated driver parameters. The only moving 30 s test mask had 17.316 m position MAE; the overall average must not be generalized to long unobserved stops.
+
+The validation-derived 90% full-gap band radius was 2.723 m, with empirical test coverage 90.91%. Masks are correlated and areas differ, so this is an empirical diagnostic, not a guaranteed confidence interval. It does not apply between sensors.
+
+The Florida figure has independent controls for (1) within-intersection missing data and (2) between-intersection estimates. Both layers contain passenger-car estimates only and remain separate from recorded observations and KPIs. The first checked snapshot yielded one local gap and 77 between-site proposals; counts change each window. Local candidates retain original lateral/clock admission checks. Inter-site proposals retain entry/exit movement filters and uncertain identity labels. The selected local optimizer is transferred experimentally to those longer gaps; its local test accuracy is not an inter-site accuracy claim.
+
+A background layer publisher reads each new half-hour snapshot and uses the frozen selected method. The API suppresses expired layers; the browser additionally requires matching snapshot versions and does not combine layers from different time windows. Both controls were browser-verified separately from the recorded layer. The live collectors and 90-minute buffer continue independently of the finished comparison process.
+
+Reports: `data/reconstruction/word-v1-collection/evaluation-001/report.json`. Runner: `deepctm.collect_reconstruction_study`. Publisher: `deepctm.reconstruction_layers --watch`. Read-only API: `/api/florida-reconstruction`. Software verification: 76 modeling tests and two new response/expiry tests passed. Full Newell/CTM integration and broader field validation remain unfinished.

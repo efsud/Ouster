@@ -64,3 +64,18 @@ class QueuePriorTests(unittest.TestCase):
         r=simulate([.05,.1],[10,15],2,20,5,.3,[.1]*3,[.2]*3,side_arrivals=[[.2,.1]]*3,side_departures=[[.1,.2]]*3)
         self.assertLess(r['max_mass_error_vehicles'],1e-10)
         self.assertTrue(np.all(r['density']>=0));self.assertTrue(np.all(r['density']<=.3))
+
+class CollectionTests(unittest.TestCase):
+    def test_readiness_requires_every_partition(self):
+        from .collect_reconstruction_study import readiness
+        plan={'boundary_embargo_seconds':0,'spatial_partitions':{'train':['a'],'validation':['b'],'test':['c']},'time_fractions':{'train':[0,.6],'validation':[.6,.8],'test':[.8,1]},'gap_seconds':[5,10,20,30]}
+        r=readiness({'sites':[],'start':0,'end':3600},plan)
+        self.assertFalse(r['ready']);self.assertTrue(any('test' in v for v in r['reasons']))
+    def test_overlay_requires_evaluated_report(self):
+        from .reconstruction_layers import generate
+        with self.assertRaises(ValueError):generate({'sites':[]},{'state':'insufficient_training_data'})
+    def test_overlay_prediction_preserves_westbound_direction(self):
+        from .reconstruction_layers import prediction
+        r={'selected_method':'kinematic_0.01','calibration':{'parameters':{'vmax':30,'amin':-4,'amax':3}}}
+        p=prediction(dict(t=0,x=100,v=-10),dict(t=10,x=0,v=-10),r)
+        self.assertIsNotNone(p);self.assertTrue(all(b[1]<=a[1]+1e-6 for a,b in zip(p,p[1:])));self.assertTrue(all(v>=0 for t,x,v in p))
