@@ -79,3 +79,13 @@ class CollectionTests(unittest.TestCase):
         r={'selected_method':'kinematic_0.01','calibration':{'parameters':{'vmax':30,'amin':-4,'amax':3}}}
         p=prediction(dict(t=0,x=100,v=-10),dict(t=10,x=0,v=-10),r)
         self.assertIsNotNone(p);self.assertTrue(all(b[1]<=a[1]+1e-6 for a,b in zip(p,p[1:])));self.assertTrue(all(v>=0 for t,x,v in p))
+
+class FrozenEvaluationTests(unittest.TestCase):
+    def test_overlapping_later_period_rejected(self):
+        import json,tempfile
+        from pathlib import Path
+        from .evaluate_reconstruction_later import run
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d);(p/'snapshot.json').write_text(json.dumps({'start':110,'end':200}))
+            (p/'study.json').write_text(json.dumps({'state':'evaluated_ablation','source_window':[0,100]}))
+            with self.assertRaises(ValueError):run(p/'snapshot.json',p/'study.json',p/'report.json')

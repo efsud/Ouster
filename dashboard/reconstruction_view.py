@@ -12,4 +12,6 @@ def read(now=None,folder=FOLDER):
     try:layers=json.loads((folder/'layers.json').read_text())
     except (OSError,ValueError):return {'state':'waiting','study':safe,'message':'Collecting or evaluating fixed training/validation/test portions. Estimates are not available yet.'}
     if layers['expires_at']<now:return {'state':'expired','study':safe,'message':'Estimated layer expired; awaiting the current recorded window.'}
-    return {**layers,'study':safe}
+    try:later=json.loads((folder/'later-evaluation.json').read_text())
+    except (OSError,ValueError):later=None
+    return {**layers,'study':safe,'later_validation':later}

@@ -59,3 +59,17 @@ The Florida figure has independent controls for (1) within-intersection missing 
 A background layer publisher reads each new half-hour snapshot and uses the frozen selected method. The API suppresses expired layers; the browser additionally requires matching snapshot versions and does not combine layers from different time windows. Both controls were browser-verified separately from the recorded layer. The live collectors and 90-minute buffer continue independently of the finished comparison process.
 
 Reports: `data/reconstruction/word-v1-collection/evaluation-001/report.json`. Runner: `deepctm.collect_reconstruction_study`. Publisher: `deepctm.reconstruction_layers --watch`. Read-only API: `/api/florida-reconstruction`. Software verification: 76 modeling tests and two new response/expiry tests passed. Full Newell/CTM integration and broader field validation remain unfinished.
+
+## Frozen later-period check — morning of 21 November
+
+The original selected model and training-only physical bounds were frozen. A later, nonoverlapping morning window was evaluated at the original test areas (Palm Springs and Boston). Case selection used a deterministic metadata hash, at most twenty cases per site/direction/gap stratum, before evaluating errors. Of 320 sampled masks, 316 were accepted by the kinematic model and scored on common support across methods.
+
+| Method | Mean per-gap position MAE | Speed MAE | Stop-duration error |
+| --- | --- | --- | --- |
+| Linear | 2.653 m | 0.720 m/s | 2.152 s |
+| Hermite | 1.864 m | 0.588 m/s | 1.255 s |
+| Frozen kinematic refinement | 0.769 m | 0.404 m/s | 0.878 s |
+
+The frozen model had zero tested speed/acceleration violations. Moving-gap position MAE was 0.950 m (5 s, n=53), 1.507 m (10 s, n=29), 3.287 m (20 s, n=28), and 2.010 m (30 s, n=12). Stationary gaps lower the overall average. The original nominal 90% error-band radius covered only 84.18% of later full gaps: coverage degraded under the changed traffic distribution. Do not silently expand the band using these test errors or call it calibrated.
+
+Report: `data/reconstruction/word-v1-collection/later-evaluation.json`. Reproduce with `deepctm.evaluate_reconstruction_later`, supplying the frozen study and a later snapshot. This is a later-time same-corridor check, not independent-day validation or evidence of cross-sensor vehicle identity. No model was refitted or selected using these later scores. The figure's method-comparison panel now exposes this later result and the uncertainty shortfall.
