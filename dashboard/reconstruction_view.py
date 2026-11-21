@@ -14,4 +14,8 @@ def read(now=None,folder=FOLDER):
     if layers['expires_at']<now:return {'state':'expired','study':safe,'message':'Estimated layer expired; awaiting the current recorded window.'}
     try:later=json.loads((folder/'later-evaluation.json').read_text())
     except (OSError,ValueError):later=None
-    return {**layers,'study':safe,'later_validation':later}
+    try:association=json.loads((folder/'association-20261121.json').read_text())
+    except (OSError,ValueError):association=None
+    if association is not None:
+        association={k:association[k] for k in ('state','selected_method','test','limitations','deployment') if k in association}
+    return {**layers,'study':safe,'later_validation':later,'association_validation':association}

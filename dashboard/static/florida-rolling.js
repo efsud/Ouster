@@ -55,7 +55,7 @@ function zoom(f,fraction=.5){
 }
 async function refresh(){if(data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(`/api/${corridor}-rolling`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
  el('message').textContent=`Figure updated ${clock(next.generated_at)} · Next update ${clock(next.next_update)} ${regionName} time. Shows ${clock(next.start)}–${clock(next.end)}; early collection may cover less than one hour.`;
- if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();
+ if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();if(corridor==='florida')refreshReconstruction();
  }catch(e){el('message').textContent=e.message;}}
 if(el('spatial-estimates'))el('spatial-estimates').onchange=draw;
 el('direction').onchange=draw;el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
@@ -100,6 +100,14 @@ async function refreshReconstruction(){
     const heading=document.createElement('h4');heading.textContent='Later recording · frozen model, no retraining';host.append(heading);
     for(const [method,result] of Object.entries(later.methods||{})){const p=document.createElement('p'),m=result.common||{};p.textContent=`${method}: ${m.n||0} common gaps; position MAE ${m.mae_m?.toFixed(2)??'unavailable'} m; speed MAE ${m.speed_mae_mps?.toFixed(2)??'unavailable'} m/s. Accepted ${result.accepted}/${later.sampled}.`;host.append(p);}
     const p=document.createElement('p'),coverage=later.frozen_uncertainty?.full_gap_coverage;p.textContent=`The earlier nominal 90% local error band covered ${coverage==null?'an unavailable fraction':(coverage*100).toFixed(1)+'%'} of later gaps. It is not a guaranteed confidence band and does not apply between intersections.`;host.append(p);
+   }
+   const association=reconstruction.association_validation;
+   if(association){
+    const heading=document.createElement('h4');heading.textContent='Tracklet matching · held-out spatial masks';host.append(heading);
+    for(const [scenario,methods] of Object.entries(association.test||{}))for(const [method,m] of Object.entries(methods)){
+     const p=document.createElement('p');p.textContent=`${scenario==='complete'?'All endpoints available':'Missing departures and arrivals'} · ${method}: ${m.correct}/${m.eligible} correct recovered matches (${m.recall==null?'unavailable':(100*m.recall).toFixed(1)+'%'}); ${m.false} wrong matches; precision ${m.precision==null?'unavailable':(100*m.precision).toFixed(1)+'%'}.`;host.append(p);
+    }
+    const p=document.createElement('p');p.textContent='The global method recovered more matches but made more errors. The conservative matcher remains displayed. Same-sensor masks do not verify identities between intersections.';host.append(p);
    }
    for(const text of reconstruction.limitations||[]){const p=document.createElement('p');p.textContent=text;host.append(p);}
   }else host.textContent='No method has completed the required held-out comparison yet.';

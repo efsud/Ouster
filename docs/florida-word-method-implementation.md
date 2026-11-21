@@ -7,7 +7,7 @@ Source: `Florida_Corridor_Trajectory_Reconstruction_Recommendations.docx`, suppl
 | Requirement | Implementation/evidence | Remaining work |
 | --- | --- | --- |
 | Passenger cars; fixed movement paths | Study restricts SDK class 2; existing direction/entry/exit metadata | Verify lane groups, projection and signal mapping |
-| Associate upstream/downstream tracklets | Existing cost/margin association and movement eligibility | Global assignment and competing hypotheses; calibrated uncertainty |
+| Associate upstream/downstream tracklets | Movement eligibility and partial global assignment with edge-exclusion alternatives | Independent cross-sensor identity validation; calibrated uncertainty |
 | CTM queues and explicit side movements | `movement_queue.py`: conservative sending/receiving, CFL substeps, finite internal supply, explicit side arrivals/departures | Fit parameters to field calibration; connect actual phase/side-flow inputs |
 | No invented signal permissions | Unverified permission series returns unavailable | Controller/scene confirmation or explicitly soft estimated evidence |
 | M1 linear/Hermite baseline | `trajectory_reconstruction.baseline` | Compare across representative traffic regimes |
@@ -73,3 +73,23 @@ The original selected model and training-only physical bounds were frozen. A lat
 The frozen model had zero tested speed/acceleration violations. Moving-gap position MAE was 0.950 m (5 s, n=53), 1.507 m (10 s, n=29), 3.287 m (20 s, n=28), and 2.010 m (30 s, n=12). Stationary gaps lower the overall average. The original nominal 90% error-band radius covered only 84.18% of later full gaps: coverage degraded under the changed traffic distribution. Do not silently expand the band using these test errors or call it calibrated.
 
 Report: `data/reconstruction/word-v1-collection/later-evaluation.json`. Reproduce with `deepctm.evaluate_reconstruction_later`, supplying the frozen study and a later snapshot. This is a later-time same-corridor check, not independent-day validation or evidence of cross-sensor vehicle identity. No model was refitted or selected using these later scores. The figure's method-comparison panel now exposes this later result and the uncertainty shortfall.
+
+
+## Global association comparison — 21 November
+
+`global_association.py` adds a partial min-cost assignment. Each departure and arrival can remain unmatched at a declared cost; physically infeasible or class-inconsistent pairs are removed before solving. Disconnected candidate groups are solved separately. For each proposed match, the solver forbids that edge and resolves the entire group. The increase in total cost measures ambiguity against a competing assignment, including unmatched alternatives. Ties remain unassigned. This margin is not a probability, and no global FIFO or lane equality is assumed.
+
+Worked example: costs A→X=0.1, A→Y=0.2, B→X=0.2 and B→Y=1.4. Greedy selection costs 1.5; joint assignment chooses A→Y and B→X for 0.4. Removing either chosen edge raises the optimum by 1.1. This illustrates the optimization only; real identity still requires validation.
+
+`study_association.py` used the frozen spatial and chronological partitions, passenger cars only, one hash-selected 20/50/100 m strip per fragment, and shuffled arrival order. Hidden identities are available only to the scorer. There were 3,576 training-area candidates (reserved, not fitted), 275 validation cases and 333 test cases. Parameters were fixed except for an ambiguity-margin choice from 0.25, 0.5 and 1.0. Validation selected 0.25 using a minimum 95% precision and 25 matches in each scenario, then maximum worst-scenario recall. Selection was saved before test scoring.
+
+| Held-out scenario | Current conservative matcher | Global assignment |
+| --- | --- | --- |
+| All endpoints | 224/333 correct recovered (67.3%); 0 wrong; 100% precision | 261/333 (78.4%); 4 wrong; 98.5% precision |
+| Missing departures and arrivals | 145/210 (69.0%); 1 wrong; 99.3% precision | 162/210 (77.1%); 6 wrong; 96.4% precision |
+
+More recovered trajectories came at the cost of more false connections. The deployed between-intersection layer therefore retains the conservative matcher. Results are visible in the figure's comparison panel. These are same-sensor masked-identity experiments, not proof of identity across separate sensors. Scenarios reuse fragments, and sensor track IDs themselves are not independently annotated truth. Report: `data/reconstruction/word-v1-collection/association-20261121.json`. Five new matcher tests cover joint alternatives, ties, rejection, unequal group sizes, reorder invariance, class and physical gates. In total 36 targeted reconstruction, association and response tests passed; JavaScript syntax passed.
+
+Saved AM/PM archive manifests were also audited: 13 November 07:00–09:00 Florida time reports 499,139 frames across seven sensors, and 16:00–18:00 reports 496,126. The earlier nighttime attempt reports no reception. These are worker-reported counts, not an independent recount. The archives are preserved as potential independent-date evaluation sources; this comparison did not score them. Audit: `data/reconstruction/word-v1-collection/archive-audit.json`.
+
+Full M2–M4 integration remains incomplete: the rolling schema does not yet supply supported same-lane leader relationships, calibrated queue fields or verified signal permissions. These priors must not be invented merely to label the deployed kinematic estimator as the complete recommended method.
