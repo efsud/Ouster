@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+data/
+config/sites.local.json
+node_modules/
+test-results/
+.DS_Store
+.venv-deepctm/
+.venv-mgctm/

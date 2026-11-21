@@ -1,0 +1,28 @@
+[
+  {
+    "corridor": "finch",
+    "snapshot_end": 1794974425.364628,
+    "links_with_paths": 7,
+    "paths": 292,
+    "gap_validation": {
+      "method": "Artificially masked interior points; local along-road position only, not cross-sensor validation",
+      "count": 31506,
+      "interpolation_mae_m": 0.16422450013452594,
+      "constant_velocity_mae_m": 0.36284046430807326
+    },
+    "max_mass_error_vehicles": 2.964295475749168e-14
+  },
+  {
+    "corridor": "florida",
+    "snapshot_end": 1794974425.2011788,
+    "links_with_paths": 2,
+    "paths": 88,
+    "gap_validation": {
+      "method": "Artificially masked interior points; local along-road position only, not cross-sensor validation",
+      "count": 13860,
+      "interpolation_mae_m": 0.37309063564787937,
+      "constant_velocity_mae_m": 0.8741978725780494
+    },
+    "max_mass_error_vehicles": 1.1102230246251565e-16
+  }
+]

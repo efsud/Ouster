@@ -1,0 +1,473 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,tabularx,array,longtable}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{setspace}
+
+\definecolor{headingblue}{RGB}{56,113,153}
+\hypersetup{colorlinks=true,linkcolor=headingblue,citecolor=headingblue,urlcolor=headingblue}
+\titleformat{\section}{\large\bfseries\color{headingblue}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{headingblue}}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{0.6em}{}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parindent}{1.2em}
+\setlength{\parskip}{0pt}
+\setlist[itemize]{leftmargin=1.5em,itemsep=0.25em,topsep=0.25em}
+\setlist[enumerate]{leftmargin=1.8em,itemsep=0.45em,topsep=0.35em}
+\renewcommand{\arraystretch}{1.05}
+\newcommand{\ind}{\mathbb{I}}
+
+\title{\color{headingblue}\bfseries Corridor Performance Analytics\\[0.25em]
+Using Annotated LiDAR Data}
+\author{Phase 1: Literature Review \& KPI Specification\\[0.5em]
+\small Months 1--2 $\mid$ York University / University of Toronto + Ouster}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper classifies the literature on corridor and intersection performance measurement and formalises Tier-1 Key Performance Indicators (KPIs) as functions of annotated LiDAR trajectories. Section 1 reviews manual, theoretical, detector-based, trajectory, and LiDAR sources across six KPI domains and identifies priority definitions for LiDAR transfer. Section 2 presents notation, governing equations with explicit variable definitions, and validation criteria aligned with Highway Capacity Manual and ATSPM practice. The specification provides the analytical foundation for real-time and daily corridor monitoring in subsequent project phases.
+\end{abstract}
+
+\section{Literature Review and Classification}
+
+Signalized corridors remain the primary bottleneck in urban networks, yet agencies still rely heavily on periodic turning-movement counts, loop detectors, and manual studies to diagnose performance~\cite{hcm,bonneson}. Recent work with connected-vehicle trajectories and LiDAR-based tracking shows that individual vehicle paths can support continuous estimation of delay, queue extent, and signal utilization without repeated field visits~\cite{hunter,kotb,bhaskar}. A gap remains, however: most KPI definitions in manuals and agency practice assume aggregated detector data, not annotated object tracks with intermittent occlusion and identity switches.
+
+The literature indicates that the most transferable KPI domains for a single
+LiDAR-equipped intersection are delay and travel time, queue and storage,
+signal utilization, and throughput. These measures have established nominal
+definitions in the \emph{Highway Capacity Manual}, signal-timing manuals, and
+Automated Traffic Signal Performance Measures (ATSPM) guidance, while
+trajectory-based studies provide object-level computation procedures
+\cite{nasem2022hcm,nasem2015stm,fhwa2020atspm,liu2009queue,
+ashqer2022uav}. In contrast, corridor progression and multimodal or
+transit-signal-priority measures often require multi-intersection trajectories,
+signal-phase metadata, reliable modal classifications, or transit-event logs
+that may not be available within a single LiDAR footprint
+\cite{mahmud2022coordination,fhwaTSP}.
+
+Phase 1 addresses this gap through a structured literature review (Tasks A1--A4) whose purpose is to (i) identify authoritative KPI definitions, (ii) classify evidence by source type and measurement domain, and (iii) determine which definitions transfer reliably to LiDAR-derived trajectories. The output is a traceability map from literature to the computable specification developed in Section~2. Evidence is organised into eight source classes (listed below); the domain taxonomy and priority matrix identify which definitions transfer to LiDAR trajectories.
+
+\paragraph{Manuals (HCM, MUTCD, ITE):} Authoritative KPI definitions and units. Specifies control delay, queue length, saturation flow, and level of service. Project default when no LiDAR-specific rule applies.
+
+\paragraph{Theory (Webster, Ak\c{c}elik, coordination):} Analytical models relating cycle length and arrivals to expected delay and progression. Provides validation ranges for LiDAR KPI magnitudes; does not define field measurement from trajectories.
+
+\paragraph{Detectors (NCHRP, turning counts):} Documents how loops, radar, video, and manual counts validate delay, AOG, and volumes. External benchmarking targets for LiDAR-derived estimates.
+
+\paragraph{Trajectories (CV, GPS, probe studies):} Per-vehicle KPI computation using rolling windows, integrals, and stop detection. Closest methodological precedent for LiDAR track aggregation and windowing.
+
+\paragraph{LiDAR/vision (intersection point-cloud tracking):} Documents occlusion, ID switches, classification error, and track gaps. Defines LiDAR-specific adaptations when applying nominal HCM/ATSPM KPI definitions.
+
+\paragraph{Multimodal/TSP (pedestrian, cyclist, transit priority):} Pedestrian delay, cyclist exposure, and TSP benefit metrics. Tier-2 scope in Phase 1: reviewed and scoped but not fully specified for LiDAR deployment.
+
+\paragraph{Agency practice (ATSPM, FHWA):} Operational reporting thresholds, alert rules, and decision levers used by traffic engineers in daily operations.
+
+\paragraph{Validation (trajectory QA):} Data-quality and benchmarking protocols. Consistency checks, coverage requirements, and spot-check methods to verify LiDAR-computed KPIs before publication to operators.
+
+\subsection{Traceability and Definition-Transfer Rules}
+
+The literature sources do not play identical roles in the KPI specification.
+Manuals define the nominal meaning, units, and operational interpretation of a
+KPI. Trajectory studies provide object-level computation and aggregation
+logic. LiDAR and infrastructure-perception studies identify implementation
+risks associated with occlusion, classification uncertainty, track
+fragmentation, and identity switches. Detector, controller, and agency sources
+provide external benchmarks and operational reporting conventions
+\cite{nasem2022hcm,nasem2015stm,fhwa2020atspm,fhwa2006detectors,
+kloeker2020multilidar,zimmer2023infradet3d}.
+
+Each KPI is assigned to one of four transfer classes:
+
+\begin{itemize}
+    \item \textbf{Direct transfer:} the nominal definition is retained and all
+    required variables are observable from trajectories and available signal
+    metadata.
+
+    \item \textbf{Adapted transfer:} the nominal definition is retained, but
+    its implementation requires explicit treatment of occlusion, incomplete
+    tracks, track merging, or limited sensor visibility.
+
+    \item \textbf{Benchmark only:} the source provides expected ranges,
+    external comparisons, or causal interpretation rather than a direct
+    LiDAR-computation procedure.
+
+    \item \textbf{Tier-2:} the KPI remains within the project scope, but its
+    complete operational specification is deferred until the required
+    corridor-wide, modal, or signal-event metadata are available.
+\end{itemize}
+
+The resulting traceability rule is therefore to use authoritative manuals for
+KPI names, definitions, and units; trajectory studies for per-object
+calculation logic; LiDAR and vision studies for data-quality adaptations; and
+detector or agency guidance for validation and operational reporting.
+
+\subsection{LiDAR Data Readiness and Scene Geometry}
+
+Before computing any KPI, annotated LiDAR trajectories must be converted into
+an operations-ready data structure. At minimum, every trajectory record should
+contain a timestamp, object identifier, object class, position in world
+coordinates, speed, heading, lane-group assignment, and a tracking-confidence
+or continuity indicator. The static scene representation should contain lane
+polygons, lane centerlines, stop bars, count lines, crosswalks, queue regions,
+turn-bay storage lengths, waiting areas, and the boundary of the monitored
+intersection influence area
+\cite{fhwa2006detectors,zimmer2023infradet3d,nayak2025dual}.
+
+LiDAR observations should not be treated as error-free ground truth by
+default. Published KPIs may be biased by timestamp misalignment, spatial
+calibration errors, blind zones, classification errors, identity switches, and
+fragmented trajectories. Consequently, every reported KPI should be
+accompanied by quality metadata, including the number of valid tracks, the
+percentage of the reporting window with acceptable coverage, the number of
+track merges, and a visibility or confidence flag
+\cite{kloeker2020multilidar,shang2026roadside}.
+
+Corridor KPIs are grouped into six domains (Table~\ref{tab:domains}). Domains D1--D4 (delay, queue, signal utilization, throughput) are well established in HCM and ATSPM practice and are feasible from LiDAR tracks within a single intersection footprint. Domains D5--D6 (progression, multimodal) are retained in the review but scoped as Tier-2 in Phase 1 because they often require corridor-wide or mode-specific metadata beyond a single sensor node.
+
+\begin{table}[htbp]
+\centering
+\caption{KPI measurement domains}
+\label{tab:domains}
+\small
+\begin{tabularx}{\textwidth}{@{}p{0.10\textwidth}X p{0.16\textwidth}p{0.17\textwidth}@{}}
+\toprule
+Domain & Representative KPIs & Cadence & LiDAR feasibility \\
+\midrule
+D1 Delay \& travel time & Control delay, stopped delay, segment travel time & RT / Daily & High \\
+D2 Queue \& storage & Queue length, spillback, storage utilization & RT / Daily & High \\
+D3 Signal utilization & AOG, split failure, platoon ratio & RT / Daily & Medium--High \\
+D4 Throughput & Approach volume, discharge rate, turning volumes & RT / Daily & High \\
+D5 Progression & Stop frequency, offset effectiveness & Daily & Medium \\
+D6 Multimodal & Pedestrian delay, TSP benefit & Daily / Event & Medium--Low \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:priority} cross-classifies source classes against domains. The matrix shows that Classes A, D, and G dominate D1--D4, while Class E is essential for documenting LiDAR-specific adaptations (track gaps, classification error) even when the nominal KPI definition follows the HCM.
+
+\begin{table}[htbp]
+\centering
+\caption{Source class $\times$ KPI domain priority matrix. P (priority): this source class receives full definitional treatment in the KPI specification for that domain. S (secondary): the source is referenced with scope notes only, not a complete specification. n/a: not applicable in Phase 1.}
+\label{tab:priority}
+\scriptsize
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Source class & Delay & Queue & Signal util. & Throughput & Progression & Multimodal \\
+\midrule
+A. Manuals & P & P & P & P & P & S \\
+B. Theory & P & P & P & P & P & n/a \\
+C. Detectors & S & S & P & P & S & S \\
+D. Trajectories & P & P & P & P & P & S \\
+E. LiDAR/vision & P & P & S & P & S & S \\
+F. Multimodal/TSP & S & S & n/a & S & n/a & P \\
+G. Agency & P & P & P & P & P & S \\
+H. Validation & P & P & P & P & P & P \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{KPI Specification for LiDAR Trajectories}
+
+Building on the classification in Section~1, this section formalises Tier-1 corridor KPIs as LiDAR-computable functions of annotated trajectories. Definitions follow HCM and ATSPM conventions~\cite{hcm,smaglik} where applicable; trajectory-specific terms (stop flag, approach polygon, track continuity) follow probe and LiDAR precedents~\cite{bhaskar,kotb}. Table~\ref{tab:tier1} summarises the seven Tier-1 KPIs; definitions are given below. Subsequent subsections introduce notation and present the governing equations.
+
+\begin{table}[htbp]
+\centering
+\caption{Tier-1 KPIs and reporting cadence}
+\label{tab:tier1}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+KPI & Domain & Units & RT / Daily \\
+\midrule
+Control delay $\bar d_a$ & D1 & s/veh & Both \\
+Stopped delay $d_{i,\mathrm{stop}}$ & D1 & s/veh & Both \\
+Queue length $Q_{a,95}$ & D2 & m & Both \\
+Arrivals on green (AOG) & D3 & \% & Both \\
+Split failure rate (SF) & D3 & \% of cycles & Both \\
+Approach volume $V_a$ & D4 & veh/h & Both \\
+Discharge rate $q_a$ & D4 & veh/h/lane & RT \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Tier-1 KPI Definitions}
+
+\begin{enumerate}
+\item \textbf{Control delay ($\bar d_a$; s/veh):} Mean excess travel time per vehicle on an approach relative to free-flow conditions, from approach entry to the stop line. Reported as the arithmetic mean over valid traversals in the analysis window (RT rolling window or daily calendar window).
+
+\item \textbf{Stopped delay ($d_{i,\mathrm{stop}}$; s/veh):} Time a vehicle spends at crawl or standstill (speed $\leq v_{\mathrm{th}}$, typically 2--3 m/s) while traversing the approach. Computed by integrating the stop indicator over the vehicle's traversal interval.
+
+\item \textbf{Queue length, 95th percentile ($Q_{a,95}$; m):} Farthest upstream distance among stopped vehicles from the stop line at each time step; the operational KPI is the 95th percentile over the reporting window to reduce sensitivity to single-frame outliers. Set to zero when no stopped vehicles are present.
+
+\item \textbf{Arrivals on green (AOG; \%):} Share of vehicles arriving at the stop line during effective green. A vehicle counts as an arrival when within $\varepsilon \approx 3$ m of the stop line; green membership requires the controller phase at arrival time to match effective green $g_{\mathrm{eff}}$.
+
+\item \textbf{Split failure rate (SF; \% of cycles):} Share of signal cycles in which queue remains at the stop line when green ends ($Q_a(t_{c,\mathrm{end}})>0$). Indicates insufficient green time relative to demand.
+
+\item \textbf{Approach volume ($V_a$; veh/h):} Number of vehicles entering the approach per hour, counting unique tracks with entry time $t_{i,\mathrm{entry}}$ in the analysis window.
+
+\item \textbf{Discharge rate ($q_a$; veh/h/lane):} Vehicles departing through the stop line per hour of effective green per lane (stopped-to-moving transition during green). Values approaching HCM saturation flow indicate near-capacity operation. RT reporting only.
+\end{enumerate}
+
+\subsection{Notation and Data Model}
+
+Let each vehicle track be indexed by $i\in\mathcal{T}$, where $\mathcal{T}$ is the set of valid trajectories in the analysis period. Track $i$ carries timestamped state $(t,\mathbf{x}_i(t),\mathbf{v}_i(t),c_i)$, where $\mathbf{x}_i(t)$ is position, $\mathbf{v}_i(t)$ velocity, and $c_i$ the object class (vehicle, pedestrian, etc.). Approach $a\in\mathcal{A}$ is defined by entry and stop-line polygons; only tracks with $c_i=\text{vehicle}$ and complete traversal of approach $a$ enter the vehicular KPI set.
+
+\begin{table}[htbp]
+\centering
+\caption{Primary notation for KPI computation}
+\label{tab:notation}
+\small
+\begin{tabularx}{\textwidth}{@{}p{0.16\textwidth}p{0.10\textwidth}X@{}}
+\toprule
+Symbol & Units & Definition \\
+\midrule
+$v_i(t)$ & m/s & Speed magnitude, $v_i(t)=\lVert\mathbf{v}_i(t)\rVert$ \\
+$v_{\mathrm{th}}$ & m/s & Stopped-speed threshold (typically 2--3 m/s) \\
+$S_i(t)$ & -- & Stop indicator, $S_i(t)=1$ if $v_i(t)\leq v_{\mathrm{th}}$ \\
+$s_i(t)$ & m & Signed distance from track $i$ to stop line (negative upstream) \\
+$t_{i,\mathrm{entry}}$ & s & Time track $i$ enters approach polygon of $a$ \\
+$t_{i,\mathrm{stop}}$ & s & Time track $i$ first reaches stop line on approach $a$ \\
+$t_{i,\mathrm{exit}}$ & s & Time track $i$ leaves approach or crossing zone \\
+$L_a$ & m & Length of approach $a$ from entry to stop line \\
+$v_{\mathrm{ff}}$ & m/s & Free-flow speed on approach $a$ (posted or calibrated) \\
+$t_{i,\mathrm{ff}}$ & s & Free-flow traversal time, $L_a/v_{\mathrm{ff}}$ \\
+$W_t$ & s & Rolling analysis window ending at time $t$ (length 60--300 s) \\
+$W_{\mathrm{day}}$ & s & Calendar-day aggregation window \\
+$N_a$ & -- & Number of valid vehicle traversals on approach $a$ in window \\
+$g_{\mathrm{eff}}$ & s & Effective green for movement on approach $a$ \\
+$t_{c,\mathrm{end}}$ & s & End of green for cycle $c$ \\
+$N_{\mathrm{cycles}}$ & -- & Number of signal cycles in analysis window \\
+$\tau$ & h & Duration of volume-count window \\
+$T_g$ & h & Duration of green interval used for discharge \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Derived Features and Temporal Aggregation}
+
+From raw LiDAR tracks we compute kinematic features used across KPIs:
+\begin{equation}
+ v_i(t)=\lVert\mathbf{v}_i(t)\rVert,\qquad
+ S_i(t)=\ind\!\left[v_i(t)\leq v_{\mathrm{th}}\right],
+\end{equation}
+where $\ind[\cdot]$ is the indicator function. A track is excluded if any gap in observations exceeds $\Delta t_{\max}$ (project default: 3 s) within $[t_{i,\mathrm{entry}},t_{i,\mathrm{exit}}]$.
+
+KPI values are aggregated over rolling windows for real-time (RT) monitoring and fixed windows for daily summaries:
+\begin{equation}
+ \bar K_{\mathrm{RT}}(t)=\frac{1}{\lvert\mathcal{I}_{W_t}\rvert}
+ \sum_{i\in\mathcal{I}_{W_t}}k_i,
+ \qquad
+ \bar K_{\mathrm{daily}}=\frac{1}{\lvert\mathcal{I}_{W_{\mathrm{day}}}\rvert}
+ \sum_{i\in\mathcal{I}_{W_{\mathrm{day}}}}k_i,
+\end{equation}
+where $k_i$ is the per-vehicle KPI contribution (e.g., $d_i$ for delay), $\mathcal{I}_{W_t}$ is the set of valid trajectories with $t_{i,\mathrm{stop}}\in W_t$, and $\lvert\cdot\rvert$ denotes set cardinality. RT windows slide continuously; daily windows use non-overlapping local calendar days.
+
+A fragmented trajectory may be merged with a subsequent fragment only when
+the fragments have consistent object classes and lane assignments, a short
+temporal separation, and feasible kinematic continuity between the end of the
+first fragment and the beginning of the second. If multiple candidate matches
+exist, the merge should be rejected unless one assignment is clearly superior.
+Every accepted merge should be retained in an audit log
+\cite{kloeker2020multilidar,shang2026roadside}.
+
+Tracks beginning or ending inside the monitored analysis region are considered
+censored. They may contribute to KPIs that require only an observed event,
+such as a count-line crossing, but should not contribute to full-approach
+travel time or control delay unless both required boundaries are observed.
+
+\subsection{Delay Metrics (Domain D1)}
+
+\paragraph{Control delay.} Following HCM control-delay concepts~\cite{hcm}, the excess time for vehicle $i$ on approach $a$ relative to free-flow conditions is
+\begin{equation}
+ d_i=
+ \underbrace{\left(t_{i,\mathrm{stop}}-t_{i,\mathrm{entry}}\right)}_{\text{actual traversal time}}
+ -\underbrace{t_{i,\mathrm{ff}}}_{\text{free-flow time}},
+ \qquad
+ t_{i,\mathrm{ff}}=\frac{L_a}{v_{\mathrm{ff}}}.
+\end{equation}
+The approach-level control delay reported to operators is the arithmetic mean over valid traversals:
+\begin{equation}
+ \bar d_a=\frac{1}{N_a}\sum_{i=1}^{N_a}d_i,
+ \qquad
+ N_a=\lvert\mathcal{I}_a\cap\mathcal{I}_W\rvert.
+\end{equation}
+
+Equation (4) should be applied only to trajectories for which both approach
+entry and stop-line arrival are observed. If the LiDAR trajectory begins or
+ends within the approach polygon, the calculated value should be labelled
+\emph{observed-segment delay} rather than full-approach control delay. Such
+censored observations should be reported separately and excluded from the
+primary approach mean unless a validated correction procedure is applied
+\cite{wang2024state}.
+
+\paragraph{Stopped delay.} Stopped delay isolates time spent at crawl or standstill, computed by integrating the stop indicator:
+\begin{equation}
+ d_{i,\mathrm{stop}}=\int_{t_{i,\mathrm{entry}}}^{t_{i,\mathrm{exit}}}S_i(t)\,dt.
+\end{equation}
+In discrete LiDAR samples at interval $\delta t$, (5) is evaluated as $d_{i,\mathrm{stop}}\approx\sum_n S_i(t_n)\,\delta t$.
+
+\subsection{Queue Length (Domain D2)}
+
+Queue extent at time $t$ is the maximum upstream distance among stopped vehicles on approach $a$:
+\begin{equation}
+ Q_a(t)=\max\left\{\lvert s_i(t)\rvert:S_i(t)=1,\ i\in\mathcal{T}_a\right\},
+\end{equation}
+where $\mathcal{T}_a$ is the set of tracks currently on approach $a$. The operational KPI is the 95th percentile over reporting window $W$ to reduce sensitivity to single-frame outliers:
+\begin{equation}
+ Q_{a,95}=P_{95}\left\{Q_a(t):t\in W\right\}.
+\end{equation}
+If no stopped vehicles are present, $Q_a(t)=0$.
+
+The stopped-speed condition alone is insufficient to establish queue
+membership because an isolated turning, parking, or yielding vehicle may also
+move below $v_{\mathrm{th}}$. A vehicle should therefore be classified as a
+queue member only when it is lane-consistent, located within the designated
+queue region, and has plausible spacing from another queued vehicle or from
+the stop line. The queue estimate should also be accompanied by a visibility
+flag because occlusion of the upstream queue tail can systematically
+underestimate queue extent
+\cite{liu2009queue,ashqer2022uav,kloeker2020multilidar}.
+
+\subsection{Signal Utilization (Domain D3)}
+
+\paragraph{Arrivals on green (AOG).} Let $N_{\mathrm{arr}}$ be vehicles whose stop-line arrival time $t_{i,\mathrm{stop}}$ falls in window $W$, and $N_{\mathrm{green}}$ the subset arriving during effective green $g_{\mathrm{eff}}$:
+\begin{equation}
+ \mathrm{AOG}=100\cdot\frac{N_{\mathrm{green}}}{N_{\mathrm{arr}}}.
+\end{equation}
+Vehicle $i$ is counted in $N_{\mathrm{arr}}$ when $\lvert s_i(t_{i,\mathrm{stop}})\rvert\leq\varepsilon$ with tolerance $\varepsilon\approx3$ m. Membership in $N_{\mathrm{green}}$ requires the controller phase at $t_{i,\mathrm{stop}}$ to match $g_{\mathrm{eff}}$, obtained from signal logs or Ouster timing metadata when available.
+
+AOG should be considered operationally valid only when the LiDAR and
+controller clocks have been explicitly synchronized and timestamp drift has
+been evaluated. If signal state is inferred rather than obtained from
+controller or SPaT logs, the resulting AOG value should be labelled
+provisional and reported with the inference method and associated uncertainty
+\cite{fhwa2020atspm}.
+
+\paragraph{Split failure.} For signal cycle $c$, define the split-failure indicator
+\begin{equation}
+ F_c=\ind\!\left[Q_a(t_{c,\mathrm{end}})>0\right],
+\end{equation}
+i.e., queue remains at the stop line when green ends. The split-failure rate over $N_{\mathrm{cycles}}$ observed cycles is
+\begin{equation}
+ \mathrm{SF}=100\cdot\frac{1}{N_{\mathrm{cycles}}}
+ \sum_{c=1}^{N_{\mathrm{cycles}}}F_c.
+\end{equation}
+
+The residual-queue test should use the queue-membership definition introduced
+in Domain D2 rather than the presence of any isolated stopped vehicle.
+Cycle-level split-failure results should also report the number of complete
+cycles and the percentage of cycles with adequate approach visibility.
+
+\subsection{Throughput (Domain D4)}
+
+\paragraph{Approach volume.} The hourly entry flow on approach $a$ over a window of duration $\tau$ (hours) is
+\begin{equation}
+ V_a=\frac{N_{a,\mathrm{entry}}}{\tau},
+\end{equation}
+where $N_{a,\mathrm{entry}}$ counts unique vehicle tracks with $t_{i,\mathrm{entry}}\in W$.
+
+Because one physical vehicle may appear under multiple track identifiers,
+approach volume must be based on unique physical trajectories after
+continuity-based deduplication. Count-line crossings should also satisfy a
+direction condition to prevent repeated counts when an object oscillates near
+the line
+\cite{nayak2025dual,shang2026roadside}.
+
+\paragraph{Discharge rate.} During a green interval of duration $T_g$ (hours), the discharge rate is
+\begin{equation}
+ q_a=\frac{N_{a,\mathrm{depart}}}{T_g},
+\end{equation}
+where $N_{a,\mathrm{depart}}$ is the number of vehicles crossing the stop line while $S_i$ transitions from stopped to moving during green. Values of $q_a$ approaching saturation flow $s$ (veh/h/lane) from HCM~\cite{hcm} indicate near-capacity operation.
+
+When a standing queue exists at the beginning of green, saturation discharge
+may also be estimated from stable post-start-up headways. If
+$h_4,\ldots,h_k$ denote the headways after the initial start-up vehicles, then
+
+\begin{equation}
+ s_a=\frac{3600}{\overline{h}_{4:k}},
+\end{equation}
+
+where $s_a$ is the observed saturation-flow estimate in veh/h/lane. This
+headway-based estimate should be reported only for cycles containing a
+standing queue at the beginning of effective green
+\cite{nasem2022hcm,webster1958,akcelik1981signals}.
+
+\subsection{Validation}
+
+Published KPIs must satisfy three checks. \textbf{Internal consistency:} $N_{\mathrm{green}}+N_{\mathrm{red}}\approx N_{\mathrm{arr}}$; $\bar d_a$ positively correlated with $Q_{a,95}$; turning-movement volumes sum to approach entry volume within $\pm5\%$. \textbf{External benchmark:} where loop counts or controller AOG logs exist, compare $V_a$ and AOG (targets: $\pm10\%$ volume, $\pm5\%$ AOG). \textbf{Data quality:} require $N_a\geq15$ per RT window, lane coverage $\geq80\%$, and exclude tracks with gaps $>\Delta t_{\max}$.
+
+The Phase 1 deliverable documents Equations (1)--(13) with the notation in Table~\ref{tab:notation}, forming the specification handed to Phase 2 KPI computation (Tasks T2.1--T2.2).
+
+
+
+\appendix
+\section*{Appendix: Phase 1 Execution Roadmap}
+\addcontentsline{toc}{section}{Appendix: Phase 1 Execution Roadmap}
+
+The following material supports project management and is secondary to the analytical content in Sections 1--2.
+
+\subsection*{Stakeholder Interviews (Tasks C1--C4)}
+\begin{itemize}
+\item \textbf{C1 Identify cities:} Minimum three agencies, mixed size and region; target traffic operations and corridor management staff.
+\item \textbf{C2 Interview questions:} KPI priorities, reporting cadence, thresholds used in practice, remedies commonly applied (signal timing, coordination, phasing), and data trust requirements.
+\item \textbf{C3 Conduct interviews:} Semi-structured sessions; document current ATSPM or arterial analytics workflows.
+\item \textbf{C4 Synthesize findings:} Cross-city comparison table; reconcile with literature classification; flag KPIs for Phase 2 priority implementation.
+\end{itemize}
+
+\subsection*{Schedule and Milestones}
+\begin{table}[htbp]
+\centering
+\caption{Phase 1 work breakdown aligned to SOW tasks T1.1--T1.10}
+\label{tab:workbreakdown}
+\small
+\begin{tabularx}{\textwidth}{@{}p{0.22\textwidth}p{0.16\textwidth}X@{}}
+\toprule
+Stream & Task IDs & Activities \\
+\midrule
+Data engineering & T1.1--T1.3 & LiDAR ingestion pipeline; QA/QC scripts; preliminary features (speed, acceleration, stops) \\
+Literature \& KPI & T1.4--T1.6 & Classified literature review; KPI formulas and cadence; feasibility validation on sample data \\
+Analytics \& diagnostics & T1.7--T1.10 & City interviews; exploratory trajectory analysis; KPI stability evaluation; preliminary anomaly signatures \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection*{Deliverables and Phase 2 Handoff}
+
+Phase 2 implements rolling-window KPI computation (Tasks T2.1--T2.9) using the specification in Section~2. Milestones: Week 4 (literature memo draft, interviews underway); Week 8 (KPI specification, validation plan, stakeholder synthesis, Phase 2 handoff).
+
+\begin{table}[htbp]
+\centering
+\caption{Phase 1 deliverables and downstream use}
+\label{tab:deliverables}
+\small
+\begin{tabularx}{\textwidth}{@{}p{0.25\textwidth}X p{0.25\textwidth}@{}}
+\toprule
+Deliverable & Contents & Feeds \\
+\midrule
+Best-practices memo & Standard KPI definitions; source-class synthesis; domain priority matrix & KPI spec; agency alignment \\
+KPI specification draft & LiDAR-ready formulas, units, cadence, data requirements per KPI & Phase 2 real-time engine \\
+Validation \& benchmarking plan & Consistency checks, timing-plan comparison, spot-check protocol & Phase 2 validation (T2.4--T2.5) \\
+Stakeholder interview synthesis & Findings from $\geq3$ cities; priority KPIs and decision levers & Phase 2 reporting format; Phase 3 diagnostics \\
+Data pipeline \& QA baseline & Ingestion, profiling scripts, preliminary features & KPI feasibility (T1.6); Phase 2 automation \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection*{Acknowledgments}
+
+This roadmap implements Phase 1 of the Statement of Work for the Corridor Performance Analytics project, a collaboration between York University / University of Toronto and Ouster.
+
+\bibliographystyle{unsrt}
+\bibliography{corridor_lidar_lit}
+
+\end{document}

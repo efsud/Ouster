@@ -1,0 +1,62 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+
+(async()=>{
+  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE});
+  try{
+    const page=await browser.newPage({viewport:{width:1220,height:1000},acceptDownloads:true});
+    const errors=[];
+    page.on('pageerror',e=>errors.push(e.message));
+    const base=process.env.SR436_QA_URL||'http://127.0.0.1:8771/';
+    await page.goto(base);
+    const graph=page.locator('#speed');
+    await page.waitForFunction(()=>document.querySelector('#speed').dataset.segments==='4');
+    assert.equal(await page.locator('canvas').count(),1);
+    const bound=async()=>[Number(await graph.getAttribute('data-start')),Number(await graph.getAttribute('data-end'))];
+    const [lo,hi]=await bound();
+    assert.equal(hi-lo,3600);
+    assert.match(await page.locator('#plot-status').textContent(),/Nov 12.*EST/);
+    const box=await graph.boundingBox();
+    const px=box.width*.72;
+    const anchor=(px-64)/(box.width-82);
+    await page.mouse.move(box.x+px,box.y+170);
+    await page.mouse.wheel(0,-120);
+    await page.waitForFunction(t=>Number(document.querySelector('#speed').dataset.start)>t,lo);
+    const [left,right]=await bound();
+    assert.ok(Math.abs((right-left)-2880)<.01);
+    assert.ok(Math.abs(left-(lo+720*anchor))<3);
+    await page.mouse.wheel(0,120);
+    await page.waitForFunction(t=>Number(document.querySelector('#speed').dataset.start)===t,lo);
+    await page.locator('#zoom-in').click();
+    await page.waitForFunction(t=>Number(document.querySelector('#speed').dataset.start)>t,lo);
+    await page.locator('#time-position').evaluate(e=>{e.value=0;e.dispatchEvent(new Event('input'));});
+    await page.waitForFunction(t=>Number(document.querySelector('#speed').dataset.start)===t,lo);
+    await page.locator('#time-reset').click();
+    await page.waitForFunction(t=>Number(document.querySelector('#speed').dataset.end)===t,hi);
+    await page.locator('#objects').selectOption('4');
+    await page.waitForFunction(()=>document.querySelector('#speed').dataset.segments==='2');
+    await page.locator('#direction').selectOption('westbound');
+    await page.waitForFunction(()=>document.querySelector('#speed').dataset.segments==='0');
+    await page.locator('#direction').selectOption('eastbound');
+    await page.waitForFunction(()=>document.querySelector('#speed').dataset.segments==='2');
+    await page.locator('#objects').selectOption('2');
+    await page.locator('#direction').selectOption('unknown');
+    await page.waitForFunction(()=>document.querySelector('#speed').dataset.segments==='2');
+    // Car sits at the first station, 1,200 s into the fixture.
+    const xy={x:64+1200/3600*(box.width-82),y:440-150/503.6*(440-103)};
+    await graph.hover({position:xy});
+    assert.match(await page.locator('#hover').textContent(),/Cranes Roost.*km\/h.*Car.*unknown/);
+    const event=page.waitForEvent('download');
+    await page.locator('#export').click();
+    const download=await event;
+    const bytes=await fs.readFile(await download.path());
+    assert.deepEqual([...bytes.subarray(0,8)],[137,80,78,71,13,10,26,10]);
+    assert.ok(bytes.length>1000);
+    if(process.env.SR436_QA_PNG)await page.screenshot({path:process.env.SR436_QA_PNG,fullPage:true});
+    await page.locator('#sites input').first().uncheck();
+    await page.waitForFunction(()=>document.querySelector('#speed').dataset.segments==='0');
+    assert.deepEqual(errors,[]);
+    console.log('Florida browser fixture passed: full hour, time zone, pointer zoom, navigation, reset, filters, hover, PNG.');
+  }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1);});

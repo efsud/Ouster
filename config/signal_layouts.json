@@ -1,0 +1,17 @@
+{
+  "source": "User-provided descriptions; Islington spelling confirmed in conversation",
+  "status": "user_reported_not_surveyed",
+  "count_semantics": "Reported physical signal locations or assemblies; individual heads and controlled movements are not yet verified",
+  "sites": [
+    {"site": "OBC-AG-SA-C618861", "name": "Finch W & Driftwood", "reported_locations": 1, "placement": "Middle of intersection", "coordinates": null, "phase_mapping": null},
+    {"site": "OBC-AG-SA-C351163", "name": "Finch W & Jane", "reported_locations": 4, "placement": "Four corners", "coordinates": null, "phase_mapping": null},
+    {"site": "OBC-AG-SA-C251055", "name": "Finch W & York Gate", "reported_locations": 2, "placement": "Two locations at Finch Avenue West and York Gate Boulevard; sides unspecified", "coordinates": null, "phase_mapping": null},
+    {"site": "OBC-AG-SA-C618857", "name": "Finch W & Norfinch", "reported_locations": 2, "placement": "At Finch Avenue West and Oakdale Road; sides unspecified", "reference_check": "Confirm Oakdale location against sensor's Norfinch name before georeferencing", "coordinates": null, "phase_mapping": null},
+    {"site": "OBC-AG-SA-C251071", "name": "Finch W & Signet", "reported_locations": 1, "placement": "At Arrow Road and Finch Avenue West", "reference_check": "Confirm Arrow location against sensor's Signet name before georeferencing", "coordinates": null, "phase_mapping": null},
+    {"site": "OBC-AG-SA-C257220", "name": "Finch W & Weston", "reported_locations": 4, "placement": "Four corners", "coordinates": null, "phase_mapping": null},
+    {"site": "OBC-AG-SA-C251064", "name": "Finch W & Islington", "reported_locations": 4, "placement": "Four corners", "coordinates": null, "phase_mapping": null},
+    {"site": "OBC-AG-SA-C257238", "name": "Finch W & Kipling", "reported_locations": 4, "placement": "Four corners", "coordinates": null, "phase_mapping": null},
+    {"site": "OBC-AG-SA-C251052", "name": "Finch W & Albion", "reported_locations": 4, "placement": "Four corners", "coordinates": null, "phase_mapping": null},
+    {"site": "OBC-AG-SA-C257208", "name": "Finch W & Martin Grove", "reported_locations": 4, "placement": "Four corners", "coordinates": null, "phase_mapping": null}
+  ]
+}

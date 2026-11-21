@@ -1,0 +1,17 @@
+{
+  "version": "word-recommendations-v1",
+  "source": "Florida_Corridor_Trajectory_Reconstruction_Recommendations.docx",
+  "scope": "Florida passenger cars, class 2; retrospective reconstruction",
+  "spatial_partitions": {
+    "train": ["OBC-AG-SA-C257222", "OBC-AG-SA-C257223", "OBC-AG-SA-C251068", "OBC-AG-SA-C257236"],
+    "validation": ["OBC-AG-SA-C257227"],
+    "test": ["OBC-AG-SA-C257225", "OBC-AG-SA-C257206"]
+  },
+  "time_fractions": {"train": [0.0, 0.6], "validation": [0.6, 0.8], "test": [0.8, 1.0]},
+  "boundary_embargo_seconds": 30,
+  "gap_seconds": [5, 10, 20, 30],
+  "maximum_observation_gap_seconds": 1.5,
+  "optimization_smoothness_candidates": [0.01, 0.1, 1.0],
+  "selection": "Validation-only mean per-gap position MAE on common accepted cases, acceptance reported separately; test evaluated after selection",
+  "limitations": ["One rolling window is exploratory, not independent-day validation", "Road alignment and receipt clocks remain provisional", "Lane identity and protected signal permissions are not established"]
+}

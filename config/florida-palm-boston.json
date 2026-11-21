@@ -1,0 +1,32 @@
+{
+  "version": "palm-boston-deepctm-lightsim-v1",
+  "sites_west_to_east": ["OBC-AG-SA-C257225", "OBC-AG-SA-C257206"],
+  "site_names": ["Palm Springs Dr & SR-436", "Boston Ave & SR-436"],
+  "interval_s": 10,
+  "context_steps": 12,
+  "horizon_steps": 12,
+  "roi_length_m": 60,
+  "roi_half_width_m": 12,
+  "minimum_coverage": 0.8,
+  "free_speed_kmh": 50,
+  "wave_speed_kmh": 18,
+  "jam_density_veh_km": 300,
+  "physical_dim": 64,
+  "free_dim": 32,
+  "dropout": 0.102,
+  "learning_rate": 0.001,
+  "weight_decay": 0.000001,
+  "loss_weights": [1.0, 0.00292, 0.000610, 0.00411],
+  "pec_alpha": 0.1,
+  "seed": 42,
+  "epochs": 60,
+  "assumptions": [
+    "Independent implementation of the paper architecture, not author code or an exact reproduction.",
+    "10-second bins, two-minute context and two-minute open-loop forecast adapt the method to the short Florida link.",
+    "Two 60m observed endpoint cells; intervening virtual cells at most 40m.",
+    "Two-lane aggregate jam density, road alignment and geometry are provisional.",
+    "No confirmed through-phase mapping; no invented signal colors or timing. Signal-gated physics is tested separately.",
+    "Receipt-time alignment; absolute sensor clock offsets remain unverified.",
+    "Virtual paths represent model motion; no cross-sensor vehicle identity matching."
+  ]
+}
