@@ -76,6 +76,10 @@ def pair_cost(a,b):
     return abs(dt-expected)/max(2,.35*expected)+abs(abs(a['v'])-abs(b['v']))/15+(0 if a['class_type']==b['class_type'] else .75)
 
 def associate(left,right,threshold=1.5,margin=.25,method="legacy"):
+    if method=="feasible":
+        # Reject impossible motion before comparing identity alternatives. Keep
+        # all feasible competitors visible; never cascade assumed identities.
+        return associate_residual(left,right,threshold,margin,max_rounds=1)
     if method=="augmented":
         baseline=associate(left,right,threshold,margin,method="legacy")
         used_a={m['left'] for m in baseline};used_b={m['right'] for m in baseline}

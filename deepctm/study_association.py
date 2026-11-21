@@ -39,7 +39,7 @@ def run(source, output, config='config/reconstruction/florida-study.json'):
             a,b,*_ = case
             a = dict(a,class_type='2'); b = dict(b,class_type='2')
             groups.setdefault((split,site['id'],track['direction'],width),[]).append((rank,a,b))
-    methods = ['augmented','global_0.25','global_0.5','global_1.0']
+    methods = ['augmented','feasible','global_0.25','global_0.5','global_1.0']
     report = dict(state='validation',created_at=time.time(),source_sha256=hashlib.sha256(raw).hexdigest(),
         source_window=[snapshot['start'],snapshot['end']],plan=plan,
         parameters={'max_edge_cost':1.5,'unmatched_per_endpoint':.75,'selection_min_matches':25,'selection_min_precision':.95},
@@ -65,7 +65,7 @@ def run(source, output, config='config/reconstruction/florida-study.json'):
                 bi = [i for i,(rank,_,_) in enumerate(cases) if scenario=='complete' or int(rank[16:24],16)%4][::-1]
                 for method in choices:
                     left = [cases[i][1] for i in ai]; right = [cases[i][2] for i in bi]
-                    matches = associate(left,right,method='augmented') if method=='augmented' else associate_global(left,right,margin=float(method.split('_')[1]))
+                    matches = associate(left,right,method=method) if method in ('augmented','feasible') else associate_global(left,right,margin=float(method.split('_')[1]))
                     correct = sum(ai[m['left']]==bi[m['right']] for m in matches)
                     rows.append(dict(site=site,direction=direction,width=width,scenario=scenario,method=method,
                         eligible=len(set(ai)&set(bi)),matched=len(matches),correct=correct,false=len(matches)-correct))
@@ -77,7 +77,7 @@ def run(source, output, config='config/reconstruction/florida-study.json'):
     winner = max(eligible,key=lambda m:(min(report['validation'][s][m]['recall'] or 0 for s in report['validation']),-methods.index(m))) if eligible else None
     report.update(selected_method=winner,state='selection_frozen'); save()
     # Test is never used to choose a different margin or algorithm.
-    choices = list(dict.fromkeys(['augmented']+([winner] if winner else [])))
+    choices = list(dict.fromkeys(['augmented','feasible']+([winner] if winner else [])))
     report['test'],report['test_groups'] = evaluate('test',choices)
     report['state'] = 'proxy_evaluated' if winner else 'insufficient_validation_support'
     report['deployment'] = 'No production association change; proxy evidence only'

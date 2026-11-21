@@ -47,7 +47,7 @@ def generate(snapshot,report):
                 local.append(dict(site=site['id'],direction=before['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='same_sensor_session_and_track',gap_s=b['t']-a['t']))
     # Existing movement-aware associations; do not create global vehicle identities.
     association_snapshot={**snapshot,'sites':[{**s,'tracks':[t for t in s['tracks'] if t['class_type']=='2']} for s in snapshot['sites']]}
-    associations=reconstruct(association_snapshot)
+    associations=reconstruct(association_snapshot,association_method='feasible')
     by_id={s['id']:s for s in association_snapshot['sites']}
     for link in associations['links']:
         for path in link['paths']:
@@ -57,7 +57,8 @@ def generate(snapshot,report):
             if p is None:rejected['between_physical_rejection']+=1;continue
             between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin']))
     return dict(state='ready',generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
-      method=report['selected_method'],within_intersection=local,between_intersections=between,rejected=dict(rejected),
+      method=report['selected_method'],association_method='feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
+      association_diagnostics=[{k:v for k,v in link.items() if k!='paths'} | {'proposed_matches':len(link['paths'])} for link in associations['links']],
       comparison=report['test'],uncertainty=report['uncertainty'],
       limitations=['Selected local reconstruction ablation; not full Newell+CTM+signal model','Between-intersection accuracy and identities are unverified; applying local method across sensors is domain transfer','No inferred signal permissions or invented same-lane leaders','Validation uncertainty applies to local masked gaps only, not between sensors'])
 

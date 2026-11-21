@@ -93,3 +93,12 @@ More recovered trajectories came at the cost of more false connections. The depl
 Saved AM/PM archive manifests were also audited: 13 November 07:00–09:00 Florida time reports 499,139 frames across seven sensors, and 16:00–18:00 reports 496,126. The earlier nighttime attempt reports no reception. These are worker-reported counts, not an independent recount. The archives are preserved as potential independent-date evaluation sources; this comparison did not score them. Audit: `data/reconstruction/word-v1-collection/archive-audit.json`.
 
 Full M2–M4 integration remains incomplete: the rolling schema does not yet supply supported same-lane leader relationships, calibrated queue fields or verified signal permissions. These priors must not be invented merely to label the deployed kinematic estimator as the complete recommended method.
+
+
+## Missing-match correction — feasible candidates first
+
+The original matcher allowed motion-infeasible curves to compete in its ambiguity margin before rejecting those curves. A new `feasible` mode removes impossible candidates first, then performs one mutual-best round with unchanged cost/margin limits. It keeps all feasible competitors visible and does not cascade earlier identity hypotheses. The reconstruction publisher now uses this mode; signal, movement and physical gates remain in place.
+
+Re-running the saved benchmark recovered 233/333 true matches versus 224/333, both with zero false matches. With missing departures/arrivals, it recovered 152/210 versus 145/210, both with one false match. Validation-area correct counts increased from 178 to 181 and from 118 to 121, with unchanged false counts. This reuses the prior benchmark and is a regression comparison, not a fresh independent test. Cross-sensor identities remain unverified. The broader global assignment remains experimental. Report: `data/reconstruction/word-v1-collection/association-feasible-20261121.json`.
+
+The layer response now includes per-link candidate and rejection diagnostics so missing connections can be distinguished from movement exclusions, insufficient endpoint support and coverage-edge exclusions. Thirty-seven targeted tests pass, including a new check that impossible competitors cannot block a feasible match and that this mode never performs recursive residual assignment.
