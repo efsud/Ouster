@@ -101,6 +101,17 @@ async function refreshReconstruction(){
     for(const [method,result] of Object.entries(later.methods||{})){const p=document.createElement('p'),m=result.common||{};p.textContent=`${method}: ${m.n||0} common gaps; position MAE ${m.mae_m?.toFixed(2)??'unavailable'} m; speed MAE ${m.speed_mae_mps?.toFixed(2)??'unavailable'} m/s. Accepted ${result.accepted}/${later.sampled}.`;host.append(p);}
     const p=document.createElement('p'),coverage=later.frozen_uncertainty?.full_gap_coverage;p.textContent=`The earlier nominal 90% local error band covered ${coverage==null?'an unavailable fraction':(coverage*100).toFixed(1)+'%'} of later gaps. It is not a guaranteed confidence band and does not apply between intersections.`;host.append(p);
    }
+   const integration=reconstruction.integration_validation;
+   if(integration){
+    const h=document.createElement('h4');h.textContent='CTM–Newell–signal experiment · hidden recorded trajectories';host.append(h);
+    const labels={test_local:'Local object gap',test_outage:'All-object recording outage',test_spatial:'Spatial blind band (proxy, not between-sensor truth)'};
+    for(const [key,label] of Object.entries(labels)){
+     const rows=integration.results?.[key],base=rows?.current?.common,model=rows?.integrated?.common;if(!base||!model)continue;
+     const p=document.createElement('p');p.textContent=`${label}: ${model.n} common accepted masks; current position MAE ${base.mae_m?.toFixed(3)??'unavailable'} m → integrated ${model.mae_m?.toFixed(3)??'unavailable'} m. Cases with all three priors: ${rows.integrated.common_all_priors??0}.`;host.append(p);
+     const gain=integration.paired_gain?.[key];if(gain){const p=document.createElement('p');p.textContent=`Exploratory 95% range for mean improvement: ${gain.bootstrap95_m.map(x=>x.toFixed(3)).join(' to ')} m; positive means improvement.`;host.append(p);}
+    }
+    const p=document.createElement('p');p.textContent='Experimental soft priors, provisional lane/stop-line geometry. No demonstrated reliable improvement yet; the current estimator remains deployed. Spatial masking does not verify vehicle matching between sensors.';host.append(p);
+   }
    const association=reconstruction.association_validation;
    if(association){
     const heading=document.createElement('h4');heading.textContent='Tracklet matching · held-out spatial masks';host.append(heading);

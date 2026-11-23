@@ -25,13 +25,13 @@ def baseline(a,b,kind='hermite',step=.5):
     return np.column_stack([t,x,v])
 
 
-def newell(a,b,leader,tau,spacing,desired_speed,following_verified=False):
+def newell(a,b,leader,tau,spacing,desired_speed,following_verified=False,following_estimated=False):
     """x_f(t)=min(free trajectory, x_leader(t-tau)-spacing).
 
     A numerical same-lane test is not controller/scene verification. Caller must
     explicitly supply supported following metadata. No hidden-tail extrapolation.
     """
-    if not following_verified:return {'state':'unavailable','reason':'leader_lane_relationship_unverified'}
+    if not following_verified and not following_estimated:return {'state':'unavailable','reason':'leader_lane_relationship_unverified'}
     if tau<=0 or spacing<=0 or desired_speed<=0:raise ValueError('Positive Newell parameters required')
     leader=np.asarray(leader,float);t=grid(a,b)
     if len(leader)<2 or np.any(np.diff(leader[:,0])<=0) or np.any(np.diff(leader[:,0])>1.5):
@@ -42,7 +42,8 @@ def newell(a,b,leader,tau,spacing,desired_speed,following_verified=False):
     x=np.minimum(a['x']+desired_speed*(t-a['t']),reference)
     if abs(x[0]-a['x'])>2 or np.any(np.diff(x)<-1e-6):return {'state':'infeasible','reason':'leader_boundary_conflict'}
     v=np.gradient(x,t)
-    return {'state':'candidate','points':np.column_stack([t,x,v]),'endpoint_error_m':float(x[-1]-b['x']),'source':'Newell leader translation'}
+    return {'state':'candidate','points':np.column_stack([t,x,v]),'endpoint_error_m':float(x[-1]-b['x']),'source':'Newell leader translation',
+            'following_evidence':'verified' if following_verified else 'estimated_not_lane_verified'}
 
 
 def integrate_matrix(t):

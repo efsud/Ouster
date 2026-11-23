@@ -18,4 +18,6 @@ def read(now=None,folder=FOLDER):
     except (OSError,ValueError):association=None
     if association is not None:
         association={k:association[k] for k in ('state','selected_method','test','limitations','deployment') if k in association}
-    return {**layers,'study':safe,'later_validation':later,'association_validation':association}
+    try:integration=json.loads((folder/'integrated-validation.json').read_text())
+    except (OSError,ValueError):integration=None
+    return {**layers,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}
