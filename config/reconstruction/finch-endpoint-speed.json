@@ -7,8 +7,11 @@
     "step_speed_limit_mps": 0.5
   },
   "enabled_sites": [
+    "OBC-AG-SA-C251071",
+    "OBC-AG-SA-C257208",
     "OBC-AG-SA-C257220",
-    "OBC-AG-SA-C257238"
+    "OBC-AG-SA-C257238",
+    "OBC-AG-SA-C618857"
   ],
   "scope": "Finch same-intersection car gaps >1.5 and <=90 seconds; original observations unchanged",
   "selection_protocol_sha256": "2c79c92b1146570ca8720cb8043b61a9bc405c7fb618e49054ce570363246098",
@@ -34,5 +37,76 @@
     "Several gap lengths can share a vehicle; counts are correlated.",
     "No validation of intersensor identity or field-calibrated uncertainty.",
     "Only compact stationary visible context can correct a small negative endpoint derivative."
-  ]
+  ],
+  "expansion_validation": {
+    "sites": {
+      "OBC-AG-SA-C251071": {
+        "evaluated": 68,
+        "distinct_new_ids": 14,
+        "new": {
+          "n": 14,
+          "mae_m": 0.09265499965916424,
+          "rmse_m": 0.1345666858731985,
+          "speed_mae_mps": 0.04377915646602748,
+          "stop_time_error_s": 0.19357142857143117,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 0.36032790458230074,
+          "stop_precision": 1.0,
+          "stop_recall": 1.0
+        }
+      },
+      "OBC-AG-SA-C257208": {
+        "evaluated": 68,
+        "distinct_new_ids": 14,
+        "new": {
+          "n": 15,
+          "mae_m": 0.4989520107625886,
+          "rmse_m": 0.6498512352300501,
+          "speed_mae_mps": 0.13255873437986435,
+          "stop_time_error_s": 0.7140000000000327,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 2.0840296224612493,
+          "stop_precision": 1.0,
+          "stop_recall": 1.0
+        }
+      },
+      "OBC-AG-SA-C618857": {
+        "evaluated": 90,
+        "distinct_new_ids": 17,
+        "new": {
+          "n": 21,
+          "mae_m": 0.21679730247530823,
+          "rmse_m": 0.3457342958211665,
+          "speed_mae_mps": 0.0951804190199138,
+          "stop_time_error_s": 0.5947619047618944,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 0.89594114360903,
+          "stop_precision": 1.0,
+          "stop_recall": 1.0
+        }
+      }
+    },
+    "protocol_sha256": "660a7b550f7be26afb46c4b32d57bc04b99dfe80908f5437c743a2850c2270ab",
+    "prospective_reports": [
+      {
+        "file": "data/reconstruction/eight-hour-20261123/finch/cycle-040.json",
+        "sha256": "9857f9d7000d0b4517309b20d4e01bd0ee7b4aceffe26d3edb67d83a12edde79"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/finch/cycle-053.json",
+        "sha256": "74fed630884f10a36ce90c5a798dde966d51be961dd336fd56d74ee0661357ea"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/finch/cycle-061.json",
+        "sha256": "2a57502f21080fad251f6f531ee52809cce128721eabbb94e761b38ff3eb2e5e"
+      }
+    ],
+    "external_recording": {
+      "file": "data/reconstruction/external-capture-review/finch-nov06.json",
+      "sha256": "a011e8d88d7faf43f44515b0c8371ea4067e7f8bd4cc32ef91bd2fd715530eff"
+    }
+  },
+  "withheld_sites": {
+    "OBC-AG-SA-C251055": "Daytime additional-mask MAE 4.07 m and p95 case MAE 17.23 m; overnight improvement insufficient to generalize."
+  }
 }
