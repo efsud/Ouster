@@ -62,6 +62,28 @@ def evaluate(rows,params,deadline):
 def finishable_new(metrics_):
     return metrics_.get('n',0)>=10 and metrics_['mae_m']<=3 and metrics_['speed_mae_mps']<=1 and metrics_['p95_case_mae_m']<=10
 
+def aggregate(output, complete=False):
+    """Summarize disjoint test windows; never select a method from test scores."""
+    output=Path(output);summary={'state':'complete' if complete else 'running','updated_at':time.time(),'regions':{},
+        'limitations':['Repeated gap lengths are correlated cases, not independent vehicles.',
+        'Actual cross-sensor identities and clock offsets remain unverified.',
+        'Candidate corrections may be withheld at individual sites.',
+        'No simulated continuations; unresolved observations stay missing.']}
+    for region in ('florida','finch'):
+        reports=[json.loads(p.read_text()) for p in sorted((output/region).glob('cycle-*.json'))]
+        methods={}
+        for method in ('strict','noise'):
+            rows=[c['metrics'][method] for r in reports for c in r['results']['cases'] if method in c['metrics']]
+            new=[c['metrics'][method] for r in reports for c in r['results']['cases'] if method in c['metrics'] and 'strict' not in c['metrics']]
+            methods[method]={'eligible':sum(r['results']['summary'][method]['evaluated'] for r in reports),'accepted':len(rows),'all':summarize(rows),'new':summarize(new)}
+        associations=[r['association'] for r in reports if 'association' in r]
+        extra=output/region/'global-comparison-001.json'
+        if extra.exists() and reports and 'association' not in reports[0]:associations.insert(0,json.loads(extra.read_text()))
+        summary['regions'][region]={'windows':len(reports),'methods':methods,
+            'association':{method:{k:sum(r['totals'].get(method,{}).get(k,0) for r in associations) for k in ('eligible','matched','correct','false')} for method in ('baseline','physics_screened','global_partial')}}
+    atomic(output/'summary.json',summary)
+    return summary
+
 def run(output,deadline,interval=1800):
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     import fcntl
@@ -122,9 +144,9 @@ def run(output,deadline,interval=1800):
                 status['errors'].append({'region':region,'time':time.time(),'type':type(exc).__name__});status['errors']=status['errors'][-30:]
                 status['regions'].setdefault(region,{})['state']='evaluation_error';atomic(output/'status.json',status)
                 print(region,type(exc).__name__,str(exc)[:120],flush=True)
-        status['updated_at']=time.time();atomic(output/'status.json',status)
+        status['updated_at']=time.time();status['cumulative']=aggregate(output)['regions'];atomic(output/'status.json',status)
         next_run=min(deadline,time.time()+interval)
         while time.time()<next_run:time.sleep(min(30,max(0,next_run-time.time())))
-    status.update(state='complete',finished_at=time.time());atomic(output/'status.json',status);lock.close()
+    status.update(state='complete',finished_at=time.time(),cumulative=aggregate(output,complete=True)['regions']);atomic(output/'status.json',status);lock.close()
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--deadline',type=float,required=True);p.add_argument('--interval',type=float,default=1800);a=p.parse_args();run(a.output,a.deadline,a.interval)

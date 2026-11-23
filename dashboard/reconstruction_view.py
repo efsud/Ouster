@@ -35,6 +35,7 @@ def read(now=None,folder=FOLDER):
         region='finch' if folder.name=='finch' else 'florida'
         campaign={k:c.get(k) for k in ('state','started_at','deadline','updated_at')}
         campaign['region']=c.get('regions',{}).get(region,{})
+        campaign['cumulative']=c.get('cumulative',{}).get(region,{})
     except (OSError,ValueError):pass
     pair_diagnostics=[]
     for link in layers.get('association_diagnostics',[]):

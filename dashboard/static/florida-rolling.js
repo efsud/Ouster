@@ -96,6 +96,9 @@ async function refreshReconstruction(){
    const c=reconstruction.campaign,p=document.createElement('p');
    p.textContent=`Bounded validation run: ${c.state}; scheduled end ${new Date(c.deadline*1000).toLocaleString('en-CA',{timeZone:'America/Toronto'})} Toronto. This compares fixed estimators on later recorded windows; it does not force unresolved matches.`;
    host.append(p);
+   for(const [method,r] of Object.entries(c.cumulative?.methods||{})){
+    const row=document.createElement('p');row.textContent=`Run total · ${method}: ${r.accepted}/${r.eligible} hidden gaps reconstructed. Added-case position MAE ${r.new?.mae_m?.toFixed(2)??'unavailable'} m. Candidate comparison, not automatic deployment.`;host.append(row);
+   }
   }
   if(reconstruction.comparison){
    const note=document.createElement('p');note.textContent='Candidate comparisons below may include corrections withheld from deployment at individual sites.';host.append(note);

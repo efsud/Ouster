@@ -1,7 +1,7 @@
 import json,tempfile,time,unittest
 from pathlib import Path
 from unittest.mock import patch
-from .corridor_campaign import identity,earlier_ids,sample,evaluate,run
+from .corridor_campaign import identity,earlier_ids,sample,evaluate,run,aggregate
 
 class CampaignTests(unittest.TestCase):
     def tr(self,session='a',id='1',cls='2',start=0):
@@ -28,3 +28,13 @@ class CampaignTests(unittest.TestCase):
             result=evaluate([None],{},time.time()-1)
             self.assertFalse(solver.called)
             self.assertEqual(result['summary']['strict']['evaluated'],0)
+
+    def test_aggregate_does_not_count_unmatched_as_recovered(self):
+        with tempfile.TemporaryDirectory() as folder:
+            region=Path(folder)/'finch';region.mkdir()
+            result={'results':{'summary':{m:{'evaluated':3} for m in ('strict','noise')},'cases':[]}}
+            (region/'cycle-001.json').write_text(json.dumps(result))
+            total=aggregate(folder,complete=True)
+            self.assertEqual(total['regions']['finch']['methods']['strict']['eligible'],3)
+            self.assertEqual(total['regions']['finch']['methods']['strict']['accepted'],0)
+            self.assertEqual(total['state'],'complete')
