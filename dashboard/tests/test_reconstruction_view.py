@@ -18,3 +18,13 @@ class ReconstructionViewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d);(p/'status.json').write_text(json.dumps({'state':'evaluated_ablation','updated_at':80,'report':'private/path'}));(p/'layers.json').write_text(json.dumps({'state':'ready','expires_at':99,'within_intersection':[{'points':[1,2]}]}))
             result=read(100,p);self.assertEqual(result['state'],'expired');self.assertNotIn('within_intersection',result);self.assertNotIn('report',result['study'])
+
+    def test_simple_method_does_not_load_unrelated_archive(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)
+            (p/'status.json').write_text(json.dumps({'state':'evaluated_ablation','updated_at':80}))
+            (p/'layers.json').write_text(json.dumps({'state':'ready','expires_at':200,'method':'color_slope_chronological_v1','color_validation':{'summary':{}}}))
+            (p/'association-20261121.json').write_text('not JSON')
+            result=read(100,p)
+            self.assertIn('color_validation',result)
+            self.assertNotIn('association_validation',result)

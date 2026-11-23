@@ -176,7 +176,18 @@ def main(watch,region='florida',deadline=None):
                     grid_path=ROOT/'config/reconstruction/adaptive-grid.json'
                     grid_policy=json.loads(grid_path.read_text()) if grid_path.exists() else {}
                     grid_enabled=grid_policy.get('method')=='endpoint_envelope_grid_retry_v1' and region in grid_policy.get('enabled_regions',[])
-                    result=generate(snapshot,report,adaptive_grid=grid_enabled,stationary_plateau=plateau_enabled,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy);temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']
+                    simple_path=ROOT/'config/reconstruction/florida-color-slope.json'
+                    simple=json.loads(simple_path.read_text()) if simple_path.exists() else {}
+                    if region=='florida' and simple.get('enabled'):
+                        from .color_slope import generate as color_generate
+                        result=color_generate(snapshot)
+                        validation_path=ROOT/'data/reconstruction/color-slope/validation.json'
+                        if validation_path.exists():
+                            validation=json.loads(validation_path.read_text())
+                            result['color_validation']={k:validation[k] for k in ('summary','association','limitations','snapshot_sha256')}
+                    else:
+                        result=generate(snapshot,report,adaptive_grid=grid_enabled,stationary_plateau=plateau_enabled,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy)
+                    temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']
                     print(json.dumps({'state':'published','local':len(result['within_intersection']),'between':len(result['between_intersections'])}),flush=True)
         except (OSError,ValueError,KeyError) as exc:
             print(type(exc).__name__+': layers not published',flush=True)

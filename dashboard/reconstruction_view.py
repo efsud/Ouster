@@ -12,6 +12,10 @@ def read(now=None,folder=FOLDER):
     try:layers=json.loads((folder/'layers.json').read_text())
     except (OSError,ValueError):return {'state':'waiting','study':safe,'message':'Collecting or evaluating fixed training/validation/test portions. Estimates are not available yet.'}
     if layers['expires_at']<now:return {'state':'expired','study':safe,'message':'Estimated layer expired; awaiting the current recorded window.'}
+    if layers.get('method')=='color_slope_chronological_v1':
+        # This baseline has its own compact validation; do not load unrelated
+        # archived studies or label their results as evidence for this method.
+        return {**layers,'study':safe}
     try:later=json.loads((folder/'later-evaluation.json').read_text())
     except (OSError,ValueError):later=None
     try:association=json.loads((folder/'association-20261121.json').read_text())
