@@ -91,6 +91,11 @@ def aggregate(output, complete=False):
         rts_rows=[c for r in rts for c in r['cases']]
         summary['regions'][region]['rts_prospective']={'windows':len(rts),'evaluated':len(rts_rows),'rts_used':sum(c['rts_used'] for c in rts_rows),
             'methods':{m:summarize([c[m] for c in rts_rows if c['accepted']]) for m in ('baseline','hybrid')}}
+        clocks=[r['clock_prospective'] for r in reports if 'clock_prospective' in r]
+        clock_rows=[c for r in clocks for c in r['cases']]
+        clock_common=[c for c in clock_rows if len(c['metrics'])==2]
+        summary['regions'][region]['clock_prospective']={'windows':len(clocks),'evaluated':len(clock_rows),'common_cases':len(clock_common),
+            'methods':{m:{'accepted':sum(m in c['metrics'] for c in clock_rows),'common':summarize([c['metrics'][m] for c in clock_common])} for m in ('receipt','sensor_elapsed')}}
         lateral=[r['lateral_motion_prospective'] for r in reports if 'lateral_motion_prospective' in r]
         lateral_cases=[c for r in lateral for c in r['cases']];accepted=[c for c in lateral_cases if c['accepted']]
         summary['regions'][region]['lateral_prospective']={'windows':len(lateral),'eligible':len(lateral_cases),'accepted':len(accepted),
@@ -110,7 +115,7 @@ def run(output,deadline,interval=1800):
     if (output/'status.json').exists():
         previous_status=json.loads((output/'status.json').read_text())
         status.update(started_at=previous_status.get('started_at',status['started_at']),regions=previous_status.get('regions',{}),errors=previous_status.get('errors',[]))
-    models={};last={};last_lateral={};lateral_ids={'florida':set(),'finch':set()};cycle=0
+    models={};last={};last_lateral={};lateral_ids={'florida':set(),'finch':set()};last_clock={};clock_ids={'florida':set(),'finch':set()};cycle=0
     for region in ('florida','finch'):
         folder=output/region
         if (folder/'model.json').exists():models[region]=json.loads((folder/'model.json').read_text())
@@ -119,6 +124,9 @@ def run(output,deadline,interval=1800):
             if 'lateral_motion_prospective' in previous:
                 experiment=previous['lateral_motion_prospective'];last_lateral[region]=experiment['window'][1]
                 lateral_ids[region].update(r['identity_hash'] for r in experiment['cases'])
+            if 'clock_prospective' in previous:
+                experiment=previous['clock_prospective'];last_clock[region]=experiment['window'][1]
+                clock_ids[region].update(r['identity_hash'] for r in experiment['cases'])
             status['regions'][region]={'state':'evaluated','last_report':f'{region}/{path.name}','summary':previous['results']['summary'],'snapshot_end':previous['window'][1]}
     atomic(output/'status.json',status)
     while time.time()<deadline:
@@ -207,6 +215,16 @@ def run(output,deadline,interval=1800):
                     report['lateral_motion_prospective']['protocol_sha256']=hashlib.sha256(lateral_protocol.read_bytes()).hexdigest()
                     last_lateral[region]=report['lateral_motion_prospective']['window'][1]
                     lateral_ids[region].update(r['identity_hash'] for r in report['lateral_motion_prospective']['cases'])
+                clock_protocol=ROOT/'data/reconstruction/event-clock-review/prospective-protocol.json'
+                if clock_protocol.exists() and time.time()<deadline:
+                    proposal=json.loads(clock_protocol.read_text())
+                    from .validate_clock_pairs import run as clock_evaluate
+                    clock_report={'calibration':{'parameters':model['parameters']}}
+                    report['clock_prospective']=clock_evaluate(region,clock_report,after=max(proposal['after'],last_clock.get(region,0)+30),
+                        excluded_ids=proposal['excluded_ids'][region],excluded_hashes=clock_ids[region],deadline=deadline)
+                    report['clock_prospective']['protocol_sha256']=hashlib.sha256(clock_protocol.read_bytes()).hexdigest()
+                    last_clock[region]=report['clock_prospective']['window'][1]
+                    clock_ids[region].update(r['identity_hash'] for r in report['clock_prospective']['cases'])
                 atomic(folder/f'cycle-{cycle:03}.json',report);last[region]=s['end'];state.update(state='evaluated',last_report=f'{region}/cycle-{cycle:03}.json',summary=validation['summary'])
                 # Publish only a calibration/validation-selected Finch model for a
                 # separate layer worker; test scores cannot change its parameters.

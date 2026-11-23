@@ -611,3 +611,11 @@ from cars with too little visible endpoint context. The lateral-mask validator
 now uses the same 0.5-second actual-frame selection as production and time-based
 endpoint context. Earlier native-cadence lateral results remain historical records,
 not interchangeable with the revised validation. Lateral gate widening remains off.
+
+A second clock comparison is frozen prospectively after 07:26:47 UTC on Nov 23,
+using the same actual-frame 0.5-second cadence as production. Both methods hide
+identical physical observations, and earlier IDs are excluded. Receipt-anchored
+sensor elapsed time is not a verified timezone or intersensor synchronization.
+Raw clock resets/reordering still reject an experimental session; no timestamp
+repair or unvalidated timeline change is deployed. The campaign records clock
+exclusions and keeps windows/identities separate across repeated evaluations.
