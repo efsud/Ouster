@@ -353,3 +353,61 @@ Unresolved identity, motion or clock cases remain blank.
 
 Validation: 76 targeted tests passed after the same-ID/outage fixes, including
 existing movement, reconstruction, clock, ambiguity and endpoint checks.
+
+## Additional experiments during the eight-hour session
+
+These experiments are separate from the published estimate layers. The dashboard
+continues to use receipt time, the deployed conservative association policy, and
+its existing duration limits.
+
+### Sensor elapsed time
+
+A fixed offset per sensor/session can preserve SDK timestamp differences while
+retaining the original collector receipt timestamps. The experimental extractor
+rejects clock resets, duplicate/reordered timestamps, short sessions, and excessive
+clock-rate drift. It does not establish the SDK timezone or synchronization between
+sensors. Receipt-timed phase events are excluded from this experimental view.
+Only observations inside the selected display window are retained for plotting.
+
+A raw-endpoint masked replay reconstructed 35/98 Florida cases (2.26 m MAE) and
+39/144 Finch cases (1.52 m MAE). No raw endpoints were missing. These samples are
+not identical to the earlier receipt-time cases; they do **not** establish an
+accuracy improvement. A lower discrepancy between chart slopes and SDK-time-derived
+speeds is an internal consistency check, not independent ground truth. This time
+basis remains experimental and is not enabled in the rolling dashboard.
+
+### Object dimensions as soft association evidence
+
+The extractor now retains reported width/length alongside each observation, with
+robust summaries from visible endpoint samples only. A size discrepancy is a soft
+penalty, never an identity fingerprint. Missing dimensions remain competitors and
+cannot gain a new match solely because other candidates received size penalties.
+A first-half validation selected weight 0.5; the second half was evaluated after
+an embargo and exclusion of earlier object IDs. On these correlated spatial-mask
+scenarios, compared with the same global assignment without dimensions:
+
+| Corridor | Baseline correct / false | Shape-assisted correct / false |
+|---|---:|---:|
+| Florida | 699 / 3 | 702 / 3 |
+| Finch | 468 / 3 | 468 / 2 |
+
+These are same-sensor masked-band tests, not verified cross-sensor identities.
+Cross-sensor size bias remains unknown. Weight 0.5 is frozen for prospective
+comparisons with both deployed mutual-best and global assignment. The selection
+used an experimental sensor-elapsed snapshot; future receipt-time tests explicitly
+check transfer to the production time basis. No automatic promotion is permitted.
+
+### Longer duration and numerical solver experiments
+
+An optional 120–300 second constrained bridge was tested without changing the
+production 120-second limit. Only two eligible long-gap cases per corridor were
+available; one was accepted in each. The Finch accepted case had 12.36 m MAE.
+This is insufficient evidence to widen the deployed duration or identity gates.
+
+A separate numerical experiment constructs a feasible initial velocity curve as
+a convex combination of the endpoint-constrained minimum/maximum velocity envelopes.
+Its trapezoidal integral equals the observed displacement, with unchanged speed
+and acceleration limits. Optional scene ceilings must also hold before using it.
+An optional larger solver iteration budget is being evaluated separately. Neither
+option changes default published behavior. Synthetic feasibility tests are kept
+separate from recorded-position masking results.

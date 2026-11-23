@@ -21,7 +21,7 @@ def candidates(site,include_same_class=False):
             duration=b['t']-a['t']
             # Long gaps require independent missing-frame evidence, not merely
             # disappearance of this particular ID in otherwise healthy frames.
-            missing=sum(max(0,min(b['t'],hi)-max(a['t'],lo)) for lo,hi in site.get('receipt_gaps',[]))
+            missing=sum(max(0,min(b['t'],hi)-max(a['t'],lo)) for lo,hi in site.get('observation_gaps',site.get('receipt_gaps',[])))
             outage=missing/duration>=.8
             if duration>30 and not outage:continue
             same_class=before['class_type']==after['class_type']
@@ -36,4 +36,4 @@ def candidates(site,include_same_class=False):
             sign=1 if before['direction']=='eastbound' else -1
             if (b['x']-a['x'])*sign<0 or min(a['v']*sign,b['v']*sign)<-.25:continue
             yield dict(a=a,b=b,identity=identity,classes=[before['class_type'],after['class_type']],direction=before['direction'],
-                recording_gap=outage,classification_changed=not same_class,missing_receipt_fraction=min(1.,missing/duration))
+                recording_gap=outage,frame_gap_basis=site.get('frame_gap_basis','receipt'),classification_changed=not same_class,missing_receipt_fraction=min(1.,missing/duration))

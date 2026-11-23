@@ -8,14 +8,16 @@ import numpy as np
 from scipy.optimize import Bounds, LinearConstraint, minimize
 
 
-def grid(a,b,step=.5):
+def grid(a,b,step=.5,max_duration=120):
     duration=b['t']-a['t']
-    if not 0<duration<=120:raise ValueError('Gap must be within (0,120] seconds')
-    return np.linspace(a['t'],b['t'],max(2,math.ceil(duration/step))+1)
+    if not 0<duration<=max_duration:raise ValueError('Gap exceeds the explicitly allowed duration')
+    intervals=math.ceil(duration/step)
+    if duration>120:intervals=min(240,intervals)
+    return np.linspace(a['t'],b['t'],max(2,intervals)+1)
 
 
-def baseline(a,b,kind='hermite',step=.5):
-    t=grid(a,b,step);d=b['t']-a['t'];u=(t-a['t'])/d
+def baseline(a,b,kind='hermite',step=.5,max_duration=120):
+    t=grid(a,b,step,max_duration=max_duration);d=b['t']-a['t'];u=(t-a['t'])/d
     if kind=='linear':
         x=a['x']+(b['x']-a['x'])*u;v=np.full_like(t,(b['x']-a['x'])/d)
     elif kind=='hermite':
@@ -57,14 +59,14 @@ def integrate_matrix(t):
 
 def refine(a,b,reference,vmax=30.,amin=-4.,amax=3.,smoothness=.1,
            position_tolerance=1.,speed_tolerance=1.,leader_ceiling=None,
-           ctm_speed_envelope=None,red_position_ceiling=None):
+           ctm_speed_envelope=None,red_position_ceiling=None,max_duration=120,feasible_initialization=False,solver_maxiter=150):
     """Constrained kinematic refinement. Missing priors are explicit ablations.
 
     Optional ceiling arrays are [time, maximum_position]. Caller may supply red
     ceilings only for a verified no-crossing interval before an allowed release.
     CTM envelope [time, lower_speed, upper_speed] is a soft penalty, not truth.
     """
-    reference=np.asarray(reference,float);t=grid(a,b)
+    reference=np.asarray(reference,float);t=grid(a,b,max_duration=max_duration)
     if not np.all(np.isfinite(reference)) or vmax<=0 or amin>=0 or amax<=0:raise ValueError('Invalid optimization inputs')
     A,D=integrate_matrix(t);target=np.interp(t,reference[:,0],reference[:,1])-a['x'];scale=max(10.,abs(b['x']-a['x']))
     speed_target=np.interp(t,reference[:,0],reference[:,2]);n=len(t)
@@ -92,7 +94,13 @@ def refine(a,b,reference,vmax=30.,amin=-4.,amax=3.,smoothness=.1,
             delta=np.minimum(v-envelope[0],0)+np.maximum(v-envelope[1],0)
             loss+=.2*(delta@delta)/(vmax*vmax*n);grad+=.4*delta/(vmax*vmax*n)
         return loss,grad
-    result=minimize(objective,np.clip(speed_target,lower,upper),jac=True,method='SLSQP',bounds=Bounds(lower,upper),constraints=constraints,options={'maxiter':150,'ftol':1e-8})
+    initial=np.clip(speed_target,lower,upper)
+    if feasible_initialization:
+        from .feasible_seed import velocity_seed
+        seed=velocity_seed(a,b,t,vmax,amin,amax)
+        # A kinematic seed does not establish feasibility of optional scene constraints.
+        if seed is not None and all(np.all(c.A@seed>=np.asarray(c.lb)-1e-8) and np.all(c.A@seed<=np.asarray(c.ub)+1e-8) for c in constraints):initial=seed
+    result=minimize(objective,initial,jac=True,method='SLSQP',bounds=Bounds(lower,upper),constraints=constraints,options={'maxiter':solver_maxiter,'ftol':1e-8})
     v=result.x;x=a['x']+A@v;acc=D@v
     violations=[]
     if np.min(v)<-1e-5 or np.max(v)>vmax+1e-5:violations.append('speed')

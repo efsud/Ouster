@@ -131,6 +131,16 @@ def run(output,deadline,interval=1800):
                     model=model,geometry_version=s.get('geometry_version','inter-sensor-chord-v1'),results=validation,limitations=['No ground truth between sensors.','Known training/validation IDs excluded from test; multiple gap lengths per test vehicle are not independent.','Geometry version is recorded; projection changes are not evidence of improved prediction accuracy.','No parameter retuning on later test windows.','No automatic promotion from these test scores.'])
                 from .campaign_association import evaluate as association_evaluate
                 report['association']=association_evaluate(subset(s,max(0,begin-s['start']),s['end']-s['start']-30,model.get('excluded_test_ids',[])),model['parameters'],deadline)
+                shape_protocol=ROOT/'data/reconstruction/shape-review/protocol.json'
+                if shape_protocol.exists() and any(t.get('dimensions') for site in s['sites'] for t in site['tracks']):
+                    protocol=json.loads(shape_protocol.read_text());plan=protocol['regions'][region]
+                    from .validate_shape_association import score as shape_score
+                    shape_begin=max(begin,plan['after'])
+                    shape_input=subset(s,max(0,shape_begin-s['start']),s['end']-s['start']-30,plan['excluded_ids'])
+                    shape_report={'selected_method':'kinematic_0.01','calibration':{'parameters':model['parameters']}}
+                    report['shape_association']=shape_score(shape_input,shape_report,['current',0,protocol['weight']],deadline=deadline)
+                    report['shape_association']['time_basis']=s.get('time_basis','receipt')
+                    report['shape_association']['note']='Frozen 0.5 shape weight; no tuning. Single-sensor spatial masks only.'
                 atomic(folder/f'cycle-{cycle:03}.json',report);last[region]=s['end'];state.update(state='evaluated',last_report=f'{region}/cycle-{cycle:03}.json',summary=validation['summary'])
                 # Publish only a calibration/validation-selected Finch model for a
                 # separate layer worker; test scores cannot change its parameters.

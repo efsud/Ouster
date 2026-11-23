@@ -6,14 +6,14 @@ limits as final refinement; no widening, extrapolation or phase assumptions.
 import numpy as np
 from .trajectory_reconstruction import grid
 
-def reachability(a,b,params):
+def reachability(a,b,params,max_duration=120):
     sign=1 if b['x']>=a['x'] else -1
     aa=dict(a,x=a['x']*sign,v=a['v']*sign);bb=dict(b,x=b['x']*sign,v=b['v']*sign)
-    if not 0<bb['t']-aa['t']<=120:return 'time_bound'
+    if not 0<bb['t']-aa['t']<=max_duration:return 'time_bound'
     vmax=params['vmax'];lo=params['amin'];hi=params['amax'];v0=aa['v'];v1=bb['v']
     if not all(np.isfinite(v) for ep in (aa,bb) for v in (ep['t'],ep['x'],ep['v'])):return 'nonfinite'
     if not 0<=v0<=vmax or not 0<=v1<=vmax:return 'endpoint_speed_bound'
-    t=grid(aa,bb)-aa['t'];T=t[-1]
+    t=grid(aa,bb,max_duration=max_duration)-aa['t'];T=t[-1]
     lower=np.maximum.reduce([np.zeros_like(t),v0+lo*t,v1-hi*(T-t)])
     upper=np.minimum.reduce([np.full_like(t,vmax),v0+hi*t,v1-lo*(T-t)])
     if np.any(lower>upper+1e-8):return 'endpoint_acceleration_bound'

@@ -18,7 +18,10 @@ def run(snapshot,report,buffer,limit=4):
     db=sqlite3.connect(f'file:{buffer}?mode=ro',uri=True)
     rows=[];missing_raw=0
     def observation(site,tr,t):
-        target=snapshot['start']+t
+        index=next((i for i,p in enumerate(tr['points']) if abs(p[0]-t)<1e-6),None)
+        if index is None:return None
+        offsets=tr.get('original_receipt_offsets_s')
+        target=snapshot['start']+(offsets[index] if offsets is not None else t)
         row=db.execute('SELECT payload FROM frames WHERE site=? AND session=? AND received BETWEEN ? AND ? ORDER BY abs(received-?) LIMIT 1',
             (site['id'],tr['source_key'][0],target-.02,target+.02,target)).fetchone()
         if row is None:return None
@@ -47,7 +50,7 @@ def run(snapshot,report,buffer,limit=4):
                 row['accepted']=True;row['metrics']=metrics(pred,truth,report['calibration']['parameters'])
         rows.append(row)
     db.close()
-    return {'missing_raw_endpoints':missing_raw,'created_at':time.time(),'geometry_version':snapshot.get('geometry_version','inter-sensor-chord-v1'),
+    return {'missing_raw_endpoints':missing_raw,'created_at':time.time(),'time_basis':snapshot.get('time_basis','receipt'),'geometry_version':snapshot.get('geometry_version','inter-sensor-chord-v1'),
         'eligible':len(rows),'admitted':sum(r['admitted'] for r in rows),'accepted':sum(r['accepted'] for r in rows),
         'quality':summarize([r['metrics'] for r in rows if r['accepted']]),'cases':rows,
         'limitations':['Recorded positions hidden; ID identity is known within a continuous source track.',

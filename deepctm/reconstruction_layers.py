@@ -89,7 +89,7 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             if any(q['site']==site['id'] and q.get('identity_key')==list(candidate['identity']) and abs(q['points'][0][0]-a['t'])<.02 and abs(q['points'][-1][0]-b['t'])<.02 for q in local):continue
             if p is None:rejected['same_id_physical_rejection']+=1;continue
             local.append(dict(**endpoint_metadata,identity_key=list(candidate['identity']),site=site['id'],direction=candidate['direction'],class_type=candidate['classes'][0],
-                endpoint_classes=candidate['classes'],object_id=candidate['identity'][1],points=p,source='inferred',
+                frame_gap_basis=candidate['frame_gap_basis'],endpoint_classes=candidate['classes'],object_id=candidate['identity'][1],points=p,source='inferred',
                 method='endpoint_tangent_constrained_kinematic',identity='same_sensor_session_id_recording_gap' if candidate['recording_gap'] else 'same_sensor_session_id_class_changed' if candidate['classification_changed'] else 'same_sensor_session_id',
                 gap_kind='recording_interruption' if candidate['recording_gap'] else 'classification_change' if candidate['classification_changed'] else 'same_id_fragment_break',
                 missing_receipt_fraction=candidate['missing_receipt_fraction'],gap_s=b['t']-a['t']))
@@ -113,7 +113,7 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             p=prediction(a,b,report,exact_join=True)
             if p is None:rejected['between_physical_rejection']+=1;continue
             between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin']))
-    return dict(state='ready',generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
+    return dict(state='ready',time_basis=snapshot.get('time_basis','receipt'),generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
       same_class_recovery=same_class_recovery,endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
       method=report['selected_method'],association_method=association_policy or 'feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
       association_diagnostics=[{k:v for k,v in link.items() if k!='paths'} | {'proposed_matches':len(link['paths'])} for link in associations['links']],

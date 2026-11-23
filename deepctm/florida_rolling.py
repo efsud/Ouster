@@ -34,7 +34,8 @@ def geometry(sites,road_axes=None):
         out.append(dict(s,station_m=station,bearing=bearing,trajectory_road_segments=axis.get('segments_xy') if axis else None))
     return out
 
-def build(db,sites,end,track_observer=None,road_axes=None):
+def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
+    if time_basis not in ("receipt","sensor_elapsed"):raise ValueError("Unknown time basis")
     start=end-WINDOW;output=[]
     for s in geometry(sites,road_axes):
         from dashboard.movements import TrackCollector
@@ -53,9 +54,25 @@ def build(db,sites,end,track_observer=None,road_axes=None):
             tracks.append({'source_key':list(key),'receipt_start':points[0][0],'receipt_end':points[-1][0],
                 'lateral_start_m':median(p[2] for p in points[:5]),'lateral_end_m':median(p[2] for p in points[-5:]),
                 'sensor_start':points[0][4].isoformat(),'sensor_end':points[-1][4].isoformat(),
+                'original_receipt_start':points[0][5],'original_receipt_end':points[-1][5],
                 'class_type':key[2],'direction':'eastbound' if net>0 else 'westbound','points':[[round(p[0]-start,2),round(p[1]+s['station_m'],2),round(p[3],2)] for p in points]})
+            from .object_shape import summarize as summarize_shape
+            sizes=[p[6] for p in points]
+            tracks[-1].update(dimensions=sizes,shape_start=summarize_shape(sizes[:5]),shape_end=summarize_shape(sizes[-5:]))
+            if time_basis=='sensor_elapsed':tracks[-1]['original_receipt_offsets_s']=[round(p[5]-start,6) for p in points]
         angle=math.radians(s.get('preview_rotation_deg',220))-s['bearing'];c=math.cos(angle);sn=math.sin(angle)
-        for session,receipt,payload in db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall():
+        source_rows=db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall()
+        raw_receipts=[r[1] for r in source_rows]
+        original_gaps=[[a-start,b-start] for a,b in zip(raw_receipts,raw_receipts[1:]) if b-a>1.5]
+        clock_audit=[]
+        if time_basis=='sensor_elapsed':
+            from .event_clock import align_frames
+            processing_rows,clock_audit=align_frames(source_rows)
+            for audit in clock_audit:
+                audit['outside_display_window']=sum(session==audit['session'] and not start<=t<=end for session,t,_,_ in processing_rows)
+            processing_rows=[row for row in processing_rows if start<=row[1]<=end]
+        else:processing_rows=[(*row,row[1]) for row in source_rows]
+        for session,receipt,payload,original_receipt in processing_rows:
             e=json.loads(payload);frames+=1;first=first or receipt
             if last is not None and receipt-last>1.5:receipt_gaps.append([last-start,receipt-start])
             last=receipt
@@ -91,7 +108,8 @@ def build(db,sites,end,track_observer=None,road_axes=None):
                     else:
                         speed=math.hypot(along-old[-1][1],across-old[-1][2])/dt
                         if speed>60:flush(key);speed=0
-                active.setdefault(key,[]).append((receipt,along,across,speed,stamp))
+                from .object_shape import dimensions
+                active.setdefault(key,[]).append((receipt,along,across,speed,stamp,original_receipt,dimensions(o)))
             if movements is not None:movements.expire(receipt)
             for key in list(active):
                 if receipt-active[key][-1][0]>3:flush(key,break_chain=False)
@@ -122,14 +140,17 @@ def build(db,sites,end,track_observer=None,road_axes=None):
             tracks=[tr for tr in tracks if tr['movement'].get('state')=='unknown' or tr['direction'] in (tr['movement'].get('incoming_direction'),tr['movement'].get('outgoing_direction'))]
             try:phase_rows=db.execute('SELECT received,session,payload FROM phase_samples WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall()
             except sqlite3.OperationalError:phase_rows=[]
+            # Do not correlate receipt-timed phases with a different observation clock.
+            if time_basis!='receipt':phase_rows=[]
             movement_summary=summarize(complete,phase_rows)
             mapping={m['movement']:m for m in movement_summary['movements']}
             for tr in tracks:
                 evidence=mapping.get(tr['movement'].get('movement'),{})
                 tr['movement']['phase_numbers']=evidence.get('phase_numbers',[])
                 tr['movement']['phase_mapping']=evidence.get('phase_mapping','insufficient_or_ambiguous')
-        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'projection_bearing_deg':math.degrees(s['bearing']),'frames':frames,'first_receipt':first,'last_receipt':last,'receipt_gaps':receipt_gaps,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
-    result={'geometry_version':((road_axes or {}).get('version','inter-sensor-chord-v1') if any(s['id'] in (road_axes or {}).get('sites',{}) for s in sites) else 'inter-sensor-chord-v1'),'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching.'}
+        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'projection_bearing_deg':math.degrees(s['bearing']),'frames':frames,'first_receipt':raw_receipts[0] if raw_receipts else None,'last_receipt':raw_receipts[-1] if raw_receipts else None,'first_observation_time':first,'last_observation_time':last,'raw_frames':len(source_rows),'coverage_basis':time_basis,'receipt_gaps':original_gaps,'observation_gaps':receipt_gaps,'frame_gap_basis':time_basis,'clock_audit':clock_audit,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
+    timeline_note='receipt time' if time_basis=='receipt' else 'experimental sensor elapsed time; absolute synchronization unverified'
+    result={'time_basis':time_basis,'geometry_version':((road_axes or {}).get('version','inter-sensor-chord-v1') if any(s['id'] in (road_axes or {}).get('sites',{}) for s in sites) else 'inter-sensor-chord-v1'),'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':f'Sampled local trajectory fragments; provisional alignment and {timeline_note}. No cross-sensor identity matching.'}
     from .rolling_estimates import gap_validation
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)
     if sites and sites[0].get('region')=='Florida':

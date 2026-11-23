@@ -15,6 +15,10 @@ def masked(tr,station,width):
     if i<4 or j+4>=len(p) or j-i<3:return None
     a=endpoint(p[i-4:i+1],True);b=endpoint(p[j:j+5],False)
     if a is None or b is None:return None
+    sizes=tr.get('dimensions',[])
+    if len(sizes)==len(p):
+        from .object_shape import summarize as summarize_shape
+        a['shape']=summarize_shape(sizes[i-4:i+1]);b['shape']=summarize_shape(sizes[j:j+5])
     return a,b,p[i+1:j],p[i-4,0],p[j+4,0]
 
 def run(snapshot,output):
