@@ -23,4 +23,7 @@ def read(now=None,folder=FOLDER):
     try:archive=json.loads((folder.parent/'archive-extension/evaluation/report.json').read_text())
     except (OSError,ValueError):archive=None
     if archive and archive.get('state')!='complete':archive=None
-    return {**layers,'archive_validation':archive,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}
+    try:endpoint=json.loads((folder.parent/'endpoint-speed/evaluation/report.json').read_text())
+    except (OSError,ValueError):endpoint=None
+    if endpoint and endpoint.get('state')!='complete':endpoint=None
+    return {**layers,'endpoint_validation':endpoint,'archive_validation':archive,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}

@@ -15,7 +15,8 @@ def endpoint(points,exit_side):
         dt=b[0]-a[0]
         if not 0<dt<=1.5:return None
         slopes.append((b[1]-a[1])/dt)
-    return {'t':p[-1][0] if exit_side else p[0][0],'x':p[-1][1] if exit_side else p[0][1],'v':median(slopes)}
+    from .endpoint_speed import evidence
+    return {'t':p[-1][0] if exit_side else p[0][0],'x':p[-1][1] if exit_side else p[0][1],'v':median(slopes),'velocity_evidence':evidence(p)}
 
 def queue_curve(a,b,step=.25):
     """Candidate brake--wait--accelerate path; assumed 3 m/s², stop near entry.

@@ -1,0 +1,18 @@
+{
+  "version": "stationary_noise_correction_v1",
+  "parameters": {
+    "negative_speed_limit_mps": 0.1,
+    "position_span_limit_m": 0.1,
+    "trend_limit_mps": 0.05,
+    "step_speed_limit_mps": 0.5
+  },
+  "scope": "Florida same-intersection car gaps, greater than 1.5 and at most 90 seconds; original positions unchanged",
+  "validation_report_sha256": "4b6ea90230c468953f93c26b833d8254791de8ccad7f20a9204460fabe820f32",
+  "test_period": "2026-11-13 17:00-18:00 America/New_York, unused second PM hour; exclude IDs occurring in prior PM hour",
+  "test_accepted_before": 119,
+  "test_accepted_after": 188,
+  "test_eligible": 270,
+  "new_case_mae_m": 1.5330667981480195,
+  "new_case_p95_mae_m": 9.41811316339442,
+  "uncertainty": "Earlier local uncertainty bands do not cover these new cases; retrospective experimental estimates"
+}

@@ -195,3 +195,34 @@ This is a modest proxy matching improvement, not a field-verified cross-sensor i
 On the actual seven-sensor PM corridor, the existing matcher proposed 2,200 connections and the calibrated candidate 2,172. These are **unverified hypotheses**, not correct-match counts. The smaller number is consistent with changed ambiguity/cost decisions and does not establish better or worse real identity accuracy. This is why the proxy improvement alone did not change the live layers. The added matching callback defaults to the existing behavior and is used only by the audit script.
 
 Software verification: 38 targeted tests passed, including exact endpoint joins, zero-weight equivalence to the current estimator, identity/order-blind association, ambiguous duplicate rejection, prior availability, spatial matching and dashboard response behavior. Browser verification confirmed the completed archive table on the Florida figures page.
+
+## Endpoint-speed correction and untouched-hour validation
+
+The strict model can reject a gap when a noisy median derivative is slightly negative, even though the visible object is nearly stationary. The new `endpoint_speed` module keeps successful strict estimates unchanged. Only after strict failure does it examine five **visible** endpoint samples. A small negative derivative can become an estimated zero-speed endpoint only when position span is small, absolute context trend is at most 0.05 m/s, and maximum step speed is at most 0.5 m/s. Sustained reverse motion, missing evidence and large negative derivatives remain rejected. The original observed points and speeds are never edited; inferred gap positions still meet both recorded endpoints exactly. Each correction carries its original derivative and visible-context evidence.
+
+A separate numerical fix ensures optimizer speed bounds always use floating point. Integer `vmax` values previously caused `numpy.full` to create integer arrays, silently truncating small negative endpoint bounds to zero. Earlier field benchmarks used floating-point limits and were unaffected; regression tests now cover integer limits explicitly.
+
+Selection compares 0.1/0.25/0.5 m/s negative-speed limits paired with 0.1/0.25/0.5 m position spans. Morning validation is restricted to whole fragments after 07:31, excluding training identities. The selection rule maximizes acceptance without losing a strict success, and requires at least ten new cases with mean position error ≤3 m, mean speed error ≤1 m/s and 95th-percentile case position error ≤10 m. Selection is written to `selection.json` before test scoring.
+
+The untouched period is the second hour of the preserved PM archive, **November 13, 17:00–18:00 Florida time**. IDs appearing anywhere in the previously scored 16:00–17:00 snapshot are excluded, with a balanced sample over seven sites, both directions and 10/30/60/90-second masks. This is an unused period of the same day, not an independent-day validation. New accepted gaps are scored separately; averaging them with the older, easier accepted cohort would obscure the coverage/accuracy trade-off.
+
+Production plumbing is opt-in through a versioned policy file. It applies only within the same intersection, to car endpoints and gaps no longer than 90 seconds. Other class transitions retain their previous behavior. Cross-sensor matching is unchanged. Prior uncertainty bands do not apply to the newly admitted cases. Promotion requires the untouched test to meet the same error thresholds, at least 20 newly accepted cases, no lost strict cases and no physical violations; otherwise the policy remains disabled.
+
+Reproduction uses `deepctm.archive_snapshot --offset-seconds 3600` for the new hour, then `deepctm.validate_endpoint_speed`. Per-case failures, corrections and metrics are retained in `data/reconstruction/endpoint-speed/evaluation/`; figures use `scripts/plot_endpoint_validation.py`.
+
+### Untouched-hour result and bounded rollout
+
+The selected 0.1 m/s / 0.1 m policy passed the predeclared test criteria. The test snapshot contained 46,311 sampled frames and 32,069 trajectory fragments. Excluding IDs seen in the preceding hour removed 143 eligible masks before balanced sampling. Of 270 tested masks, strict refinement accepted 119 (44.1%); correction accepted 188 (69.6%). All 119 prior successes and their errors remained identical. The 69 added gaps had mean position error 1.533 m, speed error 0.249 m/s, stop-duration error 3.447 seconds, and 95th-percentile per-gap position MAE 9.418 m. There were no tested physical violations.
+
+| Hidden duration | Strict accepted | Corrected accepted | Attempted | Added-gap mean position error |
+|---|---:|---:|---:|---:|
+| 10 s | 48 | 62 | 70 | 0.116 m |
+| 30 s | 23 | 43 | 70 | 1.959 m |
+| 60 s | 22 | 41 | 65 | 1.144 m |
+| 90 s | 26 | 42 | 65 | 2.703 m |
+
+The overall test criterion passed, but tail errors remain: newly admitted 90-second gaps have 13.458 m 95th-percentile case error and 8.98 s mean stop-duration error. More coverage is not a promise that every inferred shape is accurate. The remaining 82 rejected masks include 37 endpoint-bound conflicts and 45 optimization failures. Recorded observations are preserved, and the new curves remain dashed estimates. This is a coverage improvement with separately measured new-case error, not an accuracy improvement on the unchanged old cases.
+
+The versioned `config/reconstruction/florida-endpoint-speed.json` records the frozen parameters and validation-report hash. The policy is enabled only for the scope above; the broader 0.25/0.5 candidates and between-intersection matching were not enabled. Full CTM–Newell–signal field validation remains outstanding.
+
+Rollout verification: 64 targeted software tests passed, including opt-in behavior, preserved westbound direction, visible-context checks, exact positional joins and an end-to-end dashed-layer test that leaves observations and cross-sensor output unchanged. The Florida derived workers and combined dashboard were restarted without stopping the sensor collectors. Browser verification showed the active policy and the 119→188 test comparison. The then-current rolling window had zero qualifying corrected gaps; no artificial gaps or extra connections were inserted merely to demonstrate the feature.

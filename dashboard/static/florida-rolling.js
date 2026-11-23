@@ -89,7 +89,7 @@ async function refreshReconstruction(){
   const aligned=reconstruction.state==='ready'&&data&&reconstruction.snapshot_generated_at===data.generated_at;
   for(const id of ['within-layer','between-layer'])el(id).disabled=!aligned;
   const study=reconstruction.study||{},parts=study.readiness?.partitions;
-  el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method}. Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
+  el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method}${reconstruction.endpoint_policy?' + bounded stationary endpoint correction':''}. Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
   const host=el('reconstruction-comparison');host.replaceChildren();
   if(reconstruction.comparison){
    for(const [method,result] of Object.entries(reconstruction.comparison)){
@@ -110,12 +110,22 @@ async function refreshReconstruction(){
      const p=document.createElement('p');p.textContent=`${label}: ${model.n} common accepted masks; current position MAE ${base.mae_m?.toFixed(3)??'unavailable'} m → integrated ${model.mae_m?.toFixed(3)??'unavailable'} m. Cases with all three priors: ${rows.integrated.common_all_priors??0}.`;host.append(p);
      const gain=integration.paired_gain?.[key];if(gain){const p=document.createElement('p');p.textContent=`Exploratory 95% range for mean improvement: ${gain.bootstrap95_m.map(x=>x.toFixed(3)).join(' to ')} m; positive means improvement.`;host.append(p);}
     }
-    const p=document.createElement('p');p.textContent='Experimental soft priors, provisional lane/stop-line geometry. No demonstrated reliable improvement yet; the current estimator remains deployed. Spatial masking does not verify vehicle matching between sensors.';host.append(p);
+    const p=document.createElement('p');p.textContent='Experimental soft priors, provisional lane/stop-line geometry. This integrated-prior experiment did not demonstrate reliable improvement and was not deployed. Endpoint correction is assessed separately below. Spatial masking does not verify vehicle matching between sensors.';host.append(p);
+   }
+   const endpointStudy=reconstruction.endpoint_validation;
+   if(endpointStudy){
+    const h=document.createElement('h4');h.textContent='Endpoint-speed correction · untouched Florida hour';host.append(h);
+    const intro=document.createElement('p');intro.textContent=`Test: November 13, 17:00–18:00 Florida time, excluding IDs seen in the earlier hour. Selected policy: ${endpointStudy.selected}.`;host.append(intro);
+    for(const [name,row] of Object.entries(endpointStudy.test||{})){
+     const p=document.createElement('p');p.textContent=`${name}: ${row.accepted}/${row.eligible} gaps accepted (${(100*row.coverage).toFixed(1)}%). Newly accepted: ${row.newly_accepted.n}, position error ${row.newly_accepted.mae_m?.toFixed(3)??'unavailable'} m. Previously accepted gaps lost: ${row.lost_strict_cases}.`;host.append(p);
+     for(const [gap,g] of Object.entries(row.by_gap||{})){const t=document.createElement('p');t.textContent=`${gap}s: ${g.accepted}/${g.eligible} accepted; ${g.newly_accepted.n} additional gaps, new-case error ${g.newly_accepted.mae_m?.toFixed(3)??'unavailable'} m.`;host.append(t);}
+    }
+    const p=document.createElement('p');p.textContent=`Current displayed gaps with corrected endpoint speeds: ${reconstruction.endpoint_corrected_gaps??0}. Corrections apply only to inferred within-intersection curves with quiet visible samples. Recorded data and positions remain unchanged. Existing error bands do not cover these new cases. This does not validate identity matching between sensors.`;host.append(p);
    }
    const archive=reconstruction.archive_validation;
    if(archive){
     const h=document.createElement('h4');h.textContent='Additional Florida archives · longer gaps and blind matching';host.append(h);
-    const info=document.createElement('p');info.textContent=`November 13: morning training/selection, afternoon held out. Selected shape: ${archive.selected_shape}; selected association: ${archive.selected_association}. Existing live estimator unchanged.`;host.append(info);
+    const info=document.createElement('p');info.textContent=`November 13: morning training/selection, afternoon held out. Selected shape: ${archive.selected_shape}; selected association: ${archive.selected_association}. These shape/association candidates were not deployed.`;host.append(info);
     for(const [method,row] of Object.entries(archive.results?.test||{})){
      const p=document.createElement('p');p.textContent=`${method}: ${row.accepted}/${row.eligible} accepted; ${row.common.n} common masks; mean position error ${row.common.mae_m?.toFixed(3)??'unavailable'} m.`;host.append(p);
      for(const [gap,m] of Object.entries(row.by_gap||{})){const line=document.createElement('p');line.textContent=`${gap}-second hidden interval: ${m.n} common masks, position error ${m.mae_m?.toFixed(3)??'unavailable'} m, speed error ${m.speed_mae_mps?.toFixed(3)??'unavailable'} m/s.`;host.append(line);}

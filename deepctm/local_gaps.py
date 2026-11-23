@@ -23,7 +23,8 @@ def gap_evidence(before,after):
     sign=1 if b[1]>=a[1] else -1
     if any(v*sign<-.5 for v in velocities):return None
     if any(abs(p[1])>120 or abs(p[2])>18 for p in (a,b)):return None
-    return {'a':{'t':a[0],'x':a[1],'v':velocities[0]},'b':{'t':b[0],'x':b[1],'v':velocities[1]},
+    from .endpoint_speed import evidence
+    return {'a':{'t':a[0],'x':a[1],'v':velocities[0],'velocity_evidence':evidence(before[-5:])},'b':{'t':b[0],'x':b[1],'v':velocities[1],'velocity_evidence':evidence(after[:5])},
             'sensor_receipt_ratio':ratio,'lateral_displacement_m':abs(b[2]-a[2])}
 
 def bridge(before,after):

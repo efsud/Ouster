@@ -10,15 +10,22 @@ from .spatial_bridges import endpoint,reconstruct
 ROOT=Path(__file__).resolve().parents[1]
 FOLDER=ROOT/'data/reconstruction/word-v1-collection'
 
-def prediction(a,b,report,exact_join=False):
+def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None):
     method=report['selected_method'];params=report['calibration']['parameters']
     sign=1 if b['x']>=a['x'] else -1
-    aa={**a,'x':a['x']*sign,'v':a['v']*sign};bb={**b,'x':b['x']*sign,'v':b['v']*sign}
+    from .endpoint_speed import orient,reconstruct as noise_reconstruct
+    aa=orient(a,sign);bb=orient(b,sign)
     if min(aa['v'],bb['v'])<-.5 or bb['x']<aa['x']:return None
     p=baseline(aa,bb,'linear' if method=='M1_linear' else 'hermite')
     if method.startswith('kinematic_'):
-        r=refine(aa,bb,p,**params,smoothness=float(method.split('_')[1]),
-                 position_tolerance=0. if exact_join else 1.,speed_tolerance=0. if exact_join else 1.)
+        if endpoint_policy is not None and exact_join:
+            r=noise_reconstruct(aa,bb,params,endpoint_policy,smoothness=float(method.split('_')[1]))
+        else:
+            r=refine(aa,bb,p,**params,smoothness=float(method.split('_')[1]),
+                     position_tolerance=0. if exact_join else 1.,speed_tolerance=0. if exact_join else 1.)
+        if metadata is not None:
+            metadata.update(endpoint_policy=r.get('endpoint_policy','strict'),endpoint_corrections=r.get('endpoint_corrections',[]))
+            if r.get('endpoint_corrections'):metadata['uncertainty']='not_calibrated_for_endpoint_correction'
         if r['state']!='candidate':return None
         p=r['points']
     acc=np.diff(p[:,2])/np.diff(p[:,0])
@@ -26,9 +33,12 @@ def prediction(a,b,report,exact_join=False):
     if abs(p[0,2]-aa['v'])>1.00001 or abs(p[-1,2]-bb['v'])>1.00001:return None
     p[:,1]*=sign;return p.tolist()
 
-def generate(snapshot,report,experimental_changed_ids=False):
+def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None):
     if report.get('state')!='evaluated_ablation':raise ValueError('Completed held-out study required')
-    local=[];between=[];rejected=defaultdict(int)
+    local=[];between=[];rejected=defaultdict(int);endpoint_metadata={}
+    def local_prediction(a,b,allow_correction=True):
+        endpoint_metadata.clear()
+        return prediction(a,b,report,exact_join=True,endpoint_policy=endpoint_policy if allow_correction and 1.5<b['t']-a['t']<=90 else None,metadata=endpoint_metadata)
     for site in snapshot['sites']:
         groups=defaultdict(list)
         for tr in site['tracks']:
@@ -46,17 +56,17 @@ def generate(snapshot,report,experimental_changed_ids=False):
                     b=endpoint(points[i:i+5],False)
                     if a is None or b is None:
                         rejected['short_local_insufficient_context']+=1;continue
-                    p=prediction(a,b,report,exact_join=True)
+                    p=local_prediction(a,b)
                     if p is None:
                         rejected['short_local_physical_rejection']+=1;continue
-                    local.append(dict(site=site['id'],direction=tr['direction'],class_type='2',points=p,
+                    local.append(dict(**endpoint_metadata,site=site['id'],direction=tr['direction'],class_type='2',points=p,
                         source='inferred',method=report['selected_method'],identity='same_sensor_session_and_track',
                         gap_s=gap,gap_kind='internal_sampling_gap'))
         for candidate in site.get('local_gap_candidates',[]):
             if candidate['class_type']!='2':continue
-            a,b=candidate['a'],candidate['b'];p=prediction(a,b,report,exact_join=True)
+            a,b=candidate['a'],candidate['b'];p=local_prediction(a,b)
             if p is None:rejected['local_physical_rejection']+=1;continue
-            local.append(dict(site=site['id'],direction='eastbound' if b['x']>=a['x'] else 'westbound',class_type='2',points=p,
+            local.append(dict(**endpoint_metadata,site=site['id'],direction='eastbound' if b['x']>=a['x'] else 'westbound',class_type='2',points=p,
                 source='inferred',method=report['selected_method'],identity='same_sensor_session_track_and_chain',gap_s=b['t']-a['t'],gap_kind='between_fragments'))
         # Backward compatibility for snapshots predating model-independent admission.
         if 'local_gap_candidates' in site:continue
@@ -69,16 +79,16 @@ def generate(snapshot,report,experimental_changed_ids=False):
                 a=endpoint(before['points'],True);b=endpoint(after['points'],False)
                 if not a or not b or not 3<b['t']-a['t']<=30:continue
                 if (round(a['t'],2),round(b['t'],2)) not in allowed:rejected['local_missing_2d_clock_support']+=1;continue
-                p=prediction(a,b,report,exact_join=True)
+                p=local_prediction(a,b)
                 if p is None:rejected['local_physical_rejection']+=1;continue
-                local.append(dict(site=site['id'],direction=before['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='same_sensor_session_and_track',gap_s=b['t']-a['t']))
+                local.append(dict(**endpoint_metadata,site=site['id'],direction=before['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='same_sensor_session_and_track',gap_s=b['t']-a['t']))
     from .same_id_gaps import candidates as same_id_candidates
     for site in snapshot['sites']:
         for candidate in same_id_candidates(site):
-            a,b=candidate['a'],candidate['b'];p=prediction(a,b,report,exact_join=True)
+            a,b=candidate['a'],candidate['b'];p=local_prediction(a,b,allow_correction=all(c=='2' for c in candidate['classes']))
             if any(q['site']==site['id'] and abs(q['points'][0][0]-a['t'])<.02 and abs(q['points'][-1][0]-b['t'])<.02 for q in local):continue
             if p is None:rejected['class_change_physical_rejection']+=1;continue
-            local.append(dict(site=site['id'],direction=candidate['direction'],class_type=candidate['classes'][0],
+            local.append(dict(**endpoint_metadata,site=site['id'],direction=candidate['direction'],class_type=candidate['classes'][0],
                 endpoint_classes=candidate['classes'],object_id=candidate['identity'][1],points=p,source='inferred',
                 method='endpoint_tangent_constrained_kinematic',identity='same_sensor_session_id_recording_gap' if candidate['recording_gap'] else 'same_sensor_session_id_class_changed',
                 gap_kind='recording_interruption' if candidate['recording_gap'] else 'classification_change',
@@ -100,10 +110,11 @@ def generate(snapshot,report,experimental_changed_ids=False):
             if p is None:rejected['between_physical_rejection']+=1;continue
             between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin']))
     return dict(state='ready',generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
+      endpoint_policy=endpoint_policy,endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
       method=report['selected_method'],association_method='feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
       association_diagnostics=[{k:v for k,v in link.items() if k!='paths'} | {'proposed_matches':len(link['paths'])} for link in associations['links']],
       comparison=report['test'],uncertainty=report['uncertainty'],
-      limitations=['Selected local reconstruction ablation; not full Newell+CTM+signal model','Between-intersection accuracy and identities are unverified; applying local method across sensors is domain transfer','No inferred signal permissions or invented same-lane leaders','Validation uncertainty applies to local masked gaps only, not between sensors'])
+      limitations=['Selected local reconstruction ablation; not full Newell+CTM+signal model','Between-intersection accuracy and identities are unverified; applying local method across sensors is domain transfer','No inferred signal permissions or invented same-lane leaders','Validation uncertainty applies to prior local masked gaps only, not corrected endpoints or between sensors'])
 
 def main(watch):
     FOLDER.mkdir(parents=True,exist_ok=True);lock=open(FOLDER/'layers.lock','w');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);last=None
@@ -113,7 +124,9 @@ def main(watch):
             if status.get('state')=='evaluated_ablation':
                 report=json.loads(Path(status['report']).read_text());snapshot=json.loads((ROOT/'data/florida-rolling/snapshot.json').read_text())
                 if snapshot['start']>=time.time()-5400 and snapshot['generated_at']!=last:
-                    result=generate(snapshot,report);temp=FOLDER/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(FOLDER/'layers.json');last=snapshot['generated_at']
+                    policy_path=ROOT/'config/reconstruction/florida-endpoint-speed.json'
+                    policy=json.loads(policy_path.read_text()).get('parameters') if policy_path.exists() else None
+                    result=generate(snapshot,report,endpoint_policy=policy);temp=FOLDER/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(FOLDER/'layers.json');last=snapshot['generated_at']
                     print(json.dumps({'state':'published','local':len(result['within_intersection']),'between':len(result['between_intersections'])}),flush=True)
         except (OSError,ValueError,KeyError) as exc:
             print(type(exc).__name__+': layers not published',flush=True)

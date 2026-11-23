@@ -68,7 +68,7 @@ def refine(a,b,reference,vmax=30.,amin=-4.,amax=3.,smoothness=.1,
     if not np.all(np.isfinite(reference)) or vmax<=0 or amin>=0 or amax<=0:raise ValueError('Invalid optimization inputs')
     A,D=integrate_matrix(t);target=np.interp(t,reference[:,0],reference[:,1])-a['x'];scale=max(10.,abs(b['x']-a['x']))
     speed_target=np.interp(t,reference[:,0],reference[:,2]);n=len(t)
-    lower=np.zeros(n);upper=np.full(n,vmax)
+    lower=np.zeros(n);upper=np.full(n,vmax,dtype=float)
     for i,ep in [(0,a),(-1,b)]:lower[i]=max(0.,ep['v']-speed_tolerance);upper[i]=min(vmax,ep['v']+speed_tolerance)
     if np.any(lower>upper):return {'state':'infeasible','reason':'endpoint_speed_out_of_bounds'}
     constraints=[LinearConstraint(D,amin,amax),LinearConstraint(A[-1:],b['x']-a['x']-position_tolerance,b['x']-a['x']+position_tolerance)]
