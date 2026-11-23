@@ -47,8 +47,12 @@ def read(now=None,folder=FOLDER):
             evidence=json.loads((folder.parent/'bidirectional-review/report.json').read_text())
             bidirectional={k:evidence[k] for k in ('state','test','limitations','deployment_eligible')}
         except (OSError,ValueError,KeyError):pass
+    local_lateral=None
+    if layers.get('local_lateral'):
+        try:local_lateral=json.loads((folder.parent/'local-lateral-review/deployment.json').read_text())
+        except (OSError,ValueError):pass
     pair_diagnostics=[]
     for link in layers.get('association_diagnostics',[]):
         displayed=sum(p['sites']==link['sites'] and p['direction']==link['direction'] for p in layers.get('between_intersections',[]))
         pair_diagnostics.append({**link,'displayed_matches':displayed,'final_rejections':link['proposed_matches']-displayed})
-    return {**layers,'bidirectional_validation':bidirectional,'campaign':campaign,'all_site_validation':all_sites,'pair_diagnostics':pair_diagnostics,'endpoint_validation':endpoint,'archive_validation':archive,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}
+    return {**layers,'local_lateral_validation':local_lateral,'bidirectional_validation':bidirectional,'campaign':campaign,'all_site_validation':all_sites,'pair_diagnostics':pair_diagnostics,'endpoint_validation':endpoint,'archive_validation':archive,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}

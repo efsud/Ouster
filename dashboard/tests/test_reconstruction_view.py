@@ -38,3 +38,13 @@ class ReconstructionViewTests(unittest.TestCase):
             result=read(100,p)['bidirectional_validation']
             self.assertEqual(result['test'],{'0.5':{}})
             self.assertNotIn('private_raw',result)
+
+    def test_local_lateral_evidence_requires_active_layer(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);p=root/'collection';p.mkdir();e=root/'local-lateral-review';e.mkdir()
+            (p/'status.json').write_text(json.dumps({'state':'evaluated_ablation','updated_at':80}))
+            (e/'deployment.json').write_text(json.dumps({'enabled_sites':['site'],'test':{'accepted':109}}))
+            (p/'layers.json').write_text(json.dumps({'state':'ready','expires_at':200,'local_lateral':True}))
+            self.assertEqual(read(100,p)['local_lateral_validation']['test']['accepted'],109)
+            (p/'layers.json').write_text(json.dumps({'state':'ready','expires_at':200,'local_lateral':False}))
+            self.assertIsNone(read(100,p)['local_lateral_validation'])

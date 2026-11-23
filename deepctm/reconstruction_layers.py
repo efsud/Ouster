@@ -54,7 +54,7 @@ def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None,st
     if abs(p[0,2]-aa['v'])>1.00001 or abs(p[-1,2]-bb['v'])>1.00001:return None
     p[:,1]*=sign;return p.tolist()
 
-def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None,association_distance_limit=350,same_class_recovery=False,stationary_plateau=False,adaptive_grid=False):
+def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None,association_distance_limit=350,same_class_recovery=False,stationary_plateau=False,adaptive_grid=False,local_lateral=False,local_lateral_sites=()):
     if report.get('state')!='evaluated_ablation':raise ValueError('Completed held-out study required')
     local=[];between=[];rejected=defaultdict(int);endpoint_metadata={}
     def local_prediction(a,b,allow_correction=True):
@@ -119,6 +119,15 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
         for site in snapshot['sites']:
             reserved=[(round(p['points'][0][0],2),round(p['points'][-1][0],2)) for p in local if p['site']==site['id']]
             local.extend(reconnect_local(site,lambda a,b:prediction(a,b,report),reserved))
+    if local_lateral:
+        from .local_lateral_recovery import reconstruct as lateral_reconstruct
+        def lateral_rejection(reason):rejected['lateral_'+reason]+=1
+        for site in snapshot['sites']:
+            if site['id'] not in local_lateral_sites:continue
+            paths=lateral_reconstruct(site,lambda a,b:prediction(a,b,report,exact_join=True),audit=lateral_rejection)
+            for p in paths:
+                duplicate=any(q.get('site')==p['site'] and q.get('identity_key')==p['identity_key'] and abs(q['points'][0][0]-p['points'][0][0])<.02 and abs(q['points'][-1][0]-p['points'][-1][0])<.02 for q in local)
+                if not duplicate:local.append(p)
     # Existing movement-aware associations; do not create global vehicle identities.
     association_snapshot={**snapshot,'sites':[{**s,'tracks':[t for t in s['tracks'] if t['class_type']=='2']} for s in snapshot['sites']]}
     matcher=None;endpoint_enricher=None
@@ -144,7 +153,7 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             if p is None:rejected['between_physical_rejection']+=1;continue
             between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin'],shape_evidence=path.get('shape_evidence')))
     return dict(state='ready',transform_manifest=snapshot.get('transform_manifest'),time_basis=snapshot.get('time_basis','receipt'),generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
-      same_class_recovery=same_class_recovery,stationary_plateau=stationary_plateau,adaptive_grid=adaptive_grid,endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
+      local_lateral=local_lateral,local_lateral_sites=list(local_lateral_sites),same_class_recovery=same_class_recovery,stationary_plateau=stationary_plateau,adaptive_grid=adaptive_grid,endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
       method=report['selected_method'],association_method=association_policy or 'feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
       association_diagnostics=[{k:v for k,v in link.items() if k!='paths'} | {'proposed_matches':len(link['paths'])} for link in associations['links']],
       comparison=report['test'],uncertainty=report['uncertainty'],
@@ -184,6 +193,9 @@ def main(watch,region='florida',deadline=None):
                     grid_path=ROOT/'config/reconstruction/adaptive-grid.json'
                     grid_policy=json.loads(grid_path.read_text()) if grid_path.exists() else {}
                     grid_enabled=grid_policy.get('method')=='endpoint_envelope_grid_retry_v1' and region in grid_policy.get('enabled_regions',[])
+                    local_lateral_path=ROOT/'config/reconstruction/florida-local-lateral.json'
+                    local_lateral_config=json.loads(local_lateral_path.read_text()) if local_lateral_path.exists() else {}
+                    local_lateral_enabled=region=='florida' and local_lateral_config.get('enabled',False) and local_lateral_config.get('max_gap_s')==10
                     simple_path=ROOT/'config/reconstruction/florida-color-slope.json'
                     simple=json.loads(simple_path.read_text()) if simple_path.exists() else {}
                     if region=='florida' and simple.get('enabled'):
@@ -194,7 +206,7 @@ def main(watch,region='florida',deadline=None):
                             validation=json.loads(validation_path.read_text())
                             result['color_validation']={k:validation[k] for k in ('summary','association','limitations','snapshot_sha256')}
                     else:
-                        result=generate(snapshot,report,adaptive_grid=grid_enabled,stationary_plateau=plateau_enabled,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy)
+                        result=generate(snapshot,report,local_lateral=local_lateral_enabled,local_lateral_sites=local_lateral_config.get('enabled_sites',[]),adaptive_grid=grid_enabled,stationary_plateau=plateau_enabled,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy)
                     temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']
                     print(json.dumps({'state':'published','local':len(result['within_intersection']),'between':len(result['between_intersections'])}),flush=True)
         except (OSError,ValueError,KeyError) as exc:

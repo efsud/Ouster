@@ -1,0 +1,34 @@
+{
+  "enabled": true,
+  "method": "kinematic_same_id_lateral_v1",
+  "max_gap_s": 10,
+  "enabled_sites": [
+    "OBC-AG-SA-C251068",
+    "OBC-AG-SA-C257222",
+    "OBC-AG-SA-C257223",
+    "OBC-AG-SA-C257236"
+  ],
+  "withheld": {
+    "OBC-AG-SA-C257206": "insufficient distinct development/test identities",
+    "OBC-AG-SA-C257225": "insufficient distinct identities; development speed error also high",
+    "OBC-AG-SA-C257227": "site-level speed error exceeds 1 m/s"
+  },
+  "test": {
+    "accepted": 109,
+    "distinct_ids": 102,
+    "quality": {
+      "n": 109,
+      "mae_m": 0.9199283442437496,
+      "rmse_m": 1.0713640884095295,
+      "speed_mae_mps": 0.7111323302872533,
+      "stop_time_error_s": 0.15018348623853528,
+      "physics_violation": 0.0,
+      "p95_case_mae_m": 2.0955479119447533,
+      "stop_precision": 0.5,
+      "stop_recall": 0.25
+    },
+    "lateral_mae_m": 0.27398747025500625
+  },
+  "report_sha256": "1611009c7730dba408785c5a5f30c01be504bcc899f4c3fd1d10288fb003b634",
+  "note": "Additional conservative site safeguards applied after aggregate test; not independent site-specific tuning. Same IDs only; cross-ID and long-gap gates unchanged."
+}
