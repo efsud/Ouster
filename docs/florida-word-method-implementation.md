@@ -773,3 +773,14 @@ and stop precision/recall 1.0. This small external sample does not replace the
 required three prospective windows and ten distinct added IDs. The candidate
 remains unpublished. Archive loading is now shared by the validation commands;
 the original recordings and raw endpoints remain unchanged.
+
+### Fourth prospective expansion window
+
+Islington and Driftwood now passed the unchanged expansion criteria over four
+future windows. Islington added 18 masks from 15 distinct IDs (MAE 0.101 m);
+Driftwood added 18 masks from 14 IDs (MAE 0.161 m). Both had zero physical
+violations and passed the additional November 6 daytime check. Their narrow
+stationary endpoint correction is enabled; York Gate remains withheld.
+On the identical current snapshot this raised local estimates from 39 to 41,
+with 132 between-intersection estimates unchanged. Ten relevant endpoint/config
+tests passed. Evidence hashes are saved in the configuration.

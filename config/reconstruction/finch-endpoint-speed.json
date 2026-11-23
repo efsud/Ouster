@@ -7,11 +7,13 @@
     "step_speed_limit_mps": 0.5
   },
   "enabled_sites": [
+    "OBC-AG-SA-C251064",
     "OBC-AG-SA-C251071",
     "OBC-AG-SA-C257208",
     "OBC-AG-SA-C257220",
     "OBC-AG-SA-C257238",
-    "OBC-AG-SA-C618857"
+    "OBC-AG-SA-C618857",
+    "OBC-AG-SA-C618861"
   ],
   "scope": "Finch same-intersection car gaps >1.5 and <=90 seconds; original observations unchanged",
   "selection_protocol_sha256": "2c79c92b1146570ca8720cb8043b61a9bc405c7fb618e49054ce570363246098",
@@ -84,6 +86,36 @@
           "stop_precision": 1.0,
           "stop_recall": 1.0
         }
+      },
+      "OBC-AG-SA-C251064": {
+        "evaluated": 77,
+        "distinct_new_ids": 15,
+        "new": {
+          "n": 18,
+          "mae_m": 0.10126922464120265,
+          "rmse_m": 0.1497201793274045,
+          "speed_mae_mps": 0.10894744214415558,
+          "stop_time_error_s": 0.17722222222222525,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 0.5637170078819227,
+          "stop_precision": 1.0,
+          "stop_recall": 0.9444444444444444
+        }
+      },
+      "OBC-AG-SA-C618861": {
+        "evaluated": 67,
+        "distinct_new_ids": 14,
+        "new": {
+          "n": 18,
+          "mae_m": 0.1609649628128439,
+          "rmse_m": 0.3181207993202141,
+          "speed_mae_mps": 0.10074400237477231,
+          "stop_time_error_s": 0.5594444444444535,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 0.5258516462950252,
+          "stop_precision": 1.0,
+          "stop_recall": 1.0
+        }
       }
     },
     "protocol_sha256": "660a7b550f7be26afb46c4b32d57bc04b99dfe80908f5437c743a2850c2270ab",
@@ -99,6 +131,10 @@
       {
         "file": "data/reconstruction/eight-hour-20261123/finch/cycle-061.json",
         "sha256": "2a57502f21080fad251f6f531ee52809cce128721eabbb94e761b38ff3eb2e5e"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/finch/cycle-086.json",
+        "sha256": "e6f5d8389582f277883127ca240a2bbe45cbfd5f5303561d5f71090a51fc2f9d"
       }
     ],
     "external_recording": {
