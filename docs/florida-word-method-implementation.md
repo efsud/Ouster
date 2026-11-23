@@ -815,3 +815,22 @@ worst illustrated Florida 30-second gap has 17.57 m MAE; Finch's 60-second gap
 has 18.54 m MAE. Median illustrated cases are 0.45 m and 0.29 m. These are
 declared selected examples, not aggregate error claims. No missing trajectory
 is represented as a recovered ground-truth identity.
+
+### Finch local fallbacks enabled after prospective review
+
+The stationary plateau passed three future windows (33 added masks, 30 IDs,
+MAE 0.00983 m, maximum error 0.09 m). Deployment is further restricted to the
+seven endpoint-correction-enabled Finch sites, so withheld sites do not gain an
+untested fallback. The adaptive endpoint grid passed four windows (10 added
+IDs, MAE 0.296 m, p95 case MAE 1.057 m). Both retain physical checks; the grid
+keeps exact endpoints, while the plateau explicitly reports its <=0.05 m
+endpoint residuals. Neither changes between-intersection matching.
+
+A paired composition check added 15 masks with MAE 0.122 m, p95 case MAE
+0.573 m and zero physical violations; every previously accepted path was
+identical. On the same current-hour snapshot, local estimates increased from
+39 to 42 (one plateau, two grid retries), while all 139 between-site paths were
+identical. The Finch derived-layer worker was reloaded; collectors were not
+restarted. All 211 scientific tests passed. Florida remains disabled pending
+its unchanged minimum sample requirements. Broad OSQP fallback failed quality
+limits in both regions and remains unpublished.

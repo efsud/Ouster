@@ -24,3 +24,13 @@ class AdaptiveGridTests(unittest.TestCase):
     def test_invalid_custom_grid_rejected(self):
         a={'t':0.,'x':0.,'v':1.};b={'t':10.,'x':10.,'v':1.}
         with self.assertRaises(ValueError):refine(a,b,baseline(a,b),time_grid=[0,5,5,10])
+
+    def test_layer_retry_is_opt_in_exact_and_keeps_original_endpoints(self):
+        from .reconstruction_layers import prediction
+        a={'t':0.,'x':0.,'v':0.};b={'t':10.,'x':.02,'v':.107}
+        report={'selected_method':'kinematic_0.01','calibration':{'parameters':{'vmax':25.,'amin':-4.,'amax':3.}}}
+        self.assertIsNone(prediction(a,b,report,exact_join=True))
+        meta={};result=prediction(a,b,report,exact_join=True,adaptive_grid=True,metadata=meta)
+        self.assertIsNotNone(result);self.assertTrue(meta['exact_endpoint_interpolation'])
+        np.testing.assert_allclose(np.array(result)[[0,-1],1],[a['x'],b['x']],atol=1e-6)
+        np.testing.assert_allclose(np.array(result)[[0,-1],2],[a['v'],b['v']],atol=1e-6)

@@ -1,0 +1,61 @@
+{
+  "method": "bounded_stationary_latent_position",
+  "enabled_regions": [
+    "finch"
+  ],
+  "scope": "Same-ID local car gaps only; no between-sensor fallback. Plateau additionally restricted to endpoint-correction-enabled sites.",
+  "protocol_sha256": "2daa5679b796ab0a5e362bcce95aff4e30803ae13ff9b8b0afe59be41b019b66",
+  "prospective_validation": {
+    "windows": 3,
+    "evaluated": 594,
+    "added": 33,
+    "distinct_added_ids": 30,
+    "maximum_error_m": 0.09000000000014552,
+    "added_quality": {
+      "n": 33,
+      "mae_m": 0.009826170198703322,
+      "rmse_m": 0.012772304695856206,
+      "speed_mae_mps": 0.02639104053007796,
+      "stop_time_error_s": 0.0,
+      "physics_violation": 0.0,
+      "p95_case_mae_m": 0.019270588235512226,
+      "stop_precision": 1.0,
+      "stop_recall": 1.0
+    }
+  },
+  "reports": [
+    {
+      "file": "data/reconstruction/eight-hour-20261123/finch/cycle-061.json",
+      "sha256": "2a57502f21080fad251f6f531ee52809cce128721eabbb94e761b38ff3eb2e5e"
+    },
+    {
+      "file": "data/reconstruction/eight-hour-20261123/finch/cycle-086.json",
+      "sha256": "e6f5d8389582f277883127ca240a2bbe45cbfd5f5303561d5f71090a51fc2f9d"
+    },
+    {
+      "file": "data/reconstruction/eight-hour-20261123/finch/cycle-109.json",
+      "sha256": "9bb3fe9a47693075c4414bc5effa1d90c027f64b6bf0470c7d6abae099cfb0a9"
+    }
+  ],
+  "limitations": [
+    "Masked observations do not establish cross-sensor identity.",
+    "Provisional alignment.",
+    "Original observations unchanged."
+  ],
+  "composition_check": {
+    "file": "data/reconstruction/finch-combined-fallback-check.json",
+    "sha256": "eb9c996d417e536cc311eda4fe0b8ba7393679c49466486389a9b54fb66bbaa5",
+    "added": 15,
+    "quality": {
+      "n": 15,
+      "mae_m": 0.12212519803922905,
+      "rmse_m": 0.14064694953469303,
+      "speed_mae_mps": 0.04069193620523773,
+      "stop_time_error_s": 0.11599999999998545,
+      "physics_violation": 0.0,
+      "p95_case_mae_m": 0.5730031653603624,
+      "stop_precision": 1.0,
+      "stop_recall": 1.0
+    }
+  }
+}
