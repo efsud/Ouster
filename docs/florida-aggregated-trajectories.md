@@ -1,5 +1,7 @@
 # Florida aggregated trajectory view
 
+**Superseded on November 23, 2026:** the user clarified that aggregation means unsupervised groups of similar individual trajectories. The active dashboard now uses [trajectory grouping](florida-trajectory-groups.md); the old `aggregate=1` link opens grouping. This document records the earlier heatmap implementation, whose engine remains archived in source.
+
 The **Aggregate trajectories (mean speed)** checkbox replaces individual trajectory lines with a time–distance speed heatmap. Uncheck it to restore the existing observed and estimated trajectory layers. The aggregation toggle is recorded in the link as `aggregate=1`; existing visitors otherwise retain the individual-line view.
 
 Default cells cover 10 seconds and 10 metres. Available time cells are 5, 10, 30 and 60 seconds; distance cells are 5, 10, 20 and 40 metres. Intersection, direction and object filters apply. Mouse-centered zoom and panning retain the same bins, so zooming does not change the underlying summary. Larger bins smooth variation but conceal finer differences.

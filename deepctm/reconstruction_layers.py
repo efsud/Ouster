@@ -230,6 +230,12 @@ def main(watch,region='florida',deadline=None):
                         evidence_path=ROOT/'data/reconstruction/residual-color-review/report.json'
                         if evidence_path.exists():result['residual_color']['validation']=json.loads(evidence_path.read_text())
                     if region=='florida':
+                        from .local_group_prior import apply as apply_group_prior
+                        group_policy_path=ROOT/'data/reconstruction/trajectory-group-local-review/review-002/policy.json'
+                        group_policy=json.loads(group_policy_path.read_text()) if group_policy_path.exists() else None
+                        result=apply_group_prior(snapshot,result,group_policy,report['calibration']['parameters'])
+                        from .trajectory_group_layer import build as build_groups
+                        result['trajectory_groups']=build_groups(snapshot,result,report)
                         from .coverage_audit import audit as audit_coverage
                         result['coverage_audit']=audit_coverage(snapshot,result)
                         from .between_coverage_audit import audit as audit_overlap

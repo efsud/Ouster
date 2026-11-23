@@ -1,52 +1,63 @@
 'use strict';
 const el=id=>document.getElementById(id),vehicle=new Set(['1','2','3','4','5','6','7','8','9','15']);
 const corridor=document.body.dataset.corridor||'florida',regionName=corridor==='finch'?'Toronto':'Florida';
-let data=null,view=null,points=[],version=0,reconstruction=null,colorExample=null,overlapExample=null;
-let aggregateCache=null,aggregateRects=[];
-const isAggregate=()=>Boolean(el('aggregate-mode')?.checked);
-if(el('aggregate-mode'))el('aggregate-mode').checked=new URLSearchParams(location.search).get('aggregate')==='1';
+let data=null,view=null,points=[],version=0,reconstruction=null,colorExample=null,overlapExample=null,refreshRunning=false,rollingToken=0;
+const isGrouped=()=>Boolean(el('group-mode')?.checked);
+if(el('group-mode'))el('group-mode').checked=['groups','aggregate'].some(k=>new URLSearchParams(location.search).get(k)==='1');
+function groupData(){return data&&reconstruction?.snapshot_generated_at===data.generated_at?reconstruction.trajectory_groups:null;}
+function groupSite(id){return groupData()?.sites.find(s=>s.id===id);}
+function groupKey(site,id){return site+'|'+id;}
+function groupColor(id){let n=0;for(const ch of id)n=(n*31+ch.charCodeAt(0))>>>0;return `hsl(${n%360},68%,38%)`;}
+function selectedGroup(){return isGrouped()&&groupData()?(el('trajectory-group')?.value||'all'):'all';}
+function groupModeUI(){
+ const active=isGrouped();if(el('group-options'))el('group-options').hidden=!active;
+ if(el('group-detail'))el('group-detail').hidden=!active;
+ const chosen=selectedGroup();let label='';
+ if(active&&chosen!=='all')for(const site of groupData()?.sites||[]){const index=site.groups.findIndex(g=>groupKey(site.id,g.group_id)===chosen);if(index>=0)label=`${site.name} · Group ${index+1} · ${site.groups[index].identity_count} individual object IDs. `;}
+ if(el('plot-caption'))el('plot-caption').textContent=active?label+'Each solid line remains an individual observed trajectory. Groups identify similar paths, times and speeds; dashed lines remain individual estimates.':'Solid lines show recorded positions; any timing corrections are noted above. Dashed layers estimate missing positions. Missing evidence stays blank.';
+ if(el('plot-explanation'))el('plot-explanation').textContent=(active&&el('group-color')?.value==='group'?'Distinct colors identify trajectory groups; gray identifies ungrouped trajectories. Dashed estimates retain speed colors. ':'Red = slow, yellow = about 10 m/s, green = 20+ m/s. ')+ 'Groups are local to one intersection and direction. They do not establish vehicle identity across intersections. Recorded positions are unchanged.';
+ el('plot').setAttribute('aria-label',active?'Individual time-distance trajectories with similar-path groups':'Time-distance trajectories colored by speed');
+}
+function updateGroupControls(){
+ if(!el('group-controls'))return;
+ const study=groupData(),select=el('trajectory-group'),previous=select.value;
+ select.replaceChildren(new Option('All groups and ungrouped trajectories','all'));
+ if(!study){el('group-status').textContent='Waiting for trajectory groups aligned with this recorded hour.';el('group-example').disabled=true;el('group-detail').textContent='';el('group-gap-layer').disabled=true;el('group-gap-example').disabled=true;el('group-gap-status').textContent='Waiting for estimates aligned with this hour.';return;}
+ const selectedSites=new Set([...el('sites').querySelectorAll('input:checked')].map(b=>b.value));let total=0,assigned=0;
+ for(const site of study.sites){
+  for(const g of site.groups){if(g.direction!==el('direction').value||!selectedSites.has(site.id))continue;
+   select.add(new Option(`${site.name} · Group ${site.groups.indexOf(g)+1} · ${g.identity_count} local IDs`,groupKey(site.id,g.group_id)));total++;
+  }
+  assigned+=site.assignments.filter(g=>g!==null).length;
+ }
+ if([...select.options].some(o=>o.value===previous))select.value=previous;
+ el('group-example').disabled=!total;
+ el('group-status').textContent=`${total} groups in the selected direction and intersections. Across the hour: ${assigned.toLocaleString()} observed fragments assigned to groups. Groups require at least three distinct local object IDs; unsupported fragments remain ungrouped.`;
+ const validation=el('group-validation');validation.replaceChildren();
+ for(const line of study.validation_notes||[]){const p=document.createElement('p');p.textContent=line;validation.append(p);}
+ if(!study.validation_notes?.length)validation.textContent='Group-guided gap reconstruction is under evaluation; existing reconstruction methods are retained until hidden-data tests support a change.';
+ groupModeUI();
+}
+function showGroup(key){
+ const study=groupData();if(!study||!data)return;
+ let pair;for(const s of study.sites)for(const g of s.groups){if(groupKey(s.id,g.group_id)===key)pair=[s,g];}
+ if(!pair)return;const [s,g]=pair;el('group-mode').checked=true;el('direction').value=g.direction;el('objects').value='vehicles';
+ for(const box of el('sites').querySelectorAll('input'))box.checked=box.value===s.id;
+ updateGroupControls();el('trajectory-group').value=key;
+ const members=g.member_indices.map(i=>data.sites.find(v=>v.id===s.id).tracks[i]).filter(Boolean);
+ el('objects').value=members.every(t=>vehicle.has(t.class_type))?'vehicles':'all';
+ const start=Math.min(...members.map(t=>t.points[0][0])),end=Math.max(...members.map(t=>t.points.at(-1)[0]));
+ view=[Math.max(data.start,data.start+start-5),Math.min(data.end,data.start+end+5)];
+ el('group-detail').textContent=`${s.name} · Group ${s.groups.indexOf(g)+1} · ${g.identity_count} distinct local IDs · ${members.length} individual observed fragments. Similarity uses spatial path, local passage time and speed profile. Select “Group membership” colors to highlight membership; speed colors remain available.`;
+ groupModeUI();draw();el('plot').scrollIntoView({block:'center'});
+}
 if(new URLSearchParams(location.search).get('between')==='1'&&el('between-layer'))el('between-layer').checked=true;
 const clock=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:corridor==='finch'?'America/Toronto':'America/New_York',hour12:false});
 function color(v){const t=Math.max(0,Math.min(1,v/20));return `hsl(${t*120},75%,40%)`;}
-function aggregateModeUI(){
- const active=isAggregate();
- for(const id of ['aggregate-options','aggregate-note','aggregate-legend'])if(el(id))el(id).hidden=!active;
- if(el('reconstruction-controls'))el('reconstruction-controls').hidden=active;
- if(el('plot-caption'))el('plot-caption').textContent=active?'Colored cells summarize retained observations; individual lines and estimated connections are hidden.':'Solid lines show recorded positions; any timing corrections are noted above. Dashed layers estimate missing positions. Missing evidence stays blank.';
- if(el('plot-explanation'))el('plot-explanation').textContent=active?'Speed is averaged once per sensor/session/object within each cell, then equally across those objects. Counts are sensor-local tracked IDs, not corridor flow or density. Short and wholly stationary tracks may be absent from the retained data. Gray means no retained observations—not necessarily no traffic or a sensor outage.':'Red = slow, yellow = about 10 m/s, green = 20+ m/s. Colors show observed or estimated speed, not signal state. Samples are taken at up to 2 Hz. Observed lines stop at gaps longer than 1.5 seconds. Supported missing portions can be shown using the separate estimate layers.';
- el('plot').setAttribute('aria-label',active?'Florida time-distance cells colored by mean observed speed':'Time-distance trajectories colored by speed');
- el('hover').textContent=active?'Hover over a colored cell for mean speed and observation support.':'Hover over a trajectory for its time and speed.';
-}
-function paintAggregate(c,x,y,sites,w,h){
- const dt=Number(el('aggregate-time').value),dx=Number(el('aggregate-space').value);
- const key=JSON.stringify([version,sites.map(s=>s.id),el('direction').value,el('objects').value,dt,dx]);
- if(aggregateCache?.key!==key)aggregateCache={key,...TrajectoryAggregation.build(sites,{direction:el('direction').value,objects:el('objects').value,timeBinSeconds:dt,spaceBinMeters:dx,start:0,end:data.end-data.start})};
- c.fillStyle='#e9eef2';c.fillRect(90,20,w-110,h-70);aggregateRects=[];
- const overlapping=new Map();
- for(const cell of aggregateCache.cells){
-  if(data.start+cell.timeEnd<=view[0]||data.start+cell.timeStart>=view[1])continue;
-  const bin=cell.timeStart+':'+cell.spaceStart;
-  if(!overlapping.has(bin))overlapping.set(bin,[]);overlapping.get(bin).push(cell);
- }
- const names=new Map(sites.map(s=>[s.id,s.name]));let visible=0,sparse=0;
- for(const cells of overlapping.values()){
-  cells.sort((a,b)=>a.site.localeCompare(b.site));
-  cells.forEach((cell,i)=>{
-   const left=x(data.start+cell.timeStart),right=x(data.start+cell.timeEnd),part=(right-left)/cells.length;
-   const x0=left+i*part,x1=left+(i+1)*part,y0=y(cell.spaceEnd),y1=y(cell.spaceStart);
-   if(Math.min(w-20,x1)<=Math.max(90,x0)||Math.min(h-50,y1)<=Math.max(20,y0))return;
-   c.fillStyle=color(cell.speed);c.fillRect(x0,y0,x1-x0,y1-y0);
-   aggregateRects.push({x0:Math.max(90,x0),x1:Math.min(w-20,x1),y0:Math.max(20,y0),y1:Math.min(h-50,y1),cell,name:names.get(cell.site),overlap:cells.length});
-   visible++;if(cell.objectCount===1)sparse++;
-  });
- }
- el('aggregate-note').textContent=`${dt}-second × ${dx}-m fixed cells · mean observed speed · ${visible.toLocaleString()} visible sensor cells (${sparse.toLocaleString()} supported by one ID). Zoom keeps the same bins. Where sensors overlap, side-by-side strips retain separate sensor summaries.`;
- return visible;
-}
 function draw(){
  if(!data)return;const panRange=data.end-data.start-(view[1]-view[0]);el('time').value=panRange>0?1000*(view[0]-data.start)/panRange:0;const selected=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value)),sites=data.sites.filter(s=>selected.has(s.id));
  renderMovements(sites);
- const canvas=el('plot'),w=canvas.clientWidth,h=650,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);points=[];aggregateRects=[];
+ const canvas=el('plot'),w=canvas.clientWidth,h=650,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);points=[];
  if(!sites.length){c.fillText('Select an intersection.',30,40);return;}
  const lo=Math.min(...sites.map(s=>s.station_m))-130,hi=Math.max(...sites.map(s=>s.station_m))+130;
  const x=t=>90+(t-view[0])/(view[1]-view[0])*(w-110),y=s=>h-50-(s-lo)/(hi-lo)*(h-80);
@@ -55,24 +66,21 @@ function draw(){
  for(let i=0;i<=ticks;i++){const t=view[0]+i*(view[1]-view[0])/ticks;c.beginPath();c.moveTo(x(t),20);c.lineTo(x(t),h-50);c.stroke();c.textAlign=i===0?'left':i===ticks?'right':'center';c.fillText(clock(t),x(t),h-25);}c.textAlign='left';
  for(const s of sites){c.fillStyle='#263b46';c.fillText(s.name,95,y(s.station_m)-8);c.fillText(Math.round(s.station_m)+' m',4,y(s.station_m));c.strokeStyle='#c3cdd3';c.beginPath();c.moveTo(90,y(s.station_m));c.lineTo(w-20,y(s.station_m));c.stroke();}
  c.save();c.beginPath();c.rect(90,20,w-110,h-70);c.clip();let count=0;
- if(isAggregate()){
-  count=paintAggregate(c,x,y,sites,w,h);c.restore();
-  for(const s of sites){c.strokeStyle='rgba(38,59,70,.45)';c.beginPath();c.moveTo(90,y(s.station_m));c.lineTo(w-20,y(s.station_m));c.stroke();c.fillStyle='rgba(255,255,255,.9)';c.fillRect(93,y(s.station_m)-23,c.measureText(s.name).width+8,18);c.fillStyle='#263b46';c.fillText(s.name,97,y(s.station_m)-9);}
-  el('coverage').textContent=`${count.toLocaleString()} visible aggregated sensor cells · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time · ${sites.length} selected intersections. Estimated paths are excluded.`;
-  return;
- }
- for(const site of sites)for(const tr of site.tracks){
+ for(const site of sites)for(const [trackIndex,tr] of site.tracks.entries()){
   const filter=el('objects').value,code=tr.class_type;if(tr.direction!==el('direction').value)continue;
   if(filter==='vehicles'&&!vehicle.has(code)||filter==='pedestrians'&&!['0','10','11','14','16'].includes(code)||filter==='cyclists'&&!['12','13','17'].includes(code))continue;
   if(tr.method)continue;
+  const gs=groupSite(site.id),gid=gs?.assignments[trackIndex]??null,key=gid?groupKey(site.id,gid):null;
+  const groupLabel=gid?'Group '+(gs.groups.findIndex(g=>g.group_id===gid)+1):'ungrouped';
+  if(isGrouped()&&selectedGroup()!=='all'&&key!==selectedGroup())continue;
   let seen=false;const overlapSelected=overlapExample?.sites.includes(site.id)&&overlapExample.source_keys.some(k=>JSON.stringify(k)===JSON.stringify(tr.source_key));
   for(let i=1;i<tr.points.length;i++){
    const a=tr.points[i-1],b=tr.points[i],ta=data.start+a[0],tb=data.start+b[0],dt=b[0]-a[0];
    if(dt<=0||dt>1.5||tb<view[0]||ta>view[1])continue;
-   seen=true;c.strokeStyle=color(b[2]);c.lineWidth=overlapSelected?3:1;c.setLineDash([]);
+   seen=true;c.strokeStyle=isGrouped()&&el('group-color')?.value==='group'?(gid?groupColor(key):'#a5adb2'):color(b[2]);c.lineWidth=overlapSelected?3:isGrouped()&&selectedGroup()!=='all'?1.5:1;c.setLineDash([]);
    c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();
    const receiptTime=data.start+(tr.original_receipt_offsets_s?.[i]??b[0]);
-   points.push({x:x(tb),y:y(b[1]),time:tb,receiptTime,speed:b[2],name:'Observed position · '+site.name+(overlapSelected?' · overlap correspondence hypothesis; identity unverified':'')});
+   points.push({x:x(tb),y:y(b[1]),time:tb,receiptTime,speed:b[2],name:'Observed position · '+site.name+(isGrouped()?' · '+groupLabel:'')+(overlapSelected?' · overlap correspondence hypothesis; identity unverified':'')});
   }
   if(seen)count++;
  }
@@ -100,31 +108,41 @@ function zoom(f,fraction=.5){
  const anchor=view[0]+fraction*oldSpan,start=Math.max(data.start,Math.min(data.end-span,anchor-fraction*span));
  view=[start,start+span];draw();
 }
-async function refresh(){if(data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(`/api/${corridor}-rolling`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
+async function refresh(){if(refreshRunning)return;refreshRunning=true;try{if(data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(`/api/${corridor}-rolling?since=${data?rollingToken:0}`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state==='unchanged')return;if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
+ rollingToken=next.version??next.generated_at;
  el('message').textContent=`Figure updated ${clock(next.generated_at)} · Next update ${clock(next.next_update)} ${regionName} time. Shows ${clock(next.start)}–${clock(next.end)}; early collection may cover less than one hour.`;
  if(next.time_basis==='receipt_debursted'){
   const audits=next.sites.flatMap(s=>s.clock_audit||[]),events=audits.flatMap(a=>a.events||[]);
   el('message').textContent+=` Timing: ${events.length} bounded delivery bursts corrected using continuous sensor elapsed time between receipt anchors. Positions are measured; adjusted times are estimates. Hover to compare receipt time. Cross-sensor clock offsets remain unverified.`;
  }
- if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;overlapExample=null;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();refreshReconstruction();
- }catch(e){el('message').textContent=e.message;}}
+ if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;overlapExample=null;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=()=>{updateGroupControls();draw();};label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();refreshReconstruction();
+ }catch(e){el('message').textContent=e.message;}}finally{refreshRunning=false;}}
 if(el('spatial-estimates'))el('spatial-estimates').onchange=draw;
-for(const id of ['aggregate-mode','aggregate-time','aggregate-space'])if(el(id))el(id).onchange=()=>{
- aggregateModeUI();
- const url=new URL(location.href);if(isAggregate())url.searchParams.set('aggregate','1');else url.searchParams.delete('aggregate');history.replaceState(null,'',url);
- draw();
+function showGroupConnection(){
+ const paths=groupData()?.between_intersections||[];
+ const path=paths.find(p=>p.direction===el('direction').value)||paths[0];if(!path||!data)return;
+ el('group-mode').checked=true;el('group-gap-layer').checked=true;el('direction').value=path.direction;el('objects').value='vehicles';
+ for(const box of el('sites').querySelectorAll('input'))box.checked=path.sites.includes(box.value);
+ updateGroupControls();el('trajectory-group').value='all';
+ view=[Math.max(data.start,data.start+path.points[0][0]-10),Math.min(data.end,data.start+path.points.at(-1)[0]+10)];
+ el('group-detail').textContent=`Individual connection supported by ${path.group_evidence.anchor_count} other group-pair matches. All are hypotheses; vehicle identity between intersections is unverified. Dashed lines use speed colors.`;
+ draw();el('plot').scrollIntoView({block:'center'});
+}
+if(el('group-gap-example'))el('group-gap-example').onclick=showGroupConnection;
+if(el('group-gap-layer'))el('group-gap-layer').onchange=()=>{if(el('group-gap-layer').checked&&selectedGroup()!=='all')showGroupConnection();else draw();};
+if(el('group-mode'))el('group-mode').onchange=()=>{
+ updateGroupControls();const url=new URL(location.href);url.searchParams.delete('aggregate');if(isGrouped())url.searchParams.set('groups','1');else url.searchParams.delete('groups');history.replaceState(null,'',url);draw();
 };
-aggregateModeUI();
-el('direction').onchange=draw;el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
+if(el('trajectory-group'))el('trajectory-group').onchange=()=>{if(selectedGroup()==='all'){el('group-detail').textContent='All individual groups are shown; ungrouped observations remain available.';draw();}else showGroup(selectedGroup());};
+if(el('group-example'))el('group-example').onclick=()=>{const options=[...el('trajectory-group').options].filter(o=>o.value!=='all');if(options.length)showGroup(options[0].value);};
+if(el('group-all'))el('group-all').onclick=()=>{el('trajectory-group').value='all';for(const box of el('sites').querySelectorAll('input'))box.checked=true;view=[data.start,data.end];updateGroupControls();el('group-detail').textContent='All groups and ungrouped observed trajectories.';draw();};
+if(el('group-color'))el('group-color').onchange=()=>{groupModeUI();draw();};
+groupModeUI();
+el('direction').onchange=()=>{updateGroupControls();draw();};el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
 el('time').oninput=()=>{if(data){const span=view[1]-view[0],start=data.start+(data.end-data.start-span)*Number(el('time').value)/1000;view=[start,start+span];draw();}};
 el('plot').addEventListener('wheel',e=>{e.preventDefault();if(!e.deltaY)return;const canvas=el('plot'),rect=canvas.getBoundingClientRect();if(rect.width<=0||canvas.clientWidth<=110)return;const pointerX=(e.clientX-rect.left)*canvas.clientWidth/rect.width;zoom(e.deltaY>0?1.25:.8,(pointerX-90)/(canvas.clientWidth-110));},{passive:false});el('plot').ondblclick=()=>el('reset').click();
 el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
  if(!data){el('hover').textContent='Waiting for recorded observations.';return;}
- if(isAggregate()){
-  const hit=aggregateRects.find(r=>x>=r.x0&&x<r.x1&&y>=r.y0&&y<r.y1);
-  el('hover').textContent=hit?`${hit.name} · ${clock(data.start+hit.cell.timeStart)}–${clock(data.start+hit.cell.timeEnd)} · ${hit.cell.spaceStart}–${hit.cell.spaceEnd} m · mean ${hit.cell.speed.toFixed(1)} m/s · ${hit.cell.objectCount} sensor-local IDs · ${hit.cell.sampleCount} observations`+(hit.overlap>1?` · ${hit.overlap} sensors share this cell; strips are separate summaries`:''):'No retained observations in this cell; this does not establish zero traffic.';
-  return;
- }
  let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`+(best.receiptTime!=null&&Math.abs(best.receiptTime-best.time)>.05?` · adjusted time; received ${clock(best.receiptTime)} (${(best.receiptTime-best.time).toFixed(2)} s later)`:''):'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();setInterval(refresh,15000);
 
 if(el("additional-matches"))el("additional-matches").onchange=draw;
@@ -167,22 +185,32 @@ function renderGapAudit(audit){
 
 function paintReconstruction(c,x,y,selected){
  if(!reconstruction||reconstruction.state!=='ready'||reconstruction.snapshot_generated_at!==data.generated_at)return;
- const counts=[0,0],extraCounts=[0,0],allowed=['all','vehicles'].includes(el('objects').value);
+ const counts=[0,0],extraCounts=[0,0];let groupCount=0;const allowed=['all','vehicles'].includes(el('objects').value);
  const groups=[['within-layer',reconstruction.within_intersection||[],0],['between-layer',reconstruction.between_intersections||[],1]];
  if(el('color-layer')?.checked&&reconstruction.residual_color){
   groups.push(['within-layer',reconstruction.residual_color.within_intersection||[],0],['between-layer',reconstruction.residual_color.between_intersections||[],1]);
  }
+ if(el('group-gap-layer')?.checked)groups.push(['group-gap-layer',reconstruction.trajectory_groups?.between_intersections||[],1]);
  for(const [control,paths,group] of groups){if(!allowed||!el(control)?.checked)continue;
   for(const path of paths){
    if(path.direction!==el('direction').value||!(path.sites||[path.site]).every(id=>selected.has(id)))continue;
+   if(isGrouped()&&selectedGroup()!=='all'){
+    const [sid,gid]=selectedGroup().split('|'),gs=groupSite(sid),g=gs?.groups.find(g=>g.group_id===gid),site=data.sites.find(s=>s.id===sid);
+    const members=new Set((g?.member_indices||[]).map(i=>JSON.stringify(site.tracks[i].source_key?.slice(0,2).map(String))));
+    const identity=path.identity_key||path.source_key?.slice(0,2);
+    const matches=path.site===sid&&identity&&members.has(JSON.stringify(identity.map(String)));
+    // Unknown provenance cannot silently attach an estimate to a selected group.
+    if(!matches)continue;
+   }
    let seen=false,distance=0;
    for(let i=1;i<path.points.length;i++){
     const a=path.points[i-1],b=path.points[i],ta=data.start+a[0],tb=data.start+b[0],length=Math.hypot(x(tb)-x(ta),y(b[1])-y(a[1]));
     if(tb>=view[0]&&ta<=view[1]){seen=true;c.strokeStyle=color(b[2]);c.lineWidth=path.layer==='residual_color_slope'&&colorExample===path.points[0][0]+':'+path.points.at(-1)[0]?3:1.8;c.setLineDash(path.layer==='residual_color_slope'?[10,4,2,4]:group?[8,5]:[3,4]);c.lineDashOffset=-distance;c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],name:'EST '+(group?'between intersections · identity unverified':'within intersection'+((path.identity||'').startsWith('unverified')?' · identity unverified':''))+' · '+({'bounded_stationary_latent_position':'stationary position estimate','endpoint_envelope_grid_retry_v1':'refined endpoint time grid'}[path.estimation_model]||({'kinematic_same_id_lateral_v1':'same-ID lateral-motion estimate','color_slope_chronological_v1':'same-color constant-slope proposal'}[path.method]||path.method))+(path.exact_endpoint_interpolation===false?' · stationary estimate; endpoint residual ≤'+(100*Math.max(...(path.endpoint_position_residual_m||[0]).map(Math.abs))).toFixed(1)+' cm':'')+(path.object_id?' · object ID '+path.object_id:'')});}distance+=length;
-   }if(seen){counts[group]++;if(path.layer==='residual_color_slope')extraCounts[group]++;}
+   }if(seen){counts[group]++;if(path.layer==='residual_color_slope')extraCounts[group]++;if(path.method==='trajectory_group_anchor_v1')groupCount++;}
   }
  }
  c.setLineDash([]);c.lineDashOffset=0;
+ if(el('group-gap-status'))el('group-gap-status').textContent=`${groupCount} group-assisted individual connection hypotheses visible. These are separate from group membership and do not verify vehicle identity.`;
  if(el('layer-counts'))el('layer-counts').textContent=`Visible estimates: ${counts[0]} within intersections; ${counts[1]} between intersections. Colors indicate speed, not confidence.`+(el('color-layer')?.checked?` Requested color-slope additions: ${extraCounts[0]} within; ${extraCounts[1]} between.`:'')+(el('within-layer')?.checked&&counts[0]===0?' No supported local estimates in this selection; checking the box cannot join unidentified fragments.':'');
 }
 async function refreshReconstruction(){
@@ -190,6 +218,8 @@ async function refreshReconstruction(){
  try{
   const response=await fetch(`/api/${corridor}-reconstruction`);if(!response.ok)throw Error('Reconstruction study unavailable');reconstruction=await response.json();
   const aligned=reconstruction.state==='ready'&&data&&reconstruction.snapshot_generated_at===data.generated_at;
+  updateGroupControls();
+  for(const id of ['group-gap-layer','group-gap-example'])if(el(id))el(id).disabled=!aligned||!reconstruction.trajectory_groups?.between_intersections?.length;
   renderGapAudit(aligned?reconstruction.coverage_audit:null);
   if(el('overlap-example'))el('overlap-example').disabled=!aligned||!reconstruction.coverage_audit?.overlap_links?.some(l=>l.example);
   for(const id of ['within-layer','between-layer'])el(id).disabled=!aligned;
@@ -318,7 +348,7 @@ async function refreshReconstruction(){
   }else host.textContent='No method has completed the required held-out comparison yet.';
   if(!aligned)el('layer-counts').textContent='Estimated layers unavailable for this window.';
   draw();
- }catch(e){reconstruction=null;el('reconstruction-status').textContent=e.message;for(const id of ['within-layer','between-layer'])el(id).disabled=true;draw();}
+ }catch(e){reconstruction=null;updateGroupControls();el('reconstruction-status').textContent=e.message;for(const id of ['within-layer','between-layer'])el(id).disabled=true;draw();}
 }
 for(const id of ['within-layer','between-layer','color-layer'])if(el(id))el(id).onchange=draw;
 refreshReconstruction();setInterval(refreshReconstruction,15000);

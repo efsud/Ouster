@@ -103,11 +103,9 @@ class Handler(BaseHTTPRequestHandler):
                 from deepctm.pair_view import read
                 return self.send(read())
             if parsed.path in {'/api/finch-rolling','/api/florida-rolling'}:
-                if parsed.path == '/api/finch-rolling':
-                    from deepctm.finch_rolling import read_snapshot
-                else:
-                    from deepctm.florida_rolling import read_snapshot
-                return self.send(read_snapshot())
+                from .rolling_response import get_response
+                region='Toronto' if parsed.path == '/api/finch-rolling' else 'Florida'
+                return self.send(get_response(region,q.get('since')),mime='application/json; charset=utf-8')
             if parsed.path.startswith('/api/deepctm/figures/'):
                 try:
                     body,mime=figure_asset(parsed.path.removeprefix('/api/deepctm/figures/'))
