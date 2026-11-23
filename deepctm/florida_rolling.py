@@ -77,14 +77,19 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
         source_rows=db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall()
         raw_receipts=[r[1] for r in source_rows]
         original_gaps=[[a-start,b-start] for a,b in zip(raw_receipts,raw_receipts[1:]) if b-a>1.5]
+        seen_payloads=set();unique_rows=[]
+        for row in source_rows:
+            signature=(row[0],row[2])
+            if signature not in seen_payloads:unique_rows.append(row);seen_payloads.add(signature)
+        duplicate_frames=len(source_rows)-len(unique_rows)
         clock_audit=[]
         if time_basis=='sensor_elapsed':
             from .event_clock import align_frames
-            processing_rows,clock_audit=align_frames(source_rows)
+            processing_rows,clock_audit=align_frames(unique_rows)
             for audit in clock_audit:
                 audit['outside_display_window']=sum(session==audit['session'] and not start<=t<=end for session,t,_,_ in processing_rows)
             processing_rows=[row for row in processing_rows if start<=row[1]<=end]
-        else:processing_rows=[(*row,row[1]) for row in source_rows]
+        else:processing_rows=[(*row,row[1]) for row in unique_rows]
         from .frame_sampling import sample
         processing_rows=sample(processing_rows,processing_interval_s)
         for session,receipt,payload,original_receipt in processing_rows:
@@ -174,7 +179,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
                 evidence=mapping.get(tr['movement'].get('movement'),{})
                 tr['movement']['phase_numbers']=evidence.get('phase_numbers',[])
                 tr['movement']['phase_mapping']=evidence.get('phase_mapping','insufficient_or_ambiguous')
-        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'projection_bearing_deg':math.degrees(s['bearing']),'frames':frames,'first_receipt':raw_receipts[0] if raw_receipts else None,'last_receipt':raw_receipts[-1] if raw_receipts else None,'first_observation_time':first,'last_observation_time':last,'raw_frames':len(source_rows),'fragment_break_reasons':dict(breaks),'coverage_basis':time_basis,'receipt_gaps':original_gaps,'observation_gaps':receipt_gaps,'frame_gap_basis':time_basis,'clock_audit':clock_audit,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
+        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'projection_bearing_deg':math.degrees(s['bearing']),'frames':frames,'first_receipt':raw_receipts[0] if raw_receipts else None,'last_receipt':raw_receipts[-1] if raw_receipts else None,'first_observation_time':first,'last_observation_time':last,'raw_frames':len(source_rows),'duplicate_frame_payloads':duplicate_frames,'fragment_break_reasons':dict(breaks),'coverage_basis':time_basis,'receipt_gaps':original_gaps,'observation_gaps':receipt_gaps,'frame_gap_basis':time_basis,'clock_audit':clock_audit,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
     try:
         ingestion_epochs=[{'start':r[0],'mode':r[1]} for r in db.execute('SELECT start,mode FROM ingestion_epochs WHERE start<=? ORDER BY start',(end,))]
         ingestion_epochs=[r for i,r in enumerate(ingestion_epochs) if r['start']>=start or i==len(ingestion_epochs)-1 or ingestion_epochs[i+1]['start']>start]

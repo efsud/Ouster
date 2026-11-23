@@ -68,3 +68,20 @@ def run(region,output,deadline):
     return report
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--region',choices=['florida','finch'],required=True);p.add_argument('--output',required=True);p.add_argument('--deadline',type=float,required=True);a=p.parse_args();run(a.region,a.output,a.deadline)
+
+def prospective(snapshot,params,protocol,deadline):
+    """Frozen hybrid on future IDs; baseline availability is preserved exactly."""
+    rows=cases(snapshot,'test',3);records=[]
+    for rank,site,tr,gap,(a,b,truth) in rows:
+        if time.time()>=deadline:break
+        base=reconstruct(a,b,params,None);entry={'identity_hash':hashlib.sha256(json.dumps([site['id'],tr['source_key'][:2]]).encode()).hexdigest(),'site':site['id'],'gap_s':gap,'accepted':base['state']=='candidate','rts_used':False}
+        if base['state']=='candidate':
+            before,after=visible(tr,a,b);candidate=None
+            if len(before)>=5 and len(after)>=5:candidate=estimate(before,after,a,b,params,protocol['q'],protocol['measurement_variance_m2'])
+            entry['baseline']=metrics(base['points'],truth,params)
+            entry['rts_used']=candidate is not None and candidate['state']=='candidate'
+            entry['hybrid']=metrics(candidate['points'],truth,params) if entry['rts_used'] else entry['baseline']
+        records.append(entry)
+    return {'state':'complete' if time.time()<deadline else 'deadline_reached','cases':records,
+        'summary':{m:summarize([r[m] for r in records if r['accepted']]) for m in ('baseline','hybrid')},
+        'eligible':len(rows),'evaluated':len(records),'rts_used':sum(r['rts_used'] for r in records),'q':protocol['q'],'measurement_variance_m2':protocol['measurement_variance_m2']}

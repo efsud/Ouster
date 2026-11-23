@@ -43,3 +43,12 @@ def reference(before,after,a,b,q=.1,measurement_variance=.04):
 def estimate(before,after,a,b,params,q=.1,measurement_variance=.04):
     ref=reference(before,after,a,b,q,measurement_variance)
     return refine(a,b,ref,**params,smoothness=.01,position_tolerance=0,speed_tolerance=0)
+
+def hybrid(before,after,a,b,params,q,measurement_variance):
+    """Preserve baseline availability; RTS is an optional reference, not evidence."""
+    from .endpoint_speed import reconstruct
+    base=reconstruct(a,b,params,None)
+    if base['state']!='candidate':return dict(base,rts_used=False)
+    candidate=estimate(before,after,a,b,params,q,measurement_variance)
+    if candidate['state']!='candidate':return dict(base,rts_used=False)
+    return dict(candidate,rts_used=True)

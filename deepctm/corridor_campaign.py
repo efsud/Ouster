@@ -87,6 +87,10 @@ def aggregate(output, complete=False):
         gates=[r['kinematic_gate_prospective'] for r in reports if 'kinematic_gate_prospective' in r]
         summary['regions'][region]['kinematic_gate_prospective']={'windows':len(gates),'totals':{
             method:{k:sum(r[method]['totals'].get('0.5',{}).get(k,0) for r in gates) for k in ('eligible','matched','correct','false')} for method in ('legacy','exact')}}
+        rts=[r['rts_prospective'] for r in reports if 'rts_prospective' in r]
+        rts_rows=[c for r in rts for c in r['cases']]
+        summary['regions'][region]['rts_prospective']={'windows':len(rts),'evaluated':len(rts_rows),'rts_used':sum(c['rts_used'] for c in rts_rows),
+            'methods':{m:summarize([c[m] for c in rts_rows if c['accepted']]) for m in ('baseline','hybrid')}}
         lateral=[r['lateral_motion_prospective'] for r in reports if 'lateral_motion_prospective' in r]
         lateral_cases=[c for r in lateral for c in r['cases']];accepted=[c for c in lateral_cases if c['accepted']]
         summary['regions'][region]['lateral_prospective']={'windows':len(lateral),'eligible':len(lateral_cases),'accepted':len(accepted),
@@ -183,6 +187,14 @@ def run(output,deadline,interval=1800):
                             'exact':gate_score(gate_input,gate_report,[proposal['weight']],deadline=deadline,path_gate=exact_gate),
                             'protocol_sha256':hashlib.sha256(gate_protocol.read_bytes()).hexdigest(),
                             'note':'Unchanged physics and assignment thresholds; no automatic promotion.'}
+                rts_protocol=ROOT/'data/reconstruction/rts-review/protocol.json'
+                if rts_protocol.exists() and time.time()<deadline:
+                    proposal=json.loads(rts_protocol.read_text());rts_begin=max(begin,proposal['after'])
+                    if region in proposal['regions'] and s['end']-30>rts_begin:
+                        from .validate_rts_prior import prospective as rts_evaluate
+                        rts_input=subset(s,max(0,rts_begin-s['start']),s['end']-s['start']-30,proposal['excluded_ids'])
+                        report['rts_prospective']=rts_evaluate(rts_input,model['parameters'],proposal,deadline)
+                        report['rts_prospective']['protocol_sha256']=hashlib.sha256(rts_protocol.read_bytes()).hexdigest()
                 lateral_protocol=ROOT/'data/reconstruction/lateral-gap-review/protocol.json'
                 if lateral_protocol.exists() and time.time()<deadline:
                     proposal=json.loads(lateral_protocol.read_text())

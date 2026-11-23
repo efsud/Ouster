@@ -543,3 +543,23 @@ exclusion. The final optimization retains the same physical bounds. The first
 Florida selection retained the baseline: the smoother's best common-case position
 error did not compensate for fewer accepted gaps and weaker stop recovery. No
 Gaussian covariance is advertised as a calibrated field confidence interval.
+
+The next prospective smoother experiment is a Finch-only hybrid: use the frozen
+RTS reference only where both baseline and smoother pass, otherwise retain the
+baseline. Validation improved Finch position error without losing accepted gaps;
+Florida's stop-recovery regression excludes it. The protocol was saved before
+future data collection, with previously seen IDs excluded. No smoother is yet
+published.
+
+Exact repeated SDK frame payloads are now excluded from figure extraction within
+the same sensor/session, retaining the earliest receipt and all raw records. This
+prevents a replay from introducing artificial clock/order breaks. A 40-record
+fixture with 20 exact repeats produces one continuous 20-observation track; the
+current fresh-data audit found no such repeats, so this is a robustness fix, not
+an explanation for every visible gap.
+
+Aggregate flow-lag and cached-road alignment audits are diagnostic only. They
+separate earlier selection from later comparison, preserve missing evidence, and
+never change calibration or establish cross-sensor identity. In particular, long
+Finch links cannot be validated by simply extending a line or increasing a time
+gate until it meets another trajectory.

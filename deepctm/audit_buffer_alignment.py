@@ -1,0 +1,61 @@
+"""Read-only road-alignment diagnostic on fresh recorded moving segments.
+
+Uses cached map geometry, never changes calibration. Splits by time before angle
+selection; an improved road-axis score is not proof of correct vehicle identity.
+"""
+import argparse,json,math,sqlite3,time
+from datetime import datetime
+from pathlib import Path
+import numpy as np
+from scripts.audit_map_rotations import roads,score
+from .corridor_campaign import atomic
+
+def segments(rows):
+    previous={};result=[]
+    for session,receipt,payload in rows:
+        event=json.loads(payload);frame=event.get('frame',{})
+        try:stamp=datetime.fromisoformat(frame.get('timestamp') or event['timestamp']).timestamp()
+        except (ValueError,KeyError,TypeError):continue
+        for obj in frame.get('objects',[]):
+            if str(obj.get('classType')) not in {'1','2','3','4','5','6','7','8','9','15'}:continue
+            try:p=np.array([float(obj['centerX']),float(obj['centerY'])]);key=(session,str(obj['id']))
+            except (ValueError,TypeError,KeyError):continue
+            if not np.isfinite(p).all():continue
+            old=previous.get(key)
+            if old is None:previous[key]=(stamp,receipt,p);continue
+            dt=stamp-old[0];dr=receipt-old[1]
+            if dt<1:continue
+            previous[key]=(stamp,receipt,p);delta=p-old[2];length=np.linalg.norm(delta);mid=(p+old[2])/2
+            if 1<=dt<=2 and 0<dr<=3 and .5<dt/dr<2 and 4<length/dt<30 and 25<np.linalg.norm(mid)<150:
+                result.append([receipt,*mid,*(delta/length)])
+    return np.asarray(result)
+
+def run(region,output):
+    root=Path(__file__).resolve().parents[1];name='Toronto' if region=='finch' else 'Florida'
+    entries=[s for s in json.loads((root/'config/sites.json').read_text())['sites'] if s['region']==name]
+    src=sqlite3.connect(f'file:{root}/data/{region}-rolling/buffer.sqlite3?mode=ro',uri=True,timeout=20)
+    db=sqlite3.connect(':memory:');src.backup(db,pages=128,sleep=.01);src.close()
+    end=db.execute('select max(received) from frames').fetchone()[0];start=end-1200;cut=end-600
+    ways=json.loads((root/f'data/alignment/{name}-roads.json').read_text())['elements'];result=[]
+    for site in entries:
+        p=segments(db.execute('select session,received,payload from frames where site=? and received>=? order by received',(site['id'],start)))
+        row={'site':site['id'],'name':site['name'],'segments':len(p),'rotation_deg':site.get('preview_rotation_deg',220),'mirror_y':site.get('preview_mirror_y',False)}
+        if len(p)<100:row['state']='insufficient_segments';result.append(row);continue
+        train=p[p[:,0]<cut];test=p[p[:,0]>=cut]
+        if min(len(train),len(test))<50:row['state']='insufficient_time_split';result.append(row);continue
+        train=train[np.linspace(0,len(train)-1,min(600,len(train))).astype(int)]
+        test=test[np.linspace(0,len(test)-1,min(600,len(test))).astype(int)]
+        if row['mirror_y']:train[:,[2,4]]*=-1;test[:,[2,4]]*=-1
+        a,b,names,oneway=roads(ways,site['reference_location'])
+        if not len(a):row['state']='no_cached_roads';result.append(row);continue
+        costs=[score(train,a,b,d,oneway=oneway) for d in range(360)];best=int(np.argmin(costs))
+        row.update(state='diagnostic_only',candidate_rotation_deg=best,oneway_segments=int(np.count_nonzero(oneway)),
+            current=score(test,a,b,row['rotation_deg'],True,oneway),candidate=score(test,a,b,best,True,oneway),
+            opposite=score(test,a,b,(row['rotation_deg']+180)%360,True,oneway))
+        result.append(row);print(site['name'],row['rotation_deg'],best,round(row['current']['score'],2),round(row['candidate']['score'],2),flush=True)
+    db.close();report={'window':[start,end],'split':cut,'sites':result,'created_at':time.time(),
+        'limitations':['Cached OSM centerlines are not surveyed lane geometry.','Turns and approximate sensor origins affect scores.','No calibration edits or identity claims.','Receipt times used for split; sensor timestamps only check local segment speed.']}
+    atomic(Path(output),report);return report
+
+if __name__=='__main__':
+    p=argparse.ArgumentParser();p.add_argument('--region',choices=['finch','florida'],required=True);p.add_argument('--output',required=True);a=p.parse_args();run(a.region,a.output)
