@@ -29,10 +29,8 @@ def truth_candidates(full,lo,hi):
 def run(region,output,windows=None,end=None):
     from dashboard.server import sites
     root=Path(__file__).resolve().parents[1]
-    src=sqlite3.connect(f'file:{root}/data/{region}-rolling/buffer.sqlite3?mode=ro',uri=True,timeout=20)
-    db=sqlite3.connect(':memory:')
-    try:src.backup(db,pages=128,sleep=.01)
-    finally:src.close()
+    from .buffer_snapshot import copy_buffer
+    db=copy_buffer(root/f'data/{region}-rolling/buffer.sqlite3')
     end=db.execute('select max(received) from frames').fetchone()[0] if end is None else end
     entries=[s for s in sites() if s['region']==('Florida' if region=='florida' else 'Toronto')]
     axes=json.loads((root/'config/reconstruction/corridor-road-axes.json').read_text())

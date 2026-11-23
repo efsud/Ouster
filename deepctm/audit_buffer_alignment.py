@@ -50,8 +50,8 @@ def run(region,output,site_id=None,plot=False):
     root=Path(__file__).resolve().parents[1];name='Toronto' if region=='finch' else 'Florida'
     entries=[s for s in json.loads((root/'config/sites.json').read_text())['sites'] if s['region']==name]
     if site_id:entries=[s for s in entries if s['id']==site_id]
-    src=sqlite3.connect(f'file:{root}/data/{region}-rolling/buffer.sqlite3?mode=ro',uri=True,timeout=20)
-    db=sqlite3.connect(':memory:');src.backup(db,pages=128,sleep=.01);src.close()
+    from .buffer_snapshot import copy_buffer
+    db=copy_buffer(root/f'data/{region}-rolling/buffer.sqlite3')
     end=db.execute('select max(received) from frames').fetchone()[0];start=end-1200;cut=end-600
     ways=json.loads((root/f'data/alignment/{name}-roads.json').read_text())['elements'];result=[]
     for site in entries:

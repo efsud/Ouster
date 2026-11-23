@@ -9,8 +9,8 @@ def run(protocol_path,output):
     root=Path(__file__).resolve().parents[1];plan=json.loads(Path(protocol_path).read_text())
     site=next(s for s in json.loads((root/'config/sites.json').read_text())['sites'] if s['id']==plan['site'])
     region='finch' if site['region']=='Toronto' else 'florida'
-    src=sqlite3.connect(f'file:{root}/data/{region}-rolling/buffer.sqlite3?mode=ro',uri=True,timeout=20)
-    db=sqlite3.connect(':memory:');src.backup(db,pages=128,sleep=.01);src.close()
+    from .buffer_snapshot import copy_buffer
+    db=copy_buffer(root/f'data/{region}-rolling/buffer.sqlite3')
     end=db.execute('select max(received) from frames where site=?',(site['id'],)).fetchone()[0]
     start=plan['after']+30
     result={'site':site['id'],'window':[start,end],'protocol':str(protocol_path),'created_at':time.time()}

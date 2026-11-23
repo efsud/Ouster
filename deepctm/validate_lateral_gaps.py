@@ -18,8 +18,9 @@ def identity_hash(site,key):
 
 def run(region,report,limit=12,after=None,excluded_ids=(),max_gap=30,deadline=None):
     from dashboard.server import sites
-    root=Path(__file__).resolve().parents[1];source=sqlite3.connect(f'file:{root}/data/{region}-rolling/buffer.sqlite3?mode=ro',uri=True)
-    memory=sqlite3.connect(':memory:');source.backup(memory,pages=128,sleep=.01);source.close()
+    from .buffer_snapshot import copy_buffer
+    root=Path(__file__).resolve().parents[1]
+    memory=copy_buffer(root/f'data/{region}-rolling/buffer.sqlite3',max_seconds=min(30,max(.1,deadline-time.time())) if deadline is not None else 30)
     raw={};region_name='Florida' if region=='florida' else 'Toronto'
     def observe(site,key,points):
         raw[(site['id'],tuple(key),round(points[0][0],2))]=points

@@ -879,3 +879,16 @@ current snapshot increased local estimates from 134 to 135; all 595 between-site
 paths and all previously accepted local paths were unchanged. The existing
 worker reads this configuration on its next refresh; the current layer was
 also regenerated and published. No collector restart or bound relaxation.
+
+### Validation-copy starvation fixed without stopping collection
+
+A one-second native performance sample showed the slow final batch spending
+its time in SQLite incremental backup, rather than model inference. Concurrent
+commits could repeatedly restart the copy. Validation copies now pin a
+consistent read transaction only while copying, close the source immediately,
+and enforce a 30-second progress deadline. No source write or collector pause.
+A real 457,645-frame Finch buffer copied in 3.212 seconds after the fix.
+Regression tests cover a concurrent commit and deadline cancellation; all 214
+scientific tests passed. The existing validation campaign resumed from its
+completed reports with the original deadline; the incomplete in-memory batch
+was discarded, not reported as a successful validation window.

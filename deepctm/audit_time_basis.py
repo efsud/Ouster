@@ -8,10 +8,8 @@ from .corridor_campaign import atomic
 def run(region,output):
     from dashboard.server import sites
     root=Path(__file__).resolve().parents[1]
-    source=sqlite3.connect(f'file:{root}/data/{region}-rolling/buffer.sqlite3?mode=ro',uri=True,timeout=20)
-    memory=sqlite3.connect(':memory:')
-    try:source.backup(memory,pages=128,sleep=.01)
-    finally:source.close()
+    from .buffer_snapshot import copy_buffer
+    memory=copy_buffer(root/f'data/{region}-rolling/buffer.sqlite3')
     end=memory.execute('select max(received) from frames').fetchone()[0]
     entries=[s for s in sites() if s['region']==('Florida' if region=='florida' else 'Toronto')]
     axes=json.loads((root/'config/reconstruction/corridor-road-axes.json').read_text());methods={}
