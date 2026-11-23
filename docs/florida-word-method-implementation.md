@@ -678,3 +678,37 @@ Development masks recovered one additional Finch stationary case (position MAE
 0.020 m), and no Florida cases. This is insufficient for deployment. A frozen
 future-data protocol requires at least three later windows and ten distinct
 newly recovered IDs before review, with no automatic publication.
+
+### Overlapping coverage is distinct from a missing spatial gap
+
+A current Florida endpoint audit found overlapping projected coverage at Cranes
+Roost/Hattaway in both directions and at Hattaway/Renaissance eastbound. A
+backward connector is not an acceptable way to join those observations. A
+separate diagnostic splits real local tracks into overlapping spatial views
+using disjoint alternating observations, with identities hidden from matching.
+Of 1,047 Florida paired scenarios, only 218 had enough sampled overlap evidence;
+216 were matched correctly with no false match. Finch had 736 supported pairs
+out of 1,245 scenarios, 727 correct matches and 2 false matches. Widths and
+endpoint-removal scenarios reuse vehicles; these are not independent counts.
+Both views still originate from one sensor, so this does not validate actual
+cross-sensor clock/position bias. Overlap hypotheses remain unpublished and no
+new line is drawn where overlapping observations already exist.
+
+### Dedicated quadratic solver comparison (unpublished)
+
+The kinematic loss is convex quadratic in interval velocity, with linear
+acceleration, displacement and endpoint constraints. An optional OSQP 1.0.5
+experiment expresses exactly that existing objective in matrix form. Unit tests
+compare loss differences and verify that impossible motion remains rejected.
+Strict physical checks still run after solving; current accepted estimates are
+preserved. Optional installation: `pip install -r requirements-reconstruction-experiments.txt`.
+Official API and formulation: https://osqp.org/docs/interfaces/python.html and
+https://osqp.org/docs/solver/index.html .
+
+On the development window, the fallback recovered 15 additional Finch masks:
+10 thirty-second cases averaged 2.36 m position MAE, while five sixty-second
+cases averaged 6.44 m. One additional Florida thirty-second case had 3.29 m MAE.
+The prospective review scope is therefore limited to <=30 s, frozen before later
+recordings, requiring three future windows and twenty distinct new IDs per
+region before review. Larger-gap results remain diagnostic; no solver fallback
+is enabled in the dashboard merely because it produces more lines.

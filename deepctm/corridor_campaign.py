@@ -96,6 +96,13 @@ def aggregate(output, complete=False):
         summary['regions'][region]['adaptive_grid_prospective']={'windows':len(adaptive),'evaluated':len(adaptive_rows),
             'added':len(added),'distinct_added_ids':len({c['identity_hash'] for c in added}),
             'added_quality':summarize([c['metrics'] for c in added])}
+        qp=[r['quadratic_solver_prospective'] for r in reports if 'quadratic_solver_prospective' in r]
+        qp_rows=[c for r in qp for c in r['cases']]
+        qp_added=[c for c in qp_rows if c['gap_s']<=30 and 'adaptive' in c['metrics'] and 'baseline' not in c['metrics']]
+        summary['regions'][region]['quadratic_solver_prospective']={'windows':len(qp),'evaluated':len(qp_rows),
+            'review_scope':'gap <=30 seconds; no automatic deployment','added':len(qp_added),
+            'distinct_added_ids':len({c['identity_hash'] for c in qp_added}),
+            'added_quality':summarize([c['metrics']['adaptive'] for c in qp_added])}
         clocks=[r['clock_prospective'] for r in reports if 'clock_prospective' in r]
         clock_rows=[c for r in clocks for c in r['cases']]
         clock_common=[c for c in clock_rows if len(c['metrics'])==2]
@@ -232,6 +239,14 @@ def run(output,deadline,interval=1800):
                             'note':'Unchanged physics and assignment thresholds; no automatic promotion.'}
                 rts_protocol=ROOT/'data/reconstruction/rts-review/protocol.json'
                 adaptive_protocol=ROOT/'data/reconstruction/adaptive-grid-review/protocol.json'
+                qp_protocol=ROOT/'data/reconstruction/qp-review/protocol.json'
+                if qp_protocol.exists() and time.time()<deadline:
+                    proposal=json.loads(qp_protocol.read_text());qp_begin=max(begin,proposal['after'])
+                    if s['end']-30>qp_begin:
+                        from .validate_quadratic_solver import evaluate as qp_evaluate
+                        qp_input=subset(s,max(0,qp_begin-s['start']),s['end']-s['start']-30,proposal['excluded_ids'])
+                        report['quadratic_solver_prospective']=qp_evaluate(qp_input,model['parameters'],deadline)
+                        report['quadratic_solver_prospective']['protocol_sha256']=hashlib.sha256(qp_protocol.read_bytes()).hexdigest()
                 if adaptive_protocol.exists() and time.time()<deadline:
                     proposal=json.loads(adaptive_protocol.read_text());adaptive_begin=max(begin,proposal['after'])
                     if s['end']-30>adaptive_begin:

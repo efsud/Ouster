@@ -1,0 +1,2 @@
+# Optional fallback-solver validation; not required by the deployed dashboard.
+osqp==1.0.5
