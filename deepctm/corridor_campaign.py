@@ -79,7 +79,7 @@ def aggregate(output, complete=False):
         associations=[r['association'] for r in reports if 'association' in r]
         extra=output/region/'global-comparison-001.json'
         if extra.exists() and reports and 'association' not in reports[0]:associations.insert(0,json.loads(extra.read_text()))
-        summary['regions'][region]={'windows':len(reports),'methods':methods,
+        summary['regions'][region]={'windows':len(reports),'geometry_versions':sorted({r.get('geometry_version','inter-sensor-chord-v1') for r in reports}),'methods':methods,
             'association':{method:{k:sum(r['totals'].get(method,{}).get(k,0) for r in associations) for k in ('eligible','matched','correct','false')} for method in ('baseline','physics_screened','global_partial')}}
     atomic(output/'summary.json',summary)
     return summary
@@ -128,7 +128,7 @@ def run(output,deadline,interval=1800):
                 model=models[region];begin=max(model['first_test_start'],last.get(region,s['start'])+30)
                 validation=evaluate(sample(s,max(0,begin-s['start']),s['end']-s['start']-30,excluded=model.get('excluded_test_ids',[])),model['parameters'],deadline)
                 report=dict(cycle=cycle,region=region,snapshot_sha256=hashlib.sha256(raw).hexdigest(),window=[s['start'],s['end']],evaluated_window=[begin,s['end']-30],
-                    model=model,results=validation,limitations=['No ground truth between sensors.','Known training/validation IDs excluded from test; multiple gap lengths per test vehicle are not independent.','No parameter retuning on later test windows.','No automatic promotion from these test scores.'])
+                    model=model,geometry_version=s.get('geometry_version','inter-sensor-chord-v1'),results=validation,limitations=['No ground truth between sensors.','Known training/validation IDs excluded from test; multiple gap lengths per test vehicle are not independent.','Geometry version is recorded; projection changes are not evidence of improved prediction accuracy.','No parameter retuning on later test windows.','No automatic promotion from these test scores.'])
                 from .campaign_association import evaluate as association_evaluate
                 report['association']=association_evaluate(subset(s,max(0,begin-s['start']),s['end']-s['start']-30,model.get('excluded_test_ids',[])),model['parameters'],deadline)
                 atomic(folder/f'cycle-{cycle:03}.json',report);last[region]=s['end'];state.update(state='evaluated',last_report=f'{region}/cycle-{cycle:03}.json',summary=validation['summary'])

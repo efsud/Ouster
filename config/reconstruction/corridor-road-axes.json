@@ -1,0 +1,23 @@
+{
+  "version": "finch-west-local-axis-20261123-v1",
+  "sites": {
+    "OBC-AG-SA-C251052": {
+      "name": "Finch W & Albion (LRT)",
+      "bearing_deg": 69.61552576231055,
+      "road_name": "Finch Avenue West",
+      "segments": 4,
+      "nearest_distance_m": 6.431634133717273,
+      "source": "cached OpenStreetMap named-road geometry",
+      "accuracy": "provisional local tangent, not surveyed"
+    },
+    "OBC-AG-SA-C257208": {
+      "name": "Finch W & Martin Grove (LRT)",
+      "bearing_deg": 16.9028158174185,
+      "road_name": "Finch Avenue West",
+      "segments": 4,
+      "nearest_distance_m": 9.443787375837193,
+      "source": "cached OpenStreetMap named-road geometry",
+      "accuracy": "provisional local tangent, not surveyed"
+    }
+  }
+}

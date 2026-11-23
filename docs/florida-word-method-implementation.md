@@ -302,3 +302,54 @@ Finch links, impossible travel, ambiguous duplicates, unmatched endpoints, class
 independent identity exclusion, and deadline behavior. Browser verification showed
 both Finch layer controls enabled and 12 local/82 between-site eastbound estimates.
 The eight-hour campaign is still running; its final report is not yet available.
+
+
+## Continued active investigation: projection and same-ID gaps
+
+Two concrete causes of disconnected lines were found and corrected:
+
+1. The rolling projection used the bearing of the chord between adjacent sensors.
+   At Martin Grove this was about 67 degrees from east, while cached named-road
+   geometry gives a local Finch tangent around 17 degrees. At Albion the chord
+   was 43 degrees versus a local tangent around 70 degrees. The straight chord
+   is inappropriate on this bend. A same-frame comparison recovered 417 classified
+   Martin Grove fragments (261 through fragments) where the chord classified none.
+   `config/reconstruction/corridor-road-axes.json` applies a provisional local
+   tangent to these two Finch sites only. Live-map LiDAR rotation is unchanged.
+   Projection version is stored in snapshots and prospective test reports.
+2. Same-ID fallback recovery skipped ordinary short fragment breaks when the class
+   stayed unchanged; it handled only class changes or full-frame outages. The
+   new optional recovery admits short stable-class breaks with the same sensor,
+   session, ID, SDK/receipt clock agreement, direction, lateral displacement and
+   exact endpoint physics gates. Gaps over 30 seconds still require an independently
+   observed recording outage. Intervening nonvehicle observations block a bridge.
+
+A separate bug deduplicated outage gaps by timestamps without checking the object.
+Several objects lost in the same frame outage share timestamps, so their estimates
+could be suppressed. Deduplication now includes sensor/session/object identity.
+A regression fixture with two objects sharing one outage retains both estimates.
+
+Recorded-data masking check for the new short-gap admission (10 and 30 seconds):
+
+| Corridor | Eligible | Pass identity/clock/lateral admission | Reconstructed | Position MAE | Case-MAE 95th percentile |
+|---|---:|---:|---:|---:|---:|
+| Florida | 102 | 66 | 45 | 1.48 m | 8.95 m |
+| Finch | 144 | 85 | 38 | 1.15 m | 3.91 m |
+
+Actual raw API timestamps and lateral positions at both visible endpoints were
+recovered from the retained rolling buffer. No raw endpoint evidence was missing.
+Only recorded interior positions were hidden. A stricter replay derives each flank’s direction from visible points and removes the full-track movement label; these are the final numbers above (the initial scaffold check reported 48 and 47 accepted). The strict estimator was tested;
+this does not establish cross-sensor identity, sensor timezone or surveyed geometry.
+The sample uses several lengths from some vehicles. Frozen calibration remains in
+use; `validate_same_class.py` does not train or select thresholds on these masks.
+Configuration stores validation hashes and limitations without storing raw data.
+
+A broader named-road ROI experiment remains **undeployed**: local road tangent
+alone can remove a carriageway from the old fixed +/-18 m strip, while substituting
+a map-based road-width buffer also removed observations at some Florida sites.
+These results require further scene/ROI work, not blanket widening. Connected-road
+versus chord distances are audited separately and not substituted automatically.
+Unresolved identity, motion or clock cases remain blank.
+
+Validation: 76 targeted tests passed after the same-ID/outage fixes, including
+existing movement, reconstruction, clock, ambiguity and endpoint checks.

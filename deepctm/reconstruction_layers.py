@@ -33,7 +33,7 @@ def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None):
     if abs(p[0,2]-aa['v'])>1.00001 or abs(p[-1,2]-bb['v'])>1.00001:return None
     p[:,1]*=sign;return p.tolist()
 
-def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None,association_distance_limit=350):
+def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None,association_distance_limit=350,same_class_recovery=False):
     if report.get('state')!='evaluated_ablation':raise ValueError('Completed held-out study required')
     local=[];between=[];rejected=defaultdict(int);endpoint_metadata={}
     def local_prediction(a,b,allow_correction=True):
@@ -59,14 +59,14 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
                     p=local_prediction(a,b)
                     if p is None:
                         rejected['short_local_physical_rejection']+=1;continue
-                    local.append(dict(**endpoint_metadata,site=site['id'],direction=tr['direction'],class_type='2',points=p,
+                    local.append(dict(**endpoint_metadata,identity_key=list(tr.get('source_key',[])[:2]),site=site['id'],direction=tr['direction'],class_type='2',points=p,
                         source='inferred',method=report['selected_method'],identity='same_sensor_session_and_track',
                         gap_s=gap,gap_kind='internal_sampling_gap'))
         for candidate in site.get('local_gap_candidates',[]):
             if candidate['class_type']!='2':continue
             a,b=candidate['a'],candidate['b'];p=local_prediction(a,b)
             if p is None:rejected['local_physical_rejection']+=1;continue
-            local.append(dict(**endpoint_metadata,site=site['id'],direction='eastbound' if b['x']>=a['x'] else 'westbound',class_type='2',points=p,
+            local.append(dict(**endpoint_metadata,identity_key=list(candidate.get('source_key',[])[:2]),site=site['id'],direction='eastbound' if b['x']>=a['x'] else 'westbound',class_type='2',points=p,
                 source='inferred',method=report['selected_method'],identity='same_sensor_session_track_and_chain',gap_s=b['t']-a['t'],gap_kind='between_fragments'))
         # Backward compatibility for snapshots predating model-independent admission.
         if 'local_gap_candidates' in site:continue
@@ -81,17 +81,17 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
                 if (round(a['t'],2),round(b['t'],2)) not in allowed:rejected['local_missing_2d_clock_support']+=1;continue
                 p=local_prediction(a,b)
                 if p is None:rejected['local_physical_rejection']+=1;continue
-                local.append(dict(**endpoint_metadata,site=site['id'],direction=before['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='same_sensor_session_and_track',gap_s=b['t']-a['t']))
+                local.append(dict(**endpoint_metadata,identity_key=list(key[:2]),site=site['id'],direction=before['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='same_sensor_session_and_track',gap_s=b['t']-a['t']))
     from .same_id_gaps import candidates as same_id_candidates
     for site in snapshot['sites']:
-        for candidate in same_id_candidates(site):
+        for candidate in same_id_candidates(site,include_same_class=same_class_recovery):
             a,b=candidate['a'],candidate['b'];p=local_prediction(a,b,allow_correction=all(c=='2' for c in candidate['classes']))
-            if any(q['site']==site['id'] and abs(q['points'][0][0]-a['t'])<.02 and abs(q['points'][-1][0]-b['t'])<.02 for q in local):continue
-            if p is None:rejected['class_change_physical_rejection']+=1;continue
-            local.append(dict(**endpoint_metadata,site=site['id'],direction=candidate['direction'],class_type=candidate['classes'][0],
+            if any(q['site']==site['id'] and q.get('identity_key')==list(candidate['identity']) and abs(q['points'][0][0]-a['t'])<.02 and abs(q['points'][-1][0]-b['t'])<.02 for q in local):continue
+            if p is None:rejected['same_id_physical_rejection']+=1;continue
+            local.append(dict(**endpoint_metadata,identity_key=list(candidate['identity']),site=site['id'],direction=candidate['direction'],class_type=candidate['classes'][0],
                 endpoint_classes=candidate['classes'],object_id=candidate['identity'][1],points=p,source='inferred',
-                method='endpoint_tangent_constrained_kinematic',identity='same_sensor_session_id_recording_gap' if candidate['recording_gap'] else 'same_sensor_session_id_class_changed',
-                gap_kind='recording_interruption' if candidate['recording_gap'] else 'classification_change',
+                method='endpoint_tangent_constrained_kinematic',identity='same_sensor_session_id_recording_gap' if candidate['recording_gap'] else 'same_sensor_session_id_class_changed' if candidate['classification_changed'] else 'same_sensor_session_id',
+                gap_kind='recording_interruption' if candidate['recording_gap'] else 'classification_change' if candidate['classification_changed'] else 'same_id_fragment_break',
                 missing_receipt_fraction=candidate['missing_receipt_fraction'],gap_s=b['t']-a['t']))
     from .local_tracklet_matching import reconstruct as reconnect_local
     if experimental_changed_ids:
@@ -114,7 +114,7 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             if p is None:rejected['between_physical_rejection']+=1;continue
             between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin']))
     return dict(state='ready',generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
-      endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
+      same_class_recovery=same_class_recovery,endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
       method=report['selected_method'],association_method=association_policy or 'feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
       association_diagnostics=[{k:v for k,v in link.items() if k!='paths'} | {'proposed_matches':len(link['paths'])} for link in associations['links']],
       comparison=report['test'],uncertainty=report['uncertainty'],
@@ -135,7 +135,9 @@ def main(watch,region='florida',deadline=None):
                     association_policy=json.loads(association_path.read_text()).get('method') if association_path.exists() else None
                     if region=='finch':
                         model=json.loads((folder/'policy.json').read_text());policy_config={'parameters':model.get('endpoint_policy'),'excluded_sites':model.get('excluded_sites',[])};association_policy='strict_physics_v1'
-                    result=generate(snapshot,report,association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy);temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']
+                    recovery_path=ROOT/'config/reconstruction/same-class-recovery.json'
+                    recovery=json.loads(recovery_path.read_text()) if recovery_path.exists() else {}
+                    result=generate(snapshot,report,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy);temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']
                     print(json.dumps({'state':'published','local':len(result['within_intersection']),'between':len(result['between_intersections'])}),flush=True)
         except (OSError,ValueError,KeyError) as exc:
             print(type(exc).__name__+': layers not published',flush=True)

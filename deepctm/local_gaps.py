@@ -4,7 +4,7 @@ from statistics import median
 VEHICLES={str(i) for i in [1,2,3,4,5,6,7,8,9,15]}
 MAX_GAP=30.
 
-def gap_evidence(before,after):
+def gap_evidence(before,after,road_roi=False):
     """Same-chain geometry/clock admission, independent of interpolation model."""
     if len(before)<5 or len(after)<5:return None
     a,b=before[-1],after[0];duration=b[0]-a[0]
@@ -22,7 +22,7 @@ def gap_evidence(before,after):
         velocities.append(along)
     sign=1 if b[1]>=a[1] else -1
     if any(v*sign<-.5 for v in velocities):return None
-    if any(abs(p[1])>120 or abs(p[2])>18 for p in (a,b)):return None
+    if any(abs(p[1])>120 or (not road_roi and abs(p[2])>18) for p in (a,b)):return None
     from .endpoint_speed import evidence
     return {'a':{'t':a[0],'x':a[1],'v':velocities[0],'velocity_evidence':evidence(before[-5:])},'b':{'t':b[0],'x':b[1],'v':velocities[1],'velocity_evidence':evidence(after[:5])},
             'sensor_receipt_ratio':ratio,'lateral_displacement_m':abs(b[2]-a[2])}

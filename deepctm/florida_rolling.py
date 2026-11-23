@@ -21,7 +21,7 @@ def purge(db,now):
     db.execute('DELETE FROM frames WHERE received < ?',(now-RETENTION,))
     db.execute('DELETE FROM phase_samples WHERE received < ?',(now-RETENTION,));db.commit()
 
-def geometry(sites):
+def geometry(sites,road_axes=None):
     sites=sorted(sites,key=lambda s:s['reference_location']['lng']);station=0;out=[]
     for i,s in enumerate(sites):
         origin=s['reference_location']
@@ -29,12 +29,14 @@ def geometry(sites):
             old=sites[i-1]['reference_location'];station+=math.hypot((origin['lng']-old['lng'])*111320*math.cos(math.radians(origin['lat'])),(origin['lat']-old['lat'])*111320)
         a=sites[max(0,i-1)]['reference_location'];b=sites[min(len(sites)-1,i+1)]['reference_location']
         bearing=math.atan2(b['lat']-a['lat'],(b['lng']-a['lng'])*math.cos(math.radians(origin['lat'])))
-        out.append(dict(s,station_m=station,bearing=bearing))
+        axis=(road_axes or {}).get('sites',{}).get(s['id'])
+        if axis is not None:bearing=math.radians(axis['bearing_deg'])
+        out.append(dict(s,station_m=station,bearing=bearing,trajectory_road_segments=axis.get('segments_xy') if axis else None))
     return out
 
-def build(db,sites,end,track_observer=None):
+def build(db,sites,end,track_observer=None,road_axes=None):
     start=end-WINDOW;output=[]
-    for s in geometry(sites):
+    for s in geometry(sites,road_axes):
         from dashboard.movements import TrackCollector
         movements=TrackCollector() if s.get('region') in ('Florida','Toronto') else None
         active={};tracks=[];chunks={};epochs={};identity_class={};local_estimates=[];receipt_gaps=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
@@ -76,7 +78,9 @@ def build(db,sites,end,track_observer=None):
                 except (ValueError,TypeError):continue
                 along=c*x-sn*y;across=sn*x+c*y
                 if movements is not None and key[2] in {'1','2','3','4','5','6','7','8','9','15'}:movements.feed(key,receipt,along,across)
-                if not math.isfinite(along+across) or abs(along)>120 or abs(across)>18:flush(key);continue
+                from .road_axes import road_contains
+                in_road=road_contains(along,across,s['trajectory_road_segments']) if s.get('trajectory_road_segments') else abs(across)<=18
+                if not math.isfinite(along+across) or abs(along)>120 or not in_road:flush(key);continue
                 old=active.get(key);speed=0
                 if old:
                     try:dt=(stamp-old[-1][4]).total_seconds()
@@ -97,7 +101,7 @@ def build(db,sites,end,track_observer=None):
         for (key,epoch),parts in chunks.items():
             if key[2] not in VEHICLES:continue
             for before,after in zip(parts,parts[1:]):
-                evidence=gap_evidence(before,after)
+                evidence=gap_evidence(before,after,road_roi=bool(s.get('trajectory_road_segments')))
                 if evidence is not None:
                     for ep in ('a','b'):
                         evidence[ep]['t']-=start;evidence[ep]['x']+=s['station_m']
@@ -124,8 +128,8 @@ def build(db,sites,end,track_observer=None):
                 evidence=mapping.get(tr['movement'].get('movement'),{})
                 tr['movement']['phase_numbers']=evidence.get('phase_numbers',[])
                 tr['movement']['phase_mapping']=evidence.get('phase_mapping','insufficient_or_ambiguous')
-        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'receipt_gaps':receipt_gaps,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
-    result={'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching.'}
+        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'projection_bearing_deg':math.degrees(s['bearing']),'frames':frames,'first_receipt':first,'last_receipt':last,'receipt_gaps':receipt_gaps,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
+    result={'geometry_version':((road_axes or {}).get('version','inter-sensor-chord-v1') if any(s['id'] in (road_axes or {}).get('sites',{}) for s in sites) else 'inter-sensor-chord-v1'),'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching.'}
     from .rolling_estimates import gap_validation
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)
     if sites and sites[0].get('region')=='Florida':
@@ -164,7 +168,10 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
     pool=ThreadPoolExecutor(max_workers=1);pending=None
     def compute(end):
         reader=sqlite3.connect(f'file:{folder}/buffer.sqlite3?mode=ro',uri=True,timeout=20)
-        try:return build(reader,entries,end)
+        try:
+            axis_path=ROOT/'config/reconstruction/corridor-road-axes.json'
+            axes=json.loads(axis_path.read_text()) if axis_path.exists() else None
+            return build(reader,entries,end,road_axes=axes)
         finally:reader.close()
     phase_saved={}
     while True:

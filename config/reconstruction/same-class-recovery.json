@@ -1,0 +1,62 @@
+{
+  "version": "same-id-short-fragment-v1",
+  "enabled_regions": [
+    "florida",
+    "finch"
+  ],
+  "scope": "Same site/session/object, stable or changed vehicle class; short gaps retain direction, SDK/receipt clock, lateral and exact endpoint physics checks; over 30s still requires recorded outage",
+  "validation": {
+    "florida": {
+      "sha256": "d13101549b7e9cd5299d3341ca7961fb31333508e5443d4c2f922629c92b51d3",
+      "eligible": 102,
+      "admitted": 66,
+      "accepted": 45,
+      "quality": {
+        "n": 45,
+        "mae_m": 1.4772354465688813,
+        "rmse_m": 1.6735248063875099,
+        "speed_mae_mps": 0.44996677497079446,
+        "stop_time_error_s": 0.829111111111119,
+        "physics_violation": 0.0,
+        "p95_case_mae_m": 8.946124646783423,
+        "stop_precision": 1.0,
+        "stop_recall": 0.9714285714285714
+      },
+      "geometry_version": "inter-sensor-chord-v1",
+      "limitations": [
+        "Recorded positions hidden; ID identity is known within a continuous source track.",
+        "SDK endpoint clock/lateral evidence is used; road alignment and sensor timezone remain provisional.",
+        "Several mask lengths may reuse one vehicle.",
+        "No cross-sensor identity ground truth.",
+        "Strict estimator only; no endpoint correction in this check.",
+        "Directions and visibility gates derived from the visible flanks only; no full-track movement label supplied."
+      ]
+    },
+    "finch": {
+      "sha256": "0b28cf2ed685862452b8951f1093a100dd84b8900899eca68cf685b96a3e8986",
+      "eligible": 144,
+      "admitted": 85,
+      "accepted": 38,
+      "quality": {
+        "n": 38,
+        "mae_m": 1.1454402314061474,
+        "rmse_m": 1.314810420599864,
+        "speed_mae_mps": 0.3679343069488527,
+        "stop_time_error_s": 0.8347368421052213,
+        "physics_violation": 0.0,
+        "p95_case_mae_m": 3.9129238918648634,
+        "stop_precision": 1.0,
+        "stop_recall": 0.9705882352941176
+      },
+      "geometry_version": "finch-west-local-axis-20261123-v1",
+      "limitations": [
+        "Recorded positions hidden; ID identity is known within a continuous source track.",
+        "SDK endpoint clock/lateral evidence is used; road alignment and sensor timezone remain provisional.",
+        "Several mask lengths may reuse one vehicle.",
+        "No cross-sensor identity ground truth.",
+        "Strict estimator only; no endpoint correction in this check.",
+        "Directions and visibility gates derived from the visible flanks only; no full-track movement label supplied."
+      ]
+    }
+  }
+}

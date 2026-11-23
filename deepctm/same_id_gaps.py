@@ -5,15 +5,16 @@ from .local_gaps import VEHICLES
 from .spatial_bridges import endpoint
 
 
-def candidates(site):
+def candidates(site,include_same_class=False):
     groups=defaultdict(list)
     for tr in site['tracks']:
         key=tr.get('source_key',[])
-        if len(key)==3 and tr.get('class_type') in VEHICLES:
+        if len(key)==3:
             groups[tuple(key[:2])].append(tr)
     for identity,tracks in groups.items():
         tracks.sort(key=lambda tr:tr['points'][0][0])
         for before,after in zip(tracks,tracks[1:]):
+            if before.get('class_type') not in VEHICLES or after.get('class_type') not in VEHICLES:continue
             if before['direction']!=after['direction']:continue
             a=endpoint(before['points'],True);b=endpoint(after['points'],False)
             if not a or not b or not .1<b['t']-a['t']<=120:continue
@@ -23,7 +24,8 @@ def candidates(site):
             missing=sum(max(0,min(b['t'],hi)-max(a['t'],lo)) for lo,hi in site.get('receipt_gaps',[]))
             outage=missing/duration>=.8
             if duration>30 and not outage:continue
-            if before['class_type']==after['class_type'] and not outage:continue
+            same_class=before['class_type']==after['class_type']
+            if same_class and not outage and (not include_same_class or duration<=1.5):continue
             try:
                 ratio=(datetime.fromisoformat(after['sensor_start'])-datetime.fromisoformat(before['sensor_end'])).total_seconds()/(b['t']-a['t'])
                 lateral=abs(after['lateral_start_m']-before['lateral_end_m'])
@@ -34,4 +36,4 @@ def candidates(site):
             sign=1 if before['direction']=='eastbound' else -1
             if (b['x']-a['x'])*sign<0 or min(a['v']*sign,b['v']*sign)<-.25:continue
             yield dict(a=a,b=b,identity=identity,classes=[before['class_type'],after['class_type']],direction=before['direction'],
-                recording_gap=outage,missing_receipt_fraction=min(1.,missing/duration))
+                recording_gap=outage,classification_changed=not same_class,missing_receipt_fraction=min(1.,missing/duration))

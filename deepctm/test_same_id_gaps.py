@@ -44,3 +44,29 @@ class RecordingInterruptionTests(unittest.TestCase):
     def test_short_outage_can_bridge_same_class(self):
         a=track('same',0,3);b=track('same',10,13)
         self.assertEqual(len(list(candidates({'tracks':[a,b],'receipt_gaps':[[3,10]]}))),1)
+
+
+class SameClassRecoveryTests(unittest.TestCase):
+    def test_same_class_recovery_is_explicit(self):
+        a=track('same',0,3);b=track('same',8,11)
+        self.assertEqual(list(candidates({'tracks':[a,b]})),[])
+        found=list(candidates({'tracks':[a,b]},include_same_class=True))
+        self.assertEqual(len(found),1);self.assertFalse(found[0]['classification_changed'])
+    def test_intervening_nonvehicle_track_is_not_skipped(self):
+        a=track('same',0,3);b=track('same',10,13);middle=track('same',5,8)
+        middle['class_type']='pedestrian';middle['source_key'][2]='pedestrian'
+        self.assertEqual(list(candidates({'tracks':[a,middle,b]},include_same_class=True)),[])
+    def test_long_gap_still_requires_recording_outage(self):
+        a=track('same',0,3);b=track('same',63,66)
+        self.assertEqual(list(candidates({'tracks':[a,b]},include_same_class=True)),[])
+
+
+class MultipleObjectsDuringOutageTests(unittest.TestCase):
+    def test_shared_frame_gap_does_not_deduplicate_different_objects(self):
+        from .reconstruction_layers import generate
+        tracks=[track(id,start,end) for id in ('one','two') for start,end in ((0,3),(8,11))]
+        site={'id':'site','name':'site','tracks':tracks,'receipt_gaps':[[3,8]],'local_gap_candidates':[]}
+        report={'state':'evaluated_ablation','selected_method':'kinematic_0.01','calibration':{'parameters':{'vmax':30,'amin':-4,'amax':3}},'test':{},'uncertainty':{}}
+        result=generate({'sites':[site],'start':0,'end':100,'generated_at':0},report)
+        self.assertEqual(len(result['within_intersection']),2)
+        self.assertEqual({tuple(p['identity_key']) for p in result['within_intersection']},{('session','one'),('session','two')})
