@@ -52,16 +52,46 @@ def replay_memory(db):
             db.execute('UPDATE frames SET received=?,payload=? WHERE site=? AND session=? AND event_key=?',(t,json.dumps(raw),site,session,key))
     db.commit();return evidence
 
-def align_frames(rows):
+def bounded_order(values,max_lateness_s):
+    """Experimental retrospective ordering, preserving timestamps and receipts.
+
+    Reject clock resets, duplicate timestamps, and frequent reordering. A tiny
+    permutation is not a clock correction and supplies no synchronization proof.
+    """
+    import json
+    try:
+        stamps=[]
+        for receipt,payload in values:
+            raw=json.loads(payload);stamps.append(datetime.fromisoformat(raw.get('frame',{}).get('timestamp') or raw.get('timestamp')))
+        elapsed=[(stamp-stamps[0]).total_seconds() for stamp in stamps]
+    except (TypeError,ValueError,IndexError):return values,{'state':'unavailable','reason':'invalid_clock_for_ordering'}
+    if len(set(elapsed))!=len(elapsed):return values,{'state':'unavailable','reason':'duplicate_sensor_timestamp'}
+    high=-math.inf;late=[]
+    for t in elapsed:
+        late.append(max(0.,high-t));high=max(high,t)
+    backwards=sum(x>0 for x in late);maximum=max(late,default=0.)
+    audit={'state':'candidate','reordered_late_frames':backwards,'maximum_lateness_s':maximum,
+           'declared_max_lateness_s':max_lateness_s,'timestamps_modified':False}
+    if maximum>max_lateness_s or backwards>len(values)*.01:
+        return values,dict(audit,state='unavailable',reason='excess_sensor_reordering_or_clock_reset')
+    order=sorted(range(len(values)),key=elapsed.__getitem__)
+    return [values[i] for i in order],audit
+
+def align_frames(rows,max_reorder_s=0.):
     """Return (session, plot_time, payload, original_receipt) and clock audit."""
     import json
     from collections import defaultdict
     grouped=defaultdict(list);output=[];audit=[]
     for session,receipt,payload in rows:grouped[session].append((receipt,payload))
     for session,values in grouped.items():
+        ordering={'state':'not_requested'}
+        if max_reorder_s>0:
+            values,ordering=bounded_order(values,max_reorder_s)
+            if ordering['state']!='candidate':
+                audit.append(dict(ordering,session=session,samples=len(values),ordering=ordering));continue
         decoded=[json.loads(payload) for _,payload in values]
         samples=[(receipt,raw.get('frame',{}).get('timestamp') or raw.get('timestamp')) for (receipt,_),raw in zip(values,decoded)]
-        result=align(samples);audit.append({k:v for k,v in result.items() if k not in ('times','anchor_receipt_epoch')}|{'session':session,'samples':len(values)})
+        result=align(samples);audit.append({k:v for k,v in result.items() if k not in ('times','anchor_receipt_epoch')}|{'session':session,'samples':len(values),'ordering':ordering})
         if result['state']!='candidate':continue
         output.extend((session,t,payload,receipt) for t,(receipt,payload) in zip(result['times'],values))
     return sorted(output,key=lambda row:row[1]),audit

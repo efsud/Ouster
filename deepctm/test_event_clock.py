@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime,timedelta
-from .event_clock import align
+from .event_clock import align,bounded_order
 class EventClockTests(unittest.TestCase):
     def rows(self):
         base=datetime(2026,1,1)
@@ -17,3 +17,19 @@ class EventClockTests(unittest.TestCase):
         self.assertEqual(r['times'],base['times']);self.assertTrue(r['retrospective_only'])
     def test_short_sample_is_not_aligned(self):
         self.assertEqual(align(self.rows()[:10])['state'],'unavailable')
+    def test_small_permutation_keeps_original_receipts_and_payloads(self):
+        import json
+        base=datetime(2026,1,1)
+        values=[(1000+i*.1,json.dumps({'timestamp':(base+timedelta(seconds=i*.1)).isoformat()})) for i in range(200)]
+        values[80],values[81]=values[81],values[80]
+        ordered,audit=bounded_order(values,.25)
+        self.assertEqual(audit['state'],'candidate');self.assertEqual(audit['reordered_late_frames'],1)
+        self.assertFalse(audit['timestamps_modified']);self.assertEqual(set(ordered),set(values))
+        self.assertLess(ordered[80][0],ordered[81][0])
+    def test_large_reset_or_timestamp_tie_is_rejected(self):
+        import json
+        values=[(t,json.dumps({'timestamp':s})) for t,s in self.rows()]
+        values[80],values[90]=values[90],values[80]
+        self.assertEqual(bounded_order(values,.25)[1]['state'],'unavailable')
+        values[80]=values[79]
+        self.assertEqual(bounded_order(values,.25)[1]['reason'],'duplicate_sensor_timestamp')

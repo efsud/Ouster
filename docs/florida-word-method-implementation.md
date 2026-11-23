@@ -712,3 +712,21 @@ The prospective review scope is therefore limited to <=30 s, frozen before later
 recordings, requiring three future windows and twenty distinct new IDs per
 region before review. Larger-gap results remain diagnostic; no solver fallback
 is enabled in the dashboard merely because it produces more lines.
+
+### Timeline and bounded-order diagnostics (unpublished)
+
+The first two prospective clock comparisons support further Finch testing:
+197 common masks averaged 1.80 m receipt-time MAE versus 1.59 m sensor-elapsed
+MAE. Grouping correlated masks by 174 vehicle IDs gave mean paired improvement
+0.232 m, bootstrap 95% interval [0.082, 0.430] m. This is conditional on tracks
+accepted by the experimental clock audit, not absolute clock synchronization.
+Florida's 41 common cases improved only 0.035 m, interval [-0.045, 0.136] m.
+
+A separate read-only experiment permits retrospective sorting of at most 1%
+of frames with <=0.25 s lateness, preserving every retained timestamp and receipt.
+Tied timestamps and larger resets still reject that experimental session. It
+restored Renaissance and Essex in one audit, but Boston and Plaza had distinct
+object observations sharing timestamps and remained excluded. No timing repair
+or sensor-time view is deployed. The raw buffer retains these observations.
+A Finch coverage audit also found short reconnect sessions failing clock-rate
+checks, so a blanket timeline switch could lose usable received data.

@@ -35,7 +35,7 @@ def geometry(sites,road_axes=None):
         out.append(dict(s,station_m=station,bearing=bearing,trajectory_road_segments=axis.get('segments_xy') if axis else None))
     return out
 
-def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",retain_stationary_context=False,processing_interval_s=0.,merge_vehicle_classes=False):
+def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",retain_stationary_context=False,processing_interval_s=0.,merge_vehicle_classes=False,clock_reorder_s=0.):
     if time_basis not in ("receipt","sensor_elapsed"):raise ValueError("Unknown time basis")
     start=end-WINDOW;output=[]
     for s in geometry(sites,road_axes):
@@ -85,7 +85,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
         clock_audit=[]
         if time_basis=='sensor_elapsed':
             from .event_clock import align_frames
-            processing_rows,clock_audit=align_frames(unique_rows)
+            processing_rows,clock_audit=align_frames(unique_rows,max_reorder_s=clock_reorder_s)
             for audit in clock_audit:
                 audit['outside_display_window']=sum(session==audit['session'] and not start<=t<=end for session,t,_,_ in processing_rows)
             processing_rows=[row for row in processing_rows if start<=row[1]<=end]
@@ -189,6 +189,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
     from .rolling_estimates import gap_validation
     from .transform_manifest import manifest
     result['transform_manifest']=manifest(sites)
+    result['clock_reorder_limit_s']=clock_reorder_s if time_basis=='sensor_elapsed' else 0.
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)
     if sites and sites[0].get('region')=='Florida':
         from .spatial_bridges import reconstruct
