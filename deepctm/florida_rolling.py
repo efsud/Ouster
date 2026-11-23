@@ -37,7 +37,7 @@ def build(db,sites,end,track_observer=None):
     for s in geometry(sites):
         from dashboard.movements import TrackCollector
         movements=TrackCollector() if s.get('region')=='Florida' else None
-        active={};tracks=[];chunks={};epochs={};local_estimates=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
+        active={};tracks=[];chunks={};epochs={};identity_class={};local_estimates=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
         def flush(key,break_chain=True):
             points=active.pop(key,[])
             epoch=epochs.get(key,0)
@@ -62,6 +62,14 @@ def build(db,sites,end,track_observer=None):
             for o in e.get('frame',{}).get('objects',[]):
                 if not o.get('id'):continue
                 key=(session,str(o['id']),str(o.get('classType','unknown')))
+                if s.get('region')=='Florida':
+                    previous_class=identity_class.get(key[:2])
+                    if previous_class is not None and previous_class!=key[2]:
+                        # A label change is not a new identity. End the old
+                        # displayed fragment so class-specific tracks cannot
+                        # overlap by silently skipping intervening observations.
+                        flush((*key[:2],previous_class),break_chain=False)
+                    identity_class[key[:2]]=key[2]
                 try:x=float(o.get('centerX',0));y=float(o.get('centerY',0))*(-1 if s.get('preview_mirror_y') else 1)
                 except (ValueError,TypeError):continue
                 along=c*x-sn*y;across=sn*x+c*y

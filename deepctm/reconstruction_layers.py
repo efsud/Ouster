@@ -10,14 +10,15 @@ from .spatial_bridges import endpoint,reconstruct
 ROOT=Path(__file__).resolve().parents[1]
 FOLDER=ROOT/'data/reconstruction/word-v1-collection'
 
-def prediction(a,b,report):
+def prediction(a,b,report,exact_join=False):
     method=report['selected_method'];params=report['calibration']['parameters']
     sign=1 if b['x']>=a['x'] else -1
     aa={**a,'x':a['x']*sign,'v':a['v']*sign};bb={**b,'x':b['x']*sign,'v':b['v']*sign}
     if min(aa['v'],bb['v'])<-.5 or bb['x']<aa['x']:return None
     p=baseline(aa,bb,'linear' if method=='M1_linear' else 'hermite')
     if method.startswith('kinematic_'):
-        r=refine(aa,bb,p,**params,smoothness=float(method.split('_')[1]))
+        r=refine(aa,bb,p,**params,smoothness=float(method.split('_')[1]),
+                 position_tolerance=0. if exact_join else 1.,speed_tolerance=0. if exact_join else 1.)
         if r['state']!='candidate':return None
         p=r['points']
     acc=np.diff(p[:,2])/np.diff(p[:,0])
@@ -45,7 +46,7 @@ def generate(snapshot,report,experimental_changed_ids=False):
                     b=endpoint(points[i:i+5],False)
                     if a is None or b is None:
                         rejected['short_local_insufficient_context']+=1;continue
-                    p=prediction(a,b,report)
+                    p=prediction(a,b,report,exact_join=True)
                     if p is None:
                         rejected['short_local_physical_rejection']+=1;continue
                     local.append(dict(site=site['id'],direction=tr['direction'],class_type='2',points=p,
@@ -53,7 +54,7 @@ def generate(snapshot,report,experimental_changed_ids=False):
                         gap_s=gap,gap_kind='internal_sampling_gap'))
         for candidate in site.get('local_gap_candidates',[]):
             if candidate['class_type']!='2':continue
-            a,b=candidate['a'],candidate['b'];p=prediction(a,b,report)
+            a,b=candidate['a'],candidate['b'];p=prediction(a,b,report,exact_join=True)
             if p is None:rejected['local_physical_rejection']+=1;continue
             local.append(dict(site=site['id'],direction='eastbound' if b['x']>=a['x'] else 'westbound',class_type='2',points=p,
                 source='inferred',method=report['selected_method'],identity='same_sensor_session_track_and_chain',gap_s=b['t']-a['t'],gap_kind='between_fragments'))
@@ -68,9 +69,18 @@ def generate(snapshot,report,experimental_changed_ids=False):
                 a=endpoint(before['points'],True);b=endpoint(after['points'],False)
                 if not a or not b or not 3<b['t']-a['t']<=30:continue
                 if (round(a['t'],2),round(b['t'],2)) not in allowed:rejected['local_missing_2d_clock_support']+=1;continue
-                p=prediction(a,b,report)
+                p=prediction(a,b,report,exact_join=True)
                 if p is None:rejected['local_physical_rejection']+=1;continue
                 local.append(dict(site=site['id'],direction=before['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='same_sensor_session_and_track',gap_s=b['t']-a['t']))
+    from .same_id_gaps import candidates as same_id_candidates
+    for site in snapshot['sites']:
+        for candidate in same_id_candidates(site):
+            a,b=candidate['a'],candidate['b'];p=prediction(a,b,report,exact_join=True)
+            if p is None:rejected['class_change_physical_rejection']+=1;continue
+            local.append(dict(site=site['id'],direction=candidate['direction'],class_type=candidate['classes'][0],
+                endpoint_classes=candidate['classes'],object_id=candidate['identity'][1],points=p,source='inferred',
+                method='endpoint_tangent_constrained_kinematic',identity='same_sensor_session_id_class_changed',
+                gap_kind='classification_change',gap_s=b['t']-a['t']))
     from .local_tracklet_matching import reconstruct as reconnect_local
     if experimental_changed_ids:
         for site in snapshot['sites']:
