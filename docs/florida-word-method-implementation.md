@@ -834,3 +834,9 @@ identical. The Finch derived-layer worker was reloaded; collectors were not
 restarted. All 211 scientific tests passed. Florida remains disabled pending
 its unchanged minimum sample requirements. Broad OSQP fallback failed quality
 limits in both regions and remains unpublished.
+
+The figure status and hover text now distinguish adaptive-grid estimates from
+stationary latent-position estimates, including the latter's endpoint residual.
+Browser verification showed the two grid retries and one stationary fallback
+with both estimated layers enabled; the current eastbound view displayed 18
+local and 62 between-site estimates. JavaScript syntax validation passed.

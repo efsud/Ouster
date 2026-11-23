@@ -76,7 +76,7 @@ function paintReconstruction(c,x,y,selected){
    let seen=false,distance=0;
    for(let i=1;i<path.points.length;i++){
     const a=path.points[i-1],b=path.points[i],ta=data.start+a[0],tb=data.start+b[0],length=Math.hypot(x(tb)-x(ta),y(b[1])-y(a[1]));
-    if(tb>=view[0]&&ta<=view[1]){seen=true;c.strokeStyle=color(b[2]);c.lineWidth=1.8;c.setLineDash(group?[8,5]:[3,4]);c.lineDashOffset=-distance;c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],name:'EST '+(group?'between intersections · identity unverified':'within intersection'+(path.identity==='unverified_same_site_changed_id'?' · identity unverified':''))+' · '+path.method+(path.object_id?' · object ID '+path.object_id:'')});}distance+=length;
+    if(tb>=view[0]&&ta<=view[1]){seen=true;c.strokeStyle=color(b[2]);c.lineWidth=1.8;c.setLineDash(group?[8,5]:[3,4]);c.lineDashOffset=-distance;c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],name:'EST '+(group?'between intersections · identity unverified':'within intersection'+(path.identity==='unverified_same_site_changed_id'?' · identity unverified':''))+' · '+(path.estimation_model||path.method)+(path.exact_endpoint_interpolation===false?' · stationary estimate; endpoint residual ≤'+(100*Math.max(...(path.endpoint_position_residual_m||[0]).map(Math.abs))).toFixed(1)+' cm':'')+(path.object_id?' · object ID '+path.object_id:'')});}distance+=length;
    }if(seen)counts[group]++;
   }
  }
@@ -90,7 +90,9 @@ async function refreshReconstruction(){
   const aligned=reconstruction.state==='ready'&&data&&reconstruction.snapshot_generated_at===data.generated_at;
   for(const id of ['within-layer','between-layer'])el(id).disabled=!aligned;
   const study=reconstruction.study||{},parts=study.readiness?.partitions;
-  el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method}${reconstruction.endpoint_corrected_gaps?' + bounded stationary endpoint correction on '+reconstruction.endpoint_corrected_gaps+' gaps':''}. Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
+  const fallbackCounts={plateau:0,grid:0};for(const p of reconstruction.within_intersection||[]){if(p.estimation_model==='bounded_stationary_latent_position')fallbackCounts.plateau++;if(p.estimation_model==='endpoint_envelope_grid_retry_v1')fallbackCounts.grid++;}
+  const fallbackNote=(fallbackCounts.plateau||fallbackCounts.grid)?` Local fallbacks: ${fallbackCounts.grid} exact-endpoint grid retries; ${fallbackCounts.plateau} stationary estimates with up to 5 cm endpoint residual. Observations are unchanged.`:'';
+  el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method}${reconstruction.endpoint_corrected_gaps?' + bounded stationary endpoint correction on '+reconstruction.endpoint_corrected_gaps+' gaps':''}.${fallbackNote} Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
   const host=el('reconstruction-comparison');host.replaceChildren();
   if(reconstruction.campaign){
    const c=reconstruction.campaign,p=document.createElement('p');
