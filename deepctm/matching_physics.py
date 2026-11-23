@@ -22,7 +22,7 @@ def reachability(a,b,params):
     if dx>maximum+1e-6:return 'too_much_distance_for_available_time'
     return None
 
-def associate(left,right,params):
+def associate(left,right,params,max_distance=350):
     from .spatial_bridges import associate_residual
     return associate_residual(left,right,threshold=1.5,margin=.25,max_rounds=1,
-                              edge_filter=lambda a,b:reachability(a,b,params) is None)
+                              edge_filter=lambda a,b:reachability(a,b,params) is None,max_distance=max_distance)

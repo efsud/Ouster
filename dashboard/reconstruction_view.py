@@ -6,7 +6,7 @@ FOLDER=Path(__file__).resolve().parents[1]/'data/reconstruction/word-v1-collecti
 def read(now=None,folder=FOLDER):
     now=time.time() if now is None else now
     try:status=json.loads((folder/'status.json').read_text())
-    except (OSError,ValueError):return {'state':'waiting','message':'Waiting for the Florida reconstruction study.'}
+    except (OSError,ValueError):return {'state':'waiting','message':'Waiting for the corridor reconstruction study.'}
     safe={k:status[k] for k in ('state','updated_at','readiness','selected_method','test','uncertainty','last_result') if k in status}
     safe['study_age_s']=max(0,now-status.get('updated_at',0))
     try:layers=json.loads((folder/'layers.json').read_text())
@@ -28,8 +28,16 @@ def read(now=None,folder=FOLDER):
     if endpoint and endpoint.get('state')!='complete':endpoint=None
     try:all_sites=json.loads((folder.parent/'all-florida/pair-audit.json').read_text()).get('site_validation',[])
     except (OSError,ValueError):all_sites=[]
+    if folder.name=='finch':archive=None;endpoint=None;all_sites=[]
+    campaign=None
+    try:
+        c=json.loads((folder.parent/'eight-hour-20261123/status.json').read_text())
+        region='finch' if folder.name=='finch' else 'florida'
+        campaign={k:c.get(k) for k in ('state','started_at','deadline','updated_at')}
+        campaign['region']=c.get('regions',{}).get(region,{})
+    except (OSError,ValueError):pass
     pair_diagnostics=[]
     for link in layers.get('association_diagnostics',[]):
         displayed=sum(p['sites']==link['sites'] and p['direction']==link['direction'] for p in layers.get('between_intersections',[]))
         pair_diagnostics.append({**link,'displayed_matches':displayed,'final_rejections':link['proposed_matches']-displayed})
-    return {**layers,'all_site_validation':all_sites,'pair_diagnostics':pair_diagnostics,'endpoint_validation':endpoint,'archive_validation':archive,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}
+    return {**layers,'campaign':campaign,'all_site_validation':all_sites,'pair_diagnostics':pair_diagnostics,'endpoint_validation':endpoint,'archive_validation':archive,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}

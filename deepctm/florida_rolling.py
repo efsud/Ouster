@@ -36,7 +36,7 @@ def build(db,sites,end,track_observer=None):
     start=end-WINDOW;output=[]
     for s in geometry(sites):
         from dashboard.movements import TrackCollector
-        movements=TrackCollector() if s.get('region')=='Florida' else None
+        movements=TrackCollector() if s.get('region') in ('Florida','Toronto') else None
         active={};tracks=[];chunks={};epochs={};identity_class={};local_estimates=[];receipt_gaps=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
         def flush(key,break_chain=True):
             points=active.pop(key,[])
@@ -64,7 +64,7 @@ def build(db,sites,end,track_observer=None):
             for o in e.get('frame',{}).get('objects',[]):
                 if not o.get('id'):continue
                 key=(session,str(o['id']),str(o.get('classType','unknown')))
-                if s.get('region')=='Florida':
+                if movements is not None:
                     previous_class=identity_class.get(key[:2])
                     if previous_class is not None and previous_class!=key[2]:
                         # A label change is not a new identity. End the old

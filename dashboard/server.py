@@ -96,9 +96,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             q = {k:v[0] for k,v in parse_qs(parsed.query).items()}
-            if parsed.path == '/api/florida-reconstruction':
+            if parsed.path in {'/api/florida-reconstruction','/api/finch-reconstruction'}:
                 from .reconstruction_view import read
-                return self.send(read())
+                return self.send(read(folder=Path(__file__).resolve().parents[1]/'data/reconstruction/finch') if parsed.path == '/api/finch-reconstruction' else read())
             if parsed.path == '/api/florida-pair':
                 from deepctm.pair_view import read
                 return self.send(read())

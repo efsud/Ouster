@@ -240,3 +240,65 @@ The site-by-site endpoint audit also found that the corridor mean obscured Hatta
 The dashboard exposes each pair's departure/arrival fragments, displayed connections and final motion rejections. Counts of unmatched fragments are not counts of unique missing vehicles. The between-intersection layer must be enabled separately; it is never confused with within-intersection gap filling. Reports, frozen comparison snapshot and plot are stored in `data/reconstruction/all-florida/`.
 
 Rollout checks: 69 targeted tests passed. The estimate worker and dashboard were refreshed without stopping collection. Browser verification showed all 12 directed pair rows, Hattaway's withheld status, and 191 eastbound estimated connections with the between-intersection layer enabled (331 across both directions). The `?between=1` figures link opens that layer explicitly; its dashed paths remain labeled estimated.
+
+
+## November 22–23: Finch support and bounded prospective evaluation
+
+User policy: keep unresolved gaps blank; show evidence-supported estimates only.
+No simulated continuation layer and no guarantee of zero disconnected trajectories.
+
+Finch now uses the shared within-intersection estimator, class-independent session/
+object continuity checks, and two separate dashed layers. Its rolling pipeline
+classifies observed 2D movement before linking corridor endpoints. Jane currently
+has no frames and remains unavailable. No connection skips across a missing site.
+The Finch matcher explicitly allows longer distances, bounded by its training-derived
+speed limit and the existing 120-second limit; time, movement, ambiguity, and final
+physical constraints still apply. Florida retains its 350 m default.
+
+For example, a unique 600 m connection at 15 m/s over 40 s is admitted for Finch;
+the same displacement in 5 s is rejected. Duplicate equally plausible endpoints
+remain unresolved. This is a hypothesis of identity, not identification of a car
+across sensors.
+
+The bounded campaign lives in `deepctm/corridor_campaign.py`. Its stop deadline is
+2026-11-23 12:22:17 UTC (07:22:17 Toronto), eight hours after the requested session
+started. It evaluates existing rolling snapshots every half hour, saves metrics
+and frozen models, and preserves the 90-minute raw buffer retention. It is an
+existing-code experiment worker, not eight hours of autonomous code editing.
+Models and completed reports survive worker restart. Known training/validation
+IDs (ignoring class changes) are excluded from test masks. Multiple lengths from
+one vehicle are correlated cases, not independent vehicles. Test results cannot
+automatically promote a new method or change the model.
+
+First fresh masked-gap results (10, 30, 60, 90 s where observations permit):
+
+| Corridor | Eligible masks | Strict accepted | Correction candidate accepted | Added-case position MAE |
+|---|---:|---:|---:|---:|
+| Florida | 71 | 40 | 50 | 0.073 m (10 cases) |
+| Finch | 112 | 53 | 79 | 0.189 m (26 cases) |
+
+The common cases are unchanged. Finch's correction candidate passed pooled
+validation but each site has fewer than ten newly accepted validation cases;
+therefore correction is withheld at every Finch site for now. The strict local
+estimator is deployed. Florida's previously excluded Hattaway correction stays
+excluded. These candidate acceptance counts are not deployed connection counts.
+
+A new experimental global partial assignment uses explicit unmatched alternatives
+and an optimal-assignment cost margin. It is **not deployed**. On the first already
+scored spatial-mask window, Florida was unchanged (137 correct/3 false), while
+Finch improved from 104 correct/2 false to 105 correct/2 false. Eligible counts were
+183 and 146 respectively, with deliberately missing endpoints. This is exploratory
+reuse of a test window; later campaign windows provide prospective comparisons.
+Local spatial masks do not validate true cross-sensor identities or unknown clock
+offsets. No verified signal permission or lane leader is invented.
+
+Initial Finch layer publication contains 18 within-intersection estimates and 142
+cross-intersection hypotheses across both directions. Counts change with each
+recorded window. The UI displays counts after selection and direction filtering.
+
+Validation: 74 existing/new targeted tests passed before the additional global
+assignment tests; all four global assignment tests passed. These cover longer
+Finch links, impossible travel, ambiguous duplicates, unmatched endpoints, class-
+independent identity exclusion, and deadline behavior. Browser verification showed
+both Finch layer controls enabled and 12 local/82 between-site eastbound estimates.
+The eight-hour campaign is still running; its final report is not yet available.

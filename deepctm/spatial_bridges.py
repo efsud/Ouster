@@ -69,9 +69,9 @@ def curve(a,b,method='monotone',step=.25):
         result.append([a['t']+u*dt,x,abs(v)])
     return result
 
-def pair_cost(a,b):
+def pair_cost(a,b,max_distance=350):
     dt=b['t']-a['t'];dx=b['x']-a['x'];sign=1 if dx>0 else -1
-    if not 0<dt<=120 or not 2<abs(dx)<350 or min(a['v']*sign,b['v']*sign)<1:return None
+    if not 0<dt<=120 or not 2<abs(dx)<max_distance or min(a['v']*sign,b['v']*sign)<1:return None
     speed=(abs(a['v'])+abs(b['v']))/2;expected=abs(dx)/speed
     if abs(dx)/dt>35:return None
     return abs(dt-expected)/max(2,.35*expected)+abs(abs(a['v'])-abs(b['v']))/15+(0 if a['class_type']==b['class_type'] else .75)
@@ -111,7 +111,7 @@ def associate(left,right,threshold=1.5,margin=.25,method="legacy"):
         used_a.add(i);used_b.add(j);accepted.append({'left':i,'right':j,'cost':cost,'margin':separation,'points':points})
     return accepted
 
-def associate_residual(left,right,threshold=1.5,margin=.25,max_rounds=None,edge_filter=None):
+def associate_residual(left,right,threshold=1.5,margin=.25,max_rounds=None,edge_filter=None,max_distance=350):
     """Resolve mutual-best matches in rounds; remove occupied endpoints from rivals.
 
     Infeasible curves cannot compete. Never relax cost/margin gates, reuse an
@@ -121,7 +121,7 @@ def associate_residual(left,right,threshold=1.5,margin=.25,max_rounds=None,edge_
     candidates={}
     for i,a in enumerate(left):
         for j,b in enumerate(right):
-            cost=pair_cost(a,b)
+            cost=pair_cost(a,b,max_distance=max_distance)
             if cost is None or cost>threshold:continue
             if edge_filter is not None and not edge_filter(a,b):continue
             points=curve(a,b)

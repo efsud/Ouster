@@ -2,7 +2,7 @@
 const el=id=>document.getElementById(id),vehicle=new Set(['1','2','3','4','5','6','7','8','9','15']);
 const corridor=document.body.dataset.corridor||'florida',regionName=corridor==='finch'?'Toronto':'Florida';
 let data=null,view=null,points=[],version=0,reconstruction=null;
-if(corridor==='florida'&&new URLSearchParams(location.search).get('between')==='1'&&el('between-layer'))el('between-layer').checked=true;
+if(new URLSearchParams(location.search).get('between')==='1'&&el('between-layer'))el('between-layer').checked=true;
 const clock=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:corridor==='finch'?'America/Toronto':'America/New_York',hour12:false});
 function color(v){const t=Math.max(0,Math.min(1,v/20));return `hsl(${t*120},75%,40%)`;}
 function draw(){
@@ -56,7 +56,7 @@ function zoom(f,fraction=.5){
 }
 async function refresh(){if(data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(`/api/${corridor}-rolling`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
  el('message').textContent=`Figure updated ${clock(next.generated_at)} · Next update ${clock(next.next_update)} ${regionName} time. Shows ${clock(next.start)}–${clock(next.end)}; early collection may cover less than one hour.`;
- if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();if(corridor==='florida')refreshReconstruction();
+ if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();refreshReconstruction();
  }catch(e){el('message').textContent=e.message;}}
 if(el('spatial-estimates'))el('spatial-estimates').onchange=draw;
 el('direction').onchange=draw;el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
@@ -67,7 +67,7 @@ el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.cli
 if(el("additional-matches"))el("additional-matches").onchange=draw;
 
 function paintReconstruction(c,x,y,selected){
- if(corridor!=='florida'||!reconstruction||reconstruction.state!=='ready'||reconstruction.snapshot_generated_at!==data.generated_at)return;
+ if(!reconstruction||reconstruction.state!=='ready'||reconstruction.snapshot_generated_at!==data.generated_at)return;
  const counts=[0,0],allowed=['all','vehicles'].includes(el('objects').value);
  const groups=[['within-layer',reconstruction.within_intersection||[],0],['between-layer',reconstruction.between_intersections||[],1]];
  for(const [control,paths,group] of groups){if(!allowed||!el(control)?.checked)continue;
@@ -84,15 +84,21 @@ function paintReconstruction(c,x,y,selected){
  if(el('layer-counts'))el('layer-counts').textContent=`Visible estimates: ${counts[0]} within intersections; ${counts[1]} between intersections. Colors indicate speed, not confidence.`+(el('within-layer')?.checked&&counts[0]===0?' No supported local estimates in this selection; checking the box cannot join unidentified fragments.':'');
 }
 async function refreshReconstruction(){
- if(corridor!=='florida'||!el('reconstruction-status'))return;
+ if(!el('reconstruction-status'))return;
  try{
-  const response=await fetch('/api/florida-reconstruction');if(!response.ok)throw Error('Reconstruction study unavailable');reconstruction=await response.json();
+  const response=await fetch(`/api/${corridor}-reconstruction`);if(!response.ok)throw Error('Reconstruction study unavailable');reconstruction=await response.json();
   const aligned=reconstruction.state==='ready'&&data&&reconstruction.snapshot_generated_at===data.generated_at;
   for(const id of ['within-layer','between-layer'])el(id).disabled=!aligned;
   const study=reconstruction.study||{},parts=study.readiness?.partitions;
-  el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method}${reconstruction.endpoint_policy?' + bounded stationary endpoint correction':''}. Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
+  el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method}${reconstruction.endpoint_corrected_gaps?' + bounded stationary endpoint correction on '+reconstruction.endpoint_corrected_gaps+' gaps':''}. Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
   const host=el('reconstruction-comparison');host.replaceChildren();
+  if(reconstruction.campaign){
+   const c=reconstruction.campaign,p=document.createElement('p');
+   p.textContent=`Bounded validation run: ${c.state}; scheduled end ${new Date(c.deadline*1000).toLocaleString('en-CA',{timeZone:'America/Toronto'})} Toronto. This compares fixed estimators on later recorded windows; it does not force unresolved matches.`;
+   host.append(p);
+  }
   if(reconstruction.comparison){
+   const note=document.createElement('p');note.textContent='Candidate comparisons below may include corrections withheld from deployment at individual sites.';host.append(note);
    for(const [method,result] of Object.entries(reconstruction.comparison)){
     const p=document.createElement('p'),m=result.common||{};p.textContent=`${method}: ${m.n||0} common held-out gaps; position MAE ${m.mae_m?.toFixed(2)??'unavailable'} m; speed MAE ${m.speed_mae_mps?.toFixed(2)??'unavailable'} m/s. Accepted ${result.accepted}/${result.eligible}.`;host.append(p);
    }

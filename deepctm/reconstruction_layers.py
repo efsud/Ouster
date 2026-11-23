@@ -33,7 +33,7 @@ def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None):
     if abs(p[0,2]-aa['v'])>1.00001 or abs(p[-1,2]-bb['v'])>1.00001:return None
     p[:,1]*=sign;return p.tolist()
 
-def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None):
+def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None,association_distance_limit=350):
     if report.get('state')!='evaluated_ablation':raise ValueError('Completed held-out study required')
     local=[];between=[];rejected=defaultdict(int);endpoint_metadata={}
     def local_prediction(a,b,allow_correction=True):
@@ -103,7 +103,7 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
     matcher=None
     if association_policy=='strict_physics_v1':
         from .matching_physics import associate as physical_associate
-        matcher=lambda a,b:physical_associate(a,b,report['calibration']['parameters'])
+        matcher=lambda a,b:physical_associate(a,b,report['calibration']['parameters'],max_distance=association_distance_limit)
     associations=reconstruct(association_snapshot,association_method='feasible',matcher=matcher)
     by_id={s['id']:s for s in association_snapshot['sites']}
     for link in associations['links']:
@@ -120,19 +120,22 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
       comparison=report['test'],uncertainty=report['uncertainty'],
       limitations=['Selected local reconstruction ablation; not full Newell+CTM+signal model','Between-intersection accuracy and identities are unverified; applying local method across sensors is domain transfer','No inferred signal permissions or invented same-lane leaders','Validation uncertainty applies to prior local masked gaps only, not corrected endpoints or between sensors'])
 
-def main(watch):
-    FOLDER.mkdir(parents=True,exist_ok=True);lock=open(FOLDER/'layers.lock','w');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);last=None
-    while True:
+def main(watch,region='florida',deadline=None):
+    folder=FOLDER if region=='florida' else ROOT/'data/reconstruction/finch'
+    folder.mkdir(parents=True,exist_ok=True);lock=open(folder/'layers.lock','w');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);last=None
+    while deadline is None or time.time()<deadline:
         try:
-            status=json.loads((FOLDER/'status.json').read_text())
+            status=json.loads((folder/'status.json').read_text())
             if status.get('state')=='evaluated_ablation':
-                report=json.loads(Path(status['report']).read_text());snapshot=json.loads((ROOT/'data/florida-rolling/snapshot.json').read_text())
+                report=json.loads(Path(status['report']).read_text());snapshot=json.loads((ROOT/f'data/{region}-rolling/snapshot.json').read_text())
                 if snapshot['start']>=time.time()-5400 and snapshot['generated_at']!=last:
                     policy_path=ROOT/'config/reconstruction/florida-endpoint-speed.json'
                     policy_config=json.loads(policy_path.read_text()) if policy_path.exists() else {}
                     association_path=ROOT/'config/reconstruction/florida-association.json'
                     association_policy=json.loads(association_path.read_text()).get('method') if association_path.exists() else None
-                    result=generate(snapshot,report,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy);temp=FOLDER/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(FOLDER/'layers.json');last=snapshot['generated_at']
+                    if region=='finch':
+                        model=json.loads((folder/'policy.json').read_text());policy_config={'parameters':model.get('endpoint_policy'),'excluded_sites':model.get('excluded_sites',[])};association_policy='strict_physics_v1'
+                    result=generate(snapshot,report,association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy);temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']
                     print(json.dumps({'state':'published','local':len(result['within_intersection']),'between':len(result['between_intersections'])}),flush=True)
         except (OSError,ValueError,KeyError) as exc:
             print(type(exc).__name__+': layers not published',flush=True)
@@ -140,4 +143,4 @@ def main(watch):
         time.sleep(15)
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--watch',action='store_true');a=p.parse_args();main(a.watch)
+    p=argparse.ArgumentParser();p.add_argument('--watch',action='store_true');p.add_argument('--region',choices=['florida','finch'],default='florida');p.add_argument('--deadline',type=float);a=p.parse_args();main(a.watch,a.region,a.deadline)

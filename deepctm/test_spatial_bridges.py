@@ -48,14 +48,14 @@ class ResidualAssociationTests(unittest.TestCase):
             result=associate([{'id':0}],[{'id':0},{'id':1}],method='feasible')
         self.assertEqual([(r['left'],r['right']) for r in result],[(0,1)])
         costs={(0,0):.1,(1,0):.5,(1,1):.6};endpoints=[{'id':0},{'id':1}]
-        with patch('deepctm.spatial_bridges.pair_cost',side_effect=lambda a,b:costs.get((a['id'],b['id']))),patch('deepctm.spatial_bridges.curve',return_value=[[0,0,1],[1,1,1]]):
+        with patch('deepctm.spatial_bridges.pair_cost',side_effect=lambda a,b,**kwargs:costs.get((a['id'],b['id']))),patch('deepctm.spatial_bridges.curve',return_value=[[0,0,1],[1,1,1]]):
             result=associate(endpoints,endpoints,method='feasible')
         self.assertEqual([(r['left'],r['right']) for r in result],[(0,0)])
     def test_resolves_competitor_after_its_endpoint_is_assigned(self):
         from unittest.mock import patch
         costs={(0,0):.1,(1,0):.5,(1,1):.6}
         endpoints=[{'id':0},{'id':1}]
-        with patch('deepctm.spatial_bridges.pair_cost',side_effect=lambda a,b:costs.get((a['id'],b['id']))),patch('deepctm.spatial_bridges.curve',return_value=[[0,0,1],[1,1,1]]):
+        with patch('deepctm.spatial_bridges.pair_cost',side_effect=lambda a,b,**kwargs:costs.get((a['id'],b['id']))),patch('deepctm.spatial_bridges.curve',return_value=[[0,0,1],[1,1,1]]):
             result=associate(endpoints,endpoints,method='residual')
         self.assertEqual([(r['left'],r['right'],r['assignment_round']) for r in result],[(0,0,1),(1,1,2)])
     def test_equal_cost_ties_stay_unmatched(self):
