@@ -103,6 +103,12 @@ def aggregate(output, complete=False):
             'review_scope':'gap <=30 seconds; no automatic deployment','added':len(qp_added),
             'distinct_added_ids':len({c['identity_hash'] for c in qp_added}),
             'added_quality':summarize([c['metrics']['adaptive'] for c in qp_added])}
+        plateaus=[r['stationary_plateau_prospective'] for r in reports if 'stationary_plateau_prospective' in r]
+        plateau_rows=[c for r in plateaus for c in r['cases']];plateau_added=[c for c in plateau_rows if c['added']]
+        summary['regions'][region]['stationary_plateau_prospective']={'windows':len(plateaus),'evaluated':len(plateau_rows),
+            'added':len(plateau_added),'distinct_added_ids':len({c['identity_hash'] for c in plateau_added}),
+            'maximum_error_m':max((c['metrics']['max_error_m'] for c in plateau_added),default=None),
+            'added_quality':summarize([c['metrics'] for c in plateau_added])}
         clocks=[r['clock_prospective'] for r in reports if 'clock_prospective' in r]
         clock_rows=[c for r in clocks for c in r['cases']]
         clock_common=[c for c in clock_rows if len(c['metrics'])==2]
@@ -240,6 +246,14 @@ def run(output,deadline,interval=1800):
                 rts_protocol=ROOT/'data/reconstruction/rts-review/protocol.json'
                 adaptive_protocol=ROOT/'data/reconstruction/adaptive-grid-review/protocol.json'
                 qp_protocol=ROOT/'data/reconstruction/qp-review/protocol.json'
+                plateau_protocol=ROOT/'data/reconstruction/plateau-review/protocol.json'
+                if plateau_protocol.exists() and time.time()<deadline:
+                    proposal=json.loads(plateau_protocol.read_text());plateau_begin=max(begin,proposal['after'])
+                    if s['end']-30>plateau_begin:
+                        from .validate_stationary_plateau import evaluate as plateau_evaluate
+                        plateau_input=subset(s,max(0,plateau_begin-s['start']),s['end']-s['start']-30,proposal['excluded_ids'])
+                        report['stationary_plateau_prospective']=plateau_evaluate(plateau_input,model['parameters'],deadline)
+                        report['stationary_plateau_prospective']['protocol_sha256']=hashlib.sha256(plateau_protocol.read_bytes()).hexdigest()
                 if qp_protocol.exists() and time.time()<deadline:
                     proposal=json.loads(qp_protocol.read_text());qp_begin=max(begin,proposal['after'])
                     if s['end']-30>qp_begin:

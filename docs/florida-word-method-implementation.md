@@ -730,3 +730,17 @@ object observations sharing timestamps and remained excluded. No timing repair
 or sensor-time view is deployed. The raw buffer retains these observations.
 A Finch coverage audit also found short reconnect sessions failing clock-rate
 checks, so a blanket timeline switch could lose usable received data.
+
+### Stationary measurement-noise hypothesis (unpublished)
+
+When both visible endpoint contexts support stationarity but centimetre-scale
+position/speed noise makes exact monotone interpolation impossible, a separate
+experiment estimates a constant latent position. It requires the same sensor,
+session and object ID, duration <=30 s, endpoint separation <=0.1 m, and compact
+quiet context on both sides. Original points are not changed. The estimated
+position can differ from each endpoint by <=0.05 m, recorded explicitly; it is
+not described as exact interpolation or calibrated uncertainty.
+Development masks added four Florida cases (MAE 0.013 m) and three Finch cases
+(0.016 m). A new frozen prospective protocol requires three future windows, ten
+distinct added IDs, and stricter stationary-error/stop-precision limits before
+review. No stationary plateau is published automatically.
