@@ -32,3 +32,7 @@ The new method's accepted-case 95th-percentile error was 0.095 m. It matched 28 
 The dashboard labels this method experimental and shows its own masked-data results. Original measurements remain solid. An absence of suitable same-color evidence still leaves a gap.
 
 Four dashboard API tests also passed. Browser verification showed the new method label, both enabled layer controls, and 74 local / 16 inter-site estimates in the eastbound full-hour selection (116 / 21 across both directions). Counts change with each rolling snapshot. The compact API now avoids loading unrelated archived study reports.
+
+## Restored default
+
+On 23 November 2026, at the user’s request, disabled the color-slope experiment and restored the previous kinematic reconstruction with its existing endpoint corrections, local fallbacks and shape/feasibility association policy. The experimental implementation and its validation remain available in the repository, but are not the active Florida method.

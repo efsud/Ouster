@@ -1,12 +1,15 @@
 {
-  "enabled": true,
+  "enabled": false,
   "method": "color_slope_chronological_v1",
-  "status": "user_requested_experimental_method",
+  "status": "disabled_previous_kinematic_method_restored",
   "color_band_width_mps": 1,
   "maximum_endpoint_speed_difference_mps": 1,
   "local_max_gap_s": 90,
   "between_max_gap_s": 120,
-  "maximum_spatial_residual_m": {"within": 10, "between": 20},
+  "maximum_spatial_residual_m": {
+    "within": 10,
+    "between": 20
+  },
   "maximum_endpoint_speed_adjustment_mps": 0.5,
   "unchanged_slope_fraction": 0.8,
   "minimum_candidate_separation_m": 0.25,
