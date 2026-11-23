@@ -892,3 +892,11 @@ Regression tests cover a concurrent commit and deadline cancellation; all 214
 scientific tests passed. The existing validation campaign resumed from its
 completed reports with the original deadline; the incomplete in-memory batch
 was discarded, not reported as a successful validation window.
+
+The snapshot destination was subsequently changed to an unnamed temporary
+database with an 8 MiB pager-cache target, avoiding a multi-gigabyte mandatory
+in-memory copy. SQLite removes it when closed. A 454,850-frame live Finch copy
+completed in 10.612 seconds; concurrent-write/deadline tests still passed.
+This is temporary validation storage, not a new retained raw-data archive.
+SQLite documents the restart risk in its [backup API guide](https://www.sqlite.org/backup.html#file_and_database_connection_locking)
+and the cleanup/memory behavior of [temporary databases](https://www.sqlite.org/inmemorydb.html#temporary_databases).

@@ -1,6 +1,6 @@
 """Raw recorded 2D masking audit for experimental same-ID lateral gaps.
 
-Uses an owned in-memory SQLite backup and does not modify the collector database.
+Uses an owned temporary SQLite snapshot and does not modify the collector database.
 Only aggregate results/case scores are saved, not the temporary raw replay.
 """
 import argparse,json,sqlite3,time,hashlib
