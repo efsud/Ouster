@@ -657,3 +657,24 @@ On the identical current snapshot, local estimates stay at 46 and intersite
 estimates rise from 108 to 114. Final endpoint/physical bounds remain unchanged.
 This improves masked association evidence, not verified cross-sensor identities.
 Raw observations, signal permissions and recorded KPI inputs are unchanged.
+
+The outage validator now reports only cars with continuous visible endpoint
+context as the supported denominator, separately from entirely hidden vehicles
+and short-context vehicles. Unresolved cases retain hashed-identity diagnostics
+(endpoint evidence and solver rejection) for investigation without claiming they
+were reconstructed. Lateral-validation summaries separate legacy native-frame
+cadence from production 0.5-second frame selection; pooled historical counts
+are not used as interchangeable deployment evidence.
+
+### Endpoint-grid experiment (unpublished)
+
+Half-second trapezoidal velocity integration can falsely exclude very short
+terminal acceleration: a 0.107 m/s endpoint requires at least 0.02675 m on a
+half-second grid, although 3 m/s² acceleration needs only about 0.00191 m in
+continuous time. An experimental grid adds all endpoint-reachable velocity
+envelope breakpoints and retries the same constrained objective only after a
+rejection. It does not relax physical bounds or replace an accepted solution.
+Development masks recovered one additional Finch stationary case (position MAE
+0.020 m), and no Florida cases. This is insufficient for deployment. A frozen
+future-data protocol requires at least three later windows and ten distinct
+newly recovered IDs before review, with no automatic publication.

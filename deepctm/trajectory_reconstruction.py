@@ -59,7 +59,7 @@ def integrate_matrix(t):
 
 def refine(a,b,reference,vmax=30.,amin=-4.,amax=3.,smoothness=.1,
            position_tolerance=1.,speed_tolerance=1.,leader_ceiling=None,
-           ctm_speed_envelope=None,red_position_ceiling=None,max_duration=120,feasible_initialization=False,solver_maxiter=150):
+           ctm_speed_envelope=None,red_position_ceiling=None,max_duration=120,feasible_initialization=False,solver_maxiter=150,time_grid=None):
     """Constrained kinematic refinement. Missing priors are explicit ablations.
 
     Optional ceiling arrays are [time, maximum_position]. Caller may supply red
@@ -67,6 +67,10 @@ def refine(a,b,reference,vmax=30.,amin=-4.,amax=3.,smoothness=.1,
     CTM envelope [time, lower_speed, upper_speed] is a soft penalty, not truth.
     """
     reference=np.asarray(reference,float);t=grid(a,b,max_duration=max_duration)
+    if time_grid is not None:
+        t=np.asarray(time_grid,float)
+        if t.ndim!=1 or len(t)<3 or not np.all(np.isfinite(t)) or np.any(np.diff(t)<=1e-6) or abs(t[0]-a['t'])>1e-8 or abs(t[-1]-b['t'])>1e-8:
+            raise ValueError('Invalid refinement time grid')
     if not np.all(np.isfinite(reference)) or vmax<=0 or amin>=0 or amax<=0:raise ValueError('Invalid optimization inputs')
     A,D=integrate_matrix(t);target=np.interp(t,reference[:,0],reference[:,1])-a['x'];scale=max(10.,abs(b['x']-a['x']))
     speed_target=np.interp(t,reference[:,0],reference[:,2]);n=len(t)

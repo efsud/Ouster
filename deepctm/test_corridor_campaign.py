@@ -38,3 +38,17 @@ class CampaignTests(unittest.TestCase):
             self.assertEqual(total['regions']['finch']['methods']['strict']['eligible'],3)
             self.assertEqual(total['regions']['finch']['methods']['strict']['accepted'],0)
             self.assertEqual(total['state'],'complete')
+
+    def test_lateral_cadences_stay_separate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            region=Path(folder)/'finch';region.mkdir()
+            for i, cadence in enumerate([None,.5]):
+                experiment={'cases':[{'accepted':False,'identity_hash':str(i)}]}
+                if cadence is not None:experiment['processing_interval_s']=cadence
+                result={'results':{'summary':{m:{'evaluated':0} for m in ('strict','noise')},'cases':[]},
+                        'lateral_motion_prospective':experiment}
+                (region/f'cycle-{i:03}.json').write_text(json.dumps(result))
+            row=aggregate(folder)['regions']['finch']['lateral_prospective']
+            self.assertTrue(row['mixed_validation_cadences'])
+            self.assertEqual(set(row['by_processing_interval_s']),{'legacy_native','0.5'})
+            self.assertEqual(row['by_processing_interval_s']['0.5']['eligible'],1)

@@ -91,6 +91,11 @@ def aggregate(output, complete=False):
         rts_rows=[c for r in rts for c in r['cases']]
         summary['regions'][region]['rts_prospective']={'windows':len(rts),'evaluated':len(rts_rows),'rts_used':sum(c['rts_used'] for c in rts_rows),
             'methods':{m:summarize([c[m] for c in rts_rows if c['accepted']]) for m in ('baseline','hybrid')}}
+        adaptive=[r['adaptive_grid_prospective'] for r in reports if 'adaptive_grid_prospective' in r]
+        adaptive_rows=[c for r in adaptive for c in r['cases']];added=[c for c in adaptive_rows if c['added']]
+        summary['regions'][region]['adaptive_grid_prospective']={'windows':len(adaptive),'evaluated':len(adaptive_rows),
+            'added':len(added),'distinct_added_ids':len({c['identity_hash'] for c in added}),
+            'added_quality':summarize([c['metrics'] for c in added])}
         clocks=[r['clock_prospective'] for r in reports if 'clock_prospective' in r]
         clock_rows=[c for r in clocks for c in r['cases']]
         clock_common=[c for c in clock_rows if len(c['metrics'])==2]
@@ -101,6 +106,23 @@ def aggregate(output, complete=False):
         summary['regions'][region]['lateral_prospective']={'windows':len(lateral),'eligible':len(lateral_cases),'accepted':len(accepted),
             'distinct_accepted_ids':len({c['identity_hash'] for c in accepted}),'quality':summarize([c['metrics'] for c in accepted]),
             'lateral_mae_m':float(np.mean([c['lateral_mae_m'] for c in accepted])) if accepted else None}
+        # Legacy native-cadence masks and production-cadence masks are different
+        # validation protocols. Retain historical totals, but never treat them
+        # as interchangeable evidence for enabling a production gate.
+        cadence_groups={}
+        for experiment in lateral:
+            key=str(experiment.get('processing_interval_s','legacy_native'))
+            cadence_groups.setdefault(key,[]).append(experiment)
+        summary['regions'][region]['lateral_prospective']['by_processing_interval_s']={}
+        for cadence, experiments in cadence_groups.items():
+            rows=[c for e in experiments for c in e['cases']]
+            ok=[c for c in rows if c['accepted']]
+            summary['regions'][region]['lateral_prospective']['by_processing_interval_s'][cadence]={
+                'windows':len(experiments),'eligible':len(rows),'accepted':len(ok),
+                'distinct_accepted_ids':len({c['identity_hash'] for c in ok}),
+                'quality':summarize([c['metrics'] for c in ok]),
+                'lateral_mae_m':float(np.mean([c['lateral_mae_m'] for c in ok])) if ok else None}
+        summary['regions'][region]['lateral_prospective']['mixed_validation_cadences']=len(cadence_groups)>1
         site_rows=[c for r in reports for c in r.get('site_policy_prospective',{}).get('cases',[])]
         new=[c['metrics']['noise'] for c in site_rows if 'noise' in c['metrics'] and 'strict' not in c['metrics']]
         summary['regions'][region]['site_policy_prospective']={'evaluated':len(site_rows),'new':summarize(new)}
@@ -209,6 +231,14 @@ def run(output,deadline,interval=1800):
                             'protocol_sha256':hashlib.sha256(gate_protocol.read_bytes()).hexdigest(),
                             'note':'Unchanged physics and assignment thresholds; no automatic promotion.'}
                 rts_protocol=ROOT/'data/reconstruction/rts-review/protocol.json'
+                adaptive_protocol=ROOT/'data/reconstruction/adaptive-grid-review/protocol.json'
+                if adaptive_protocol.exists() and time.time()<deadline:
+                    proposal=json.loads(adaptive_protocol.read_text());adaptive_begin=max(begin,proposal['after'])
+                    if s['end']-30>adaptive_begin:
+                        from .validate_adaptive_grid import evaluate as adaptive_evaluate
+                        adaptive_input=subset(s,max(0,adaptive_begin-s['start']),s['end']-s['start']-30,proposal['excluded_ids'])
+                        report['adaptive_grid_prospective']=adaptive_evaluate(adaptive_input,model['parameters'],deadline)
+                        report['adaptive_grid_prospective']['protocol_sha256']=hashlib.sha256(adaptive_protocol.read_bytes()).hexdigest()
                 if rts_protocol.exists() and time.time()<deadline:
                     proposal=json.loads(rts_protocol.read_text());rts_begin=max(begin,proposal['after'])
                     if region in proposal['regions'] and s['end']-30>rts_begin:

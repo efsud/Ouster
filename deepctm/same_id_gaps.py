@@ -14,8 +14,11 @@ def candidates(site,include_same_class=False,allow_lateral_motion=False,audit=No
     for identity,tracks in groups.items():
         tracks.sort(key=lambda tr:tr['points'][0][0])
         for before,after in zip(tracks,tracks[1:]):
+            a=b=None
             def record(reason):
-                if audit is not None:audit({'identity':identity,'start':before['points'][-1][0],'end':after['points'][0][0],'reason':reason})
+                if audit is not None:audit({'identity':identity,'start':before['points'][-1][0],'end':after['points'][0][0],'reason':reason,
+                    'start_endpoint':a,'end_endpoint':b,'direction':before.get('direction'),
+                    'lateral_delta_m':abs(after.get('lateral_start_m',0)-before.get('lateral_end_m',0)) if 'lateral_start_m' in after and 'lateral_end_m' in before else None})
             if before.get('class_type') not in VEHICLES or after.get('class_type') not in VEHICLES:
                 record('unsupported_endpoint_class');continue
             if before['direction']!=after['direction']:

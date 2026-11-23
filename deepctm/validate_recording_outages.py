@@ -51,8 +51,13 @@ def run(region,output,windows=None,end=None):
     report=json.loads((root/'data/reconstruction/word-v1-collection/evaluation-001/report.json').read_text())
     model=json.loads((root/f'data/reconstruction/eight-hour-20261123/{region}/model.json').read_text())
     report['calibration']['parameters']=model['parameters']
-    layers=generate(masked,report,same_class_recovery=True,endpoint_policy=model.get('endpoint_policy'),endpoint_excluded_sites=model.get('excluded_sites',[]))
-    enhanced_layers=generate(enhanced,report,same_class_recovery=True,endpoint_policy=model.get('endpoint_policy'),endpoint_excluded_sites=model.get('excluded_sites',[]))
+    policy={'parameters':model.get('endpoint_policy'),'excluded_sites':model.get('excluded_sites',[])}
+    if region=='finch':
+        from .reconstruction_layers import finch_endpoint_config
+        override=root/'config/reconstruction/finch-endpoint-speed.json'
+        policy=finch_endpoint_config(model,json.loads(override.read_text()) if override.exists() else None)
+    layers=generate(masked,report,same_class_recovery=True,endpoint_policy=policy['parameters'],endpoint_excluded_sites=policy['excluded_sites'])
+    enhanced_layers=generate(enhanced,report,same_class_recovery=True,endpoint_policy=policy['parameters'],endpoint_excluded_sites=policy['excluded_sites'])
     from .same_id_gaps import candidates
     audits={}
     for site in masked['sites']:
@@ -84,17 +89,28 @@ def run(region,output,windows=None,end=None):
             p=p.copy();actual=actual.copy();p[:,1]*=sign;actual[:,1]*=sign
             scores.append(metrics(p,actual,model['parameters']));seen.add(key)
         from collections import Counter
-        reasons=Counter()
+        reasons=Counter();unresolved=[]
         for key in set(ground)-seen:
             matches=[r for r in audits[key[0]] if tuple(r['identity'])==key[1:] and r['start']<=lo and r['end']>=hi]
             if not matches:reasons['missing_retained_endpoint_fragments']+=1
             else:
                 reason=matches[0]['reason'];reasons['model_or_other_layer_gate' if reason=='candidate' else reason]+=1
+            import hashlib
+            detail={'identity_hash':hashlib.sha256(json.dumps(key).encode()).hexdigest(),'site':key[0],
+                    'candidates':[{k:v for k,v in candidate.items() if k!='identity'} for candidate in matches]}
+            if matches and matches[0]['reason']=='candidate':
+                from .endpoint_speed import orient,reconstruct as diagnose
+                candidate=matches[0];sign=1 if candidate['direction']=='eastbound' else -1
+                correction=policy['parameters'] if key[0] not in policy['excluded_sites'] and 1.5<candidate['end']-candidate['start']<=90 else None
+                check=diagnose(orient(candidate['start_endpoint'],sign),orient(candidate['end_endpoint'],sign),model['parameters'],correction)
+                detail['solver_diagnostic']={k:check[k] for k in ('state','reason','violations','solver','endpoint_policy','endpoint_corrections','correction_rejection') if k in check}
+            unresolved.append(detail)
         rows.append({'interval_s':[lo,hi],'duration_s':hi-lo,'removed_frames':removed_count,'continuous_endpoint_supported_ids':len(ground),
             'unresolved_endpoint_supported_reasons':dict(reasons),
+            'unresolved_diagnostics':unresolved,
             'reconstructed_scored_ids':len(seen),'entirely_hidden_ids':len(entirely_hidden),'insufficient_visible_endpoint_context_ids':len(short_context),
             'unscorable_estimates':unscorable,'quality':summarize(scores),'stationary_context_candidate':{'scored_ids':len(enhanced_seen),'quality':summarize(enhanced_scores)}})
-    result={'region':region,'window':[full['start'],full['end']],'endpoint_context_version':full.get('endpoint_context_version'),
+    result={'region':region,'window':[full['start'],full['end']],'endpoint_policy':policy,'transform_manifest':full.get('transform_manifest'),'endpoint_context_version':full.get('endpoint_context_version'),
         'ingestion_epochs':full.get('ingestion_epochs',[]),'processing_interval_s':.5,'cases':rows,
         'limitations':['Whole-server outages simulated by deleting all frames and phase samples in fixed intervals.',
         'Ground-truth denominator is recorded car fragments; unscorable estimates are reported separately.',
