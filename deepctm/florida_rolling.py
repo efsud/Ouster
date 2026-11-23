@@ -78,10 +78,16 @@ def build(db,sites,end,track_observer=None):
             for key in list(active):
                 if receipt-active[key][-1][0]>3:flush(key,break_chain=False)
         for key in list(active):flush(key)
-        from .local_gaps import bridge,VEHICLES
+        from .local_gaps import bridge,gap_evidence,VEHICLES
+        local_candidates=[]
         for (key,epoch),parts in chunks.items():
             if key[2] not in VEHICLES:continue
             for before,after in zip(parts,parts[1:]):
+                evidence=gap_evidence(before,after)
+                if evidence is not None:
+                    for ep in ('a','b'):
+                        evidence[ep]['t']-=start;evidence[ep]['x']+=s['station_m']
+                    local_candidates.append(dict(evidence,source_key=list(key),class_type=key[2],epoch=epoch))
                 estimated=bridge(before,after)
                 if estimated is not None:
                     local_estimates.append({'class_type':key[2],'direction':'eastbound' if estimated[-1][1]>=estimated[0][1] else 'westbound',
@@ -104,7 +110,7 @@ def build(db,sites,end,track_observer=None):
                 evidence=mapping.get(tr['movement'].get('movement'),{})
                 tr['movement']['phase_numbers']=evidence.get('phase_numbers',[])
                 tr['movement']['phase_mapping']=evidence.get('phase_mapping','insufficient_or_ambiguous')
-        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'tracks':tracks,'local_estimates':local_estimates,'coverage':[len(v)/60 for v in coverage]})
+        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
     result={'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching.'}
     from .rolling_estimates import gap_validation
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)

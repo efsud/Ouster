@@ -89,3 +89,25 @@ class FrozenEvaluationTests(unittest.TestCase):
             p=Path(d);(p/'snapshot.json').write_text(json.dumps({'start':110,'end':200}))
             (p/'study.json').write_text(json.dumps({'state':'evaluated_ablation','source_window':[0,100]}))
             with self.assertRaises(ValueError):run(p/'snapshot.json',p/'study.json',p/'report.json')
+
+class LocalAdmissionTests(unittest.TestCase):
+    def test_clock_and_lateral_checks_independent_of_old_curve(self):
+        from datetime import datetime,timedelta
+        from deepctm.local_gaps import gap_evidence
+        zero=datetime(2026,1,1)
+        before=[(t,0.,0.,0.,zero+timedelta(seconds=t)) for t in (0,.5,1,1.5,2)]
+        after=[(t,20.+5*(t-12),0.,5.,zero+timedelta(seconds=t)) for t in (12,12.5,13,13.5,14)]
+        self.assertIsNotNone(gap_evidence(before,after))
+        self.assertIsNone(gap_evidence(before,[(t,x,y+4,v,stamp) for t,x,y,v,stamp in after]))
+        self.assertIsNone(gap_evidence(before,[(t,x,y,v,stamp+timedelta(seconds=60)) for t,x,y,v,stamp in after]))
+
+    def test_internal_render_hole_gets_local_estimate(self):
+        from deepctm.reconstruction_layers import generate
+        times=[0,.5,1,1.5,2,4,4.5,5,5.5,6]
+        tr=dict(source_key=['s','id','2'],class_type='2',direction='eastbound',points=[[t,10*t,10] for t in times])
+        site=dict(id='a',name='a',tracks=[tr],local_gap_candidates=[])
+        report=dict(state='evaluated_ablation',selected_method='kinematic_0.01',calibration={'parameters':{'vmax':30,'amin':-4,'amax':3}},test={},uncertainty={})
+        result=generate(dict(sites=[site],generated_at=0,start=0,end=100),report)
+        self.assertEqual(len(result['within_intersection']),1)
+        self.assertEqual(result['within_intersection'][0]['gap_s'],2)
+        self.assertEqual(result['between_intersections'],[])

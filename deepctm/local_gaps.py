@@ -4,6 +4,28 @@ from statistics import median
 VEHICLES={str(i) for i in [1,2,3,4,5,6,7,8,9,15]}
 MAX_GAP=30.
 
+def gap_evidence(before,after):
+    """Same-chain geometry/clock admission, independent of interpolation model."""
+    if len(before)<5 or len(after)<5:return None
+    a,b=before[-1],after[0];duration=b[0]-a[0]
+    if not 3<duration<=MAX_GAP:return None
+    try:ratio=(b[4]-a[4]).total_seconds()/duration
+    except (TypeError,AttributeError):return None
+    if not .8<=ratio<=1.2 or abs(b[2]-a[2])>2:return None
+    velocities=[]
+    for part in (before[-5:],after[:5]):
+        dt=[q[0]-p[0] for p,q in zip(part,part[1:])]
+        if min(dt)<=0 or max(dt)>1.5 or sum(dt)<1:return None
+        along=median((q[1]-p[1])/t for p,q,t in zip(part,part[1:],dt))
+        lateral=median((q[2]-p[2])/t for p,q,t in zip(part,part[1:],dt))
+        if abs(lateral)>1:return None
+        velocities.append(along)
+    sign=1 if b[1]>=a[1] else -1
+    if any(v*sign<-.5 for v in velocities):return None
+    if any(abs(p[1])>120 or abs(p[2])>18 for p in (a,b)):return None
+    return {'a':{'t':a[0],'x':a[1],'v':velocities[0]},'b':{'t':b[0],'x':b[1],'v':velocities[1]},
+            'sensor_receipt_ratio':ratio,'lateral_displacement_m':abs(b[2]-a[2])}
+
 def bridge(before,after):
     # points: receipt time, along, across, speed, sensor datetime
     if len(before)<3 or len(after)<3:return None

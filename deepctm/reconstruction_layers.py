@@ -32,7 +32,33 @@ def generate(snapshot,report):
         groups=defaultdict(list)
         for tr in site['tracks']:
             if tr['class_type']=='2' and not tr.get('method'):groups[tuple(tr.get('source_key',[]))].append(tr)
-        # Existing local-gap admission includes original 2D lateral/clock checks.
+        # The renderer omits intervals >1.5 s, whereas collection keeps a
+        # clock/geometry-checked track intact up to 3 s. These holes live INSIDE
+        # a fragment, so the between-fragment loop below could never find them.
+        for tracks in groups.values():
+            for tr in tracks:
+                points=tr['points']
+                for i in range(1,len(points)):
+                    gap=points[i][0]-points[i-1][0]
+                    if not 1.5<gap<=3:continue
+                    a=endpoint(points[max(0,i-5):i],True)
+                    b=endpoint(points[i:i+5],False)
+                    if a is None or b is None:
+                        rejected['short_local_insufficient_context']+=1;continue
+                    p=prediction(a,b,report)
+                    if p is None:
+                        rejected['short_local_physical_rejection']+=1;continue
+                    local.append(dict(site=site['id'],direction=tr['direction'],class_type='2',points=p,
+                        source='inferred',method=report['selected_method'],identity='same_sensor_session_and_track',
+                        gap_s=gap,gap_kind='internal_sampling_gap'))
+        for candidate in site.get('local_gap_candidates',[]):
+            if candidate['class_type']!='2':continue
+            a,b=candidate['a'],candidate['b'];p=prediction(a,b,report)
+            if p is None:rejected['local_physical_rejection']+=1;continue
+            local.append(dict(site=site['id'],direction='eastbound' if b['x']>=a['x'] else 'westbound',class_type='2',points=p,
+                source='inferred',method=report['selected_method'],identity='same_sensor_session_track_and_chain',gap_s=b['t']-a['t'],gap_kind='between_fragments'))
+        # Backward compatibility for snapshots predating model-independent admission.
+        if 'local_gap_candidates' in site:continue
         allowed={(round(p['points'][0][0],2),round(p['points'][-1][0],2)) for p in site.get('local_estimates',[]) if p['class_type']=='2'}
         for key,tracks in groups.items():
             if len(key)!=3:continue

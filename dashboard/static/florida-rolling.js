@@ -80,7 +80,7 @@ function paintReconstruction(c,x,y,selected){
   }
  }
  c.setLineDash([]);c.lineDashOffset=0;
- if(el('layer-counts'))el('layer-counts').textContent=`Visible estimates: ${counts[0]} within intersections; ${counts[1]} between intersections. Colors indicate speed, not confidence.`;
+ if(el('layer-counts'))el('layer-counts').textContent=`Visible estimates: ${counts[0]} within intersections; ${counts[1]} between intersections. Colors indicate speed, not confidence.`+(el('within-layer')?.checked&&counts[0]===0?' No supported local estimates in this selection; checking the box cannot join unidentified fragments.':'');
 }
 async function refreshReconstruction(){
  if(corridor!=='florida'||!el('reconstruction-status'))return;
