@@ -5,7 +5,7 @@ from .local_gaps import VEHICLES
 from .spatial_bridges import endpoint
 
 
-def candidates(site,include_same_class=False):
+def candidates(site,include_same_class=False,allow_lateral_motion=False):
     groups=defaultdict(list)
     for tr in site['tracks']:
         key=tr.get('source_key',[])
@@ -30,10 +30,12 @@ def candidates(site,include_same_class=False):
                 ratio=(datetime.fromisoformat(after['sensor_start'])-datetime.fromisoformat(before['sensor_end'])).total_seconds()/(b['t']-a['t'])
                 lateral=abs(after['lateral_start_m']-before['lateral_end_m'])
             except (KeyError,TypeError,ValueError):continue
-            if not .8<=ratio<=1.2 or lateral>2:continue
+            if not .8<=ratio<=1.2 or lateral>(7.2 if allow_lateral_motion else 2):continue
+            if lateral>2 and duration>30:continue
             ma=before.get('movement',{}).get('movement');mb=after.get('movement',{}).get('movement')
             if ma and mb and ma!=mb:continue
             sign=1 if before['direction']=='eastbound' else -1
             if (b['x']-a['x'])*sign<0 or min(a['v']*sign,b['v']*sign)<-.25:continue
             yield dict(a=a,b=b,identity=identity,classes=[before['class_type'],after['class_type']],direction=before['direction'],
+                requires_lateral_check=lateral>2,
                 recording_gap=outage,frame_gap_basis=site.get('frame_gap_basis','receipt'),classification_changed=not same_class,missing_receipt_fraction=min(1.,missing/duration))

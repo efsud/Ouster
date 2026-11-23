@@ -47,6 +47,11 @@ class RecordingInterruptionTests(unittest.TestCase):
 
 
 class SameClassRecoveryTests(unittest.TestCase):
+    def test_lateral_experiment_never_silently_widens_default(self):
+        a=track('same',0,3);b=track('same',8,11);b['lateral_start_m']=3.5
+        self.assertEqual(list(candidates({'tracks':[a,b]},include_same_class=True)),[])
+        rows=list(candidates({'tracks':[a,b]},include_same_class=True,allow_lateral_motion=True))
+        self.assertEqual(len(rows),1);self.assertTrue(rows[0]['requires_lateral_check'])
     def test_same_class_recovery_is_explicit(self):
         a=track('same',0,3);b=track('same',8,11)
         self.assertEqual(list(candidates({'tracks':[a,b]})),[])

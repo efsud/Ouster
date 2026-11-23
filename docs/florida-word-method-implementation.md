@@ -411,3 +411,48 @@ and acceleration limits. Optional scene ceilings must also hold before using it.
 An optional larger solver iteration budget is being evaluated separately. Neither
 option changes default published behavior. Synthetic feasibility tests are kept
 separate from recorded-position masking results.
+
+### Follow-up solver and local context results
+
+Increasing the strict solver budget from 150 to 600 iterations recovered 27
+Florida and 60 Finch development masks, without changing physical bounds. Their
+mean position errors were 7.16 m and 9.18 m, respectively; the 95th percentiles of
+case MAE were 18.64 m and 27.13 m. Numerical convergence alone is therefore not
+adequate evidence to publish these extra paths. Feasible initialization alone
+recovered no additional cases at the original iteration budget.
+
+Two further soft-prior experiments were kept separate from production:
+
+- Partial Newell following uses only the observed portion of an unambiguous nearby
+  leader and never extrapolates it. On the recovered cases, one Florida case had
+  support and became worse (1.14 m to 10.06 m MAE); Finch had no supported cases.
+- An observed-flow envelope requires at least two distinct nearby other objects
+  with consistent simultaneous speeds. Target identity fragments are excluded.
+  It supported one Florida case with essentially unchanged error and none in Finch.
+  Full-outage tests remove interior observations of all objects and cannot create
+  a fictitious velocity field. These tests do not justify deployment.
+
+### Same-ID lateral motion experiment
+
+The original two-metre lateral-displacement gate rejects some plausible lane
+changes or curved-road motion. An experimental gate uses visible lateral endpoint
+contexts to construct a bounded cubic curve: displacement at most 7.2 m, lateral
+speed at most 2 m/s, lateral acceleration at most 1.5 m/s², combined acceleration
+at most 4 m/s², and the existing +/-18 m road strip. It retains same-site/session/ID,
+clock, movement and longitudinal checks. This is estimated lateral motion, not a
+verified lane change or permission to connect different identities.
+
+Raw two-dimensional development masking produced 2 accepted Florida cases out of
+29 eligible lateral masks (2.35 m longitudinal MAE, 0.35 m lateral MAE) and 36/69
+in Finch (4.43 m longitudinal MAE, 0.43 m lateral MAE). Longer Finch masks had large
+longitudinal errors despite plausible sideways motion. A ten-second maximum is
+therefore frozen for a **new prospective test**, with all IDs seen in the retained
+buffers excluded. These development results cannot validate that new selection.
+No production lateral gate has been widened.
+
+The first three campaign windows also selected Weston and Kipling as candidates
+for the already frozen stationary-noise correction: each had at least ten distinct
+fragment ranks across multiple windows and passed the specified error thresholds.
+Those earlier windows are reused development evidence for this site-selection
+choice. A new timestamp embargo and exclusion of known IDs separate subsequent
+prospective checks; no automatic site promotion is enabled.

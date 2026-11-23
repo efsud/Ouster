@@ -59,6 +59,8 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
             from .object_shape import summarize as summarize_shape
             sizes=[p[6] for p in points]
             tracks[-1].update(dimensions=sizes,shape_start=summarize_shape(sizes[:5]),shape_end=summarize_shape(sizes[-5:]))
+            tracks[-1].update(lateral_start_context=[[round(p[0]-start,2),p[2]] for p in points[:5]],
+                              lateral_end_context=[[round(p[0]-start,2),p[2]] for p in points[-5:]])
             if time_basis=='sensor_elapsed':tracks[-1]['original_receipt_offsets_s']=[round(p[5]-start,6) for p in points]
         angle=math.radians(s.get('preview_rotation_deg',220))-s['bearing'];c=math.cos(angle);sn=math.sin(angle)
         source_rows=db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall()
