@@ -29,3 +29,18 @@ class SameIdTests(unittest.TestCase):
             self.assertIsNotNone(p)
             self.assertAlmostEqual(p[0][1],a['x'],places=5);self.assertAlmostEqual(p[-1][1],b['x'],places=5)
             self.assertAlmostEqual(p[0][2],5,places=5);self.assertAlmostEqual(p[-1][2],9,places=5)
+
+class RecordingInterruptionTests(unittest.TestCase):
+    def test_long_same_id_needs_missing_frames(self):
+        a=track('same',0,3);b=track('same',63,66)
+        site={'tracks':[a,b]}
+        self.assertEqual(list(candidates(site)),[])
+        site['receipt_gaps']=[[3,63]]
+        rows=list(candidates(site));self.assertEqual(len(rows),1)
+        self.assertTrue(rows[0]['recording_gap']);self.assertEqual(rows[0]['missing_receipt_fraction'],1)
+    def test_reconnect_session_is_not_same_identity(self):
+        a=track('same',0,3);b=track('same',63,66);b['source_key'][0]='new-session'
+        self.assertEqual(list(candidates({'tracks':[a,b],'receipt_gaps':[[3,63]]})),[])
+    def test_short_outage_can_bridge_same_class(self):
+        a=track('same',0,3);b=track('same',10,13)
+        self.assertEqual(len(list(candidates({'tracks':[a,b],'receipt_gaps':[[3,10]]}))),1)

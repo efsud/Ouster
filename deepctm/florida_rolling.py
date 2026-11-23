@@ -37,7 +37,7 @@ def build(db,sites,end,track_observer=None):
     for s in geometry(sites):
         from dashboard.movements import TrackCollector
         movements=TrackCollector() if s.get('region')=='Florida' else None
-        active={};tracks=[];chunks={};epochs={};identity_class={};local_estimates=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
+        active={};tracks=[];chunks={};epochs={};identity_class={};local_estimates=[];receipt_gaps=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
         def flush(key,break_chain=True):
             points=active.pop(key,[])
             epoch=epochs.get(key,0)
@@ -54,7 +54,9 @@ def build(db,sites,end,track_observer=None):
                 'class_type':key[2],'direction':'eastbound' if net>0 else 'westbound','points':[[round(p[0]-start,2),round(p[1]+s['station_m'],2),round(p[3],2)] for p in points]})
         angle=math.radians(s.get('preview_rotation_deg',220))-s['bearing'];c=math.cos(angle);sn=math.sin(angle)
         for session,receipt,payload in db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall():
-            e=json.loads(payload);frames+=1;first=first or receipt;last=receipt
+            e=json.loads(payload);frames+=1;first=first or receipt
+            if last is not None and receipt-last>1.5:receipt_gaps.append([last-start,receipt-start])
+            last=receipt
             second=int(receipt-start)
             if 0<=second<3600:coverage[second//60].add(second%60)
             try:stamp=datetime.fromisoformat(e.get('frame',{}).get('timestamp') or e['timestamp'])
@@ -122,7 +124,7 @@ def build(db,sites,end,track_observer=None):
                 evidence=mapping.get(tr['movement'].get('movement'),{})
                 tr['movement']['phase_numbers']=evidence.get('phase_numbers',[])
                 tr['movement']['phase_mapping']=evidence.get('phase_mapping','insufficient_or_ambiguous')
-        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
+        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'frames':frames,'first_receipt':first,'last_receipt':last,'receipt_gaps':receipt_gaps,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
     result={'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':'Sampled local trajectory fragments; provisional alignment and receipt time. No cross-sensor identity matching.'}
     from .rolling_estimates import gap_validation
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)

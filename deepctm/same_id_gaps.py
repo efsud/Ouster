@@ -14,11 +14,16 @@ def candidates(site):
     for identity,tracks in groups.items():
         tracks.sort(key=lambda tr:tr['points'][0][0])
         for before,after in zip(tracks,tracks[1:]):
-            # Same-class gaps already have collector-chain evidence elsewhere.
-            if before['class_type']==after['class_type']:continue
             if before['direction']!=after['direction']:continue
             a=endpoint(before['points'],True);b=endpoint(after['points'],False)
-            if not a or not b or not .1<b['t']-a['t']<=30:continue
+            if not a or not b or not .1<b['t']-a['t']<=120:continue
+            duration=b['t']-a['t']
+            # Long gaps require independent missing-frame evidence, not merely
+            # disappearance of this particular ID in otherwise healthy frames.
+            missing=sum(max(0,min(b['t'],hi)-max(a['t'],lo)) for lo,hi in site.get('receipt_gaps',[]))
+            outage=missing/duration>=.8
+            if duration>30 and not outage:continue
+            if before['class_type']==after['class_type'] and not outage:continue
             try:
                 ratio=(datetime.fromisoformat(after['sensor_start'])-datetime.fromisoformat(before['sensor_end'])).total_seconds()/(b['t']-a['t'])
                 lateral=abs(after['lateral_start_m']-before['lateral_end_m'])
@@ -28,4 +33,5 @@ def candidates(site):
             if ma and mb and ma!=mb:continue
             sign=1 if before['direction']=='eastbound' else -1
             if (b['x']-a['x'])*sign<0 or min(a['v']*sign,b['v']*sign)<-.25:continue
-            yield dict(a=a,b=b,identity=identity,classes=[before['class_type'],after['class_type']],direction=before['direction'])
+            yield dict(a=a,b=b,identity=identity,classes=[before['class_type'],after['class_type']],direction=before['direction'],
+                recording_gap=outage,missing_receipt_fraction=min(1.,missing/duration))

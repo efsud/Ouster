@@ -76,11 +76,13 @@ def generate(snapshot,report,experimental_changed_ids=False):
     for site in snapshot['sites']:
         for candidate in same_id_candidates(site):
             a,b=candidate['a'],candidate['b'];p=prediction(a,b,report,exact_join=True)
+            if any(q['site']==site['id'] and abs(q['points'][0][0]-a['t'])<.02 and abs(q['points'][-1][0]-b['t'])<.02 for q in local):continue
             if p is None:rejected['class_change_physical_rejection']+=1;continue
             local.append(dict(site=site['id'],direction=candidate['direction'],class_type=candidate['classes'][0],
                 endpoint_classes=candidate['classes'],object_id=candidate['identity'][1],points=p,source='inferred',
-                method='endpoint_tangent_constrained_kinematic',identity='same_sensor_session_id_class_changed',
-                gap_kind='classification_change',gap_s=b['t']-a['t']))
+                method='endpoint_tangent_constrained_kinematic',identity='same_sensor_session_id_recording_gap' if candidate['recording_gap'] else 'same_sensor_session_id_class_changed',
+                gap_kind='recording_interruption' if candidate['recording_gap'] else 'classification_change',
+                missing_receipt_fraction=candidate['missing_receipt_fraction'],gap_s=b['t']-a['t']))
     from .local_tracklet_matching import reconstruct as reconnect_local
     if experimental_changed_ids:
         for site in snapshot['sites']:
@@ -94,7 +96,7 @@ def generate(snapshot,report,experimental_changed_ids=False):
         for path in link['paths']:
             a=endpoint(by_id[link['sites'][0]]['tracks'][path['upstream_fragment']]['points'],True)
             b=endpoint(by_id[link['sites'][1]]['tracks'][path['downstream_fragment']]['points'],False)
-            p=prediction(a,b,report)
+            p=prediction(a,b,report,exact_join=True)
             if p is None:rejected['between_physical_rejection']+=1;continue
             between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin']))
     return dict(state='ready',generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
