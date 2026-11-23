@@ -42,3 +42,21 @@ class PreviewTest(unittest.TestCase):
             store=Store(Path(tmp)/'db')
             store.save_batch([dict(site='S',session='a',received_at=100,sensor_time=None,status='quarantined',reason='invalid_timestamp',event={'frame':{'objects':[]}})])
             self.assertEqual(approximate_snapshot(store,{'id':'S'},101)['state'],'unavailable')
+
+    def test_frame_received_during_health_query_is_fresh(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            store=Store(Path(tmp)/'db');site={'id':'S','reference_location':{'lat':43.75,'lng':-79.52}}
+            health=store.health('S')
+            with patch('dashboard.live.time') as clock:
+                clock.time.return_value=100.
+                def during_query(_):
+                    store.save_batch([dict(site='S',session='a',received_at=100.1,sensor_time=None,status='quarantined',reason='unknown_timezone',event={'frame':{'objects':[{'id':'fresh','classType':'2'}]}})])
+                    clock.time.return_value=100.2
+                    return health
+                with patch.object(store,'health',side_effect=during_query):
+                    result=approximate_snapshot(store,site)
+                self.assertEqual(result['state'],'approximate')
+                self.assertAlmostEqual(result['age_s'],.1)
+                self.assertEqual(result['objects'][0]['id'],'fresh')
+            self.assertEqual(approximate_snapshot(store,site,100)['state'],'stale')

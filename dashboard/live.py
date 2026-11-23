@@ -59,13 +59,15 @@ def approximate_snapshot(store,site,now=None,rotation=None):
     """Receipt-timed visualization only; never promotes quarantined data to KPIs."""
     import json
     rotation=site.get('preview_rotation_deg',220) if rotation is None else rotation
-    clock=time.time() if now is None else now
     base={'site':site['id'],'objects':[],'health':store.health(site['id']),
           'state':'unavailable','spatial_accuracy':'approximate','rotation_deg':rotation,
           'time_basis':'receipt; sensor timezone and upstream delay unverified'}
     with store.connect() as db:
         row=db.execute('SELECT * FROM preview_frames WHERE site=?',(site['id'],)).fetchone()
     if not row:return dict(base,reason='Waiting for received frames')
+    # Read the clock after the frame: collection can commit while health/DB
+    # queries are running, so a query-start clock can falsely mark it future.
+    clock=time.time() if now is None else now
     base.update(event_key=row['event_key'],received_at=row['received_at'],age_s=clock-row['received_at'],session=row['session'])
     if not 0<=base['age_s']<=5:return dict(base,state='stale',reason='No receipt within five seconds')
     origin=site.get('reference_location')

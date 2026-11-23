@@ -792,3 +792,14 @@ original endpoint speeds and signed position residuals, and states that this is
 not exact interpolation. No region is enabled until the prospective criteria
 pass. The full 210-test scientific suite passed, including both-direction
 residual-sign and observation-preservation checks.
+
+### Live freshness race corrected
+
+A per-sensor API check caught a newly received Signet frame labeled stale with
+negative age: the preview function sampled its clock before querying health and
+the latest frame. Collection committed during that query. The function now
+samples the clock after fetching the frame, retaining strict future/stale checks
+for explicitly supplied clocks. A regression test reproduces the concurrent
+arrival; eleven live/preview/combined tests passed. Only the dashboard server
+was restarted. The subsequent API check showed all seven Florida and all nine
+authorized Finch sensors fresh within 0.71 s; Jane remained unavailable.
