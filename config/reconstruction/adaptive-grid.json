@@ -1,7 +1,8 @@
 {
   "method": "endpoint_envelope_grid_retry_v1",
   "enabled_regions": [
-    "finch"
+    "finch",
+    "florida"
   ],
   "scope": "Same-ID local car gaps only; no between-sensor fallback. Plateau additionally restricted to endpoint-correction-enabled sites.",
   "protocol_sha256": "8192fb0c1fe9f7d977b63f362dd356a86452fc2decc7477949c1140dd6352c94",
@@ -60,5 +61,53 @@
       "stop_precision": 1.0,
       "stop_recall": 1.0
     }
+  },
+  "florida_validation": {
+    "protocol_sha256": "8192fb0c1fe9f7d977b63f362dd356a86452fc2decc7477949c1140dd6352c94",
+    "prospective_validation": {
+      "windows": 7,
+      "distinct_added_ids": 14,
+      "added_quality": {
+        "n": 14,
+        "mae_m": 0.17232506984080254,
+        "rmse_m": 0.1828231911457725,
+        "speed_mae_mps": 0.1103353756239082,
+        "stop_time_error_s": 0.6857142857141493,
+        "physics_violation": 0.0,
+        "p95_case_mae_m": 0.6877186185401845,
+        "stop_precision": 1.0,
+        "stop_recall": 1.0
+      }
+    },
+    "reports": [
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-053.json",
+        "sha256": "0b54d9286cf4c817c922d414084787168e9eefee57f82815160072b7f1490f3d"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-061.json",
+        "sha256": "5b52eb25a35663a9a6b399ad9fdc34eeeb8155a59af50c78b2b032b15ddddd12"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-086.json",
+        "sha256": "df27b116b75470d9e7b0f0474ba91b1b8b7a6523e433f7d29914428505b8dedd"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-109.json",
+        "sha256": "f1c61a858109c9decb4636a123180a2c04fbeaba4818e4865864962913b732fb"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-132.json",
+        "sha256": "8fd744fb04d7c3fe79bef856f791596295504bd6699541a8527ca9ccf4290ff9"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-152.json",
+        "sha256": "d1e2a40f921e8981a47639e77370320cdb4dd0d39ca89f17fc5e625bf216785a"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-169.json",
+        "sha256": "244710c50218ede68e52b0d23d2d74aa8c4991205de93a94a04c6a304968f125"
+      }
+    ]
   }
 }

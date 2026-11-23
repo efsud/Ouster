@@ -868,3 +868,14 @@ identity-grouped mean gain of 0.124 m (exploratory bootstrap interval 0.009–0.
 m across 554 IDs). Its p95 case error worsened and Islington/Martin Grove mean
 errors worsened, so a blanket deployment remains withheld. No test-based site
 selection is silently promoted.
+
+### Florida adaptive grid enabled
+
+Seven complete prospective windows supplied 14 added masks from 14 distinct
+vehicles: mean position error 0.172 m, speed error 0.110 m/s, p95 case MAE
+0.688 m, zero physical violations. The unchanged review requirements passed.
+The same local-only adaptive-grid retry is now enabled in Florida. An identical
+current snapshot increased local estimates from 134 to 135; all 595 between-site
+paths and all previously accepted local paths were unchanged. The existing
+worker reads this configuration on its next refresh; the current layer was
+also regenerated and published. No collector restart or bound relaxation.
