@@ -17,17 +17,19 @@ The campaign freezes parameters before evaluating later recordings, excludes ear
 
 | Corridor | Evaluated matching scenarios | Correct: reference → improved | False: reference → improved |
 |---|---:|---:|---:|
-| Florida | 7,553 | 5,847 → 6,549 | 21 → 23 |
+| Florida | 8,687 | 6,780 → 7,553 | 22 → 25 |
 | Finch | 7,685 | 5,090 → 5,479 | 54 → 43 |
 
-These are paired feasibility-gate comparisons, not measured cross-intersection identity accuracy. Florida gains coverage with two additional false matches; Finch improves both counts.
+These are paired feasibility-gate comparisons, not measured cross-intersection identity accuracy. Florida gains coverage with three additional false matches; Finch improves both counts.
 
 
-The refined-grid fallback added 14 Florida identities with mean position error 0.172 m and 24 Finch identities with 0.159 m in its prospective checks. Stationary-position checks had mean error 0.015 m (23 Florida masks) and 0.012 m (55 Finch masks, 51 identities); production site exclusions still apply. These small-error subsets do not describe all gaps.
+The refined-grid fallback added 15 Florida identities with mean position error 0.162 m and 24 Finch identities with 0.159 m in its prospective checks. Stationary-position checks had mean error 0.015 m (32 Florida masks) and 0.012 m (55 Finch masks, 51 identities); production site exclusions still apply. These small-error subsets do not describe all gaps.
 
 The additional November 6 Finch recording improved correct masked associations from 2,455 to 2,620 and reduced false associations from 15 to 8 across 3,133 scenarios. This is an additional recording check, not a never-used dataset. York Gate and Florida Hattaway stationary corrections remain withheld after poor external results. The quadratic-solver extension failed prospective error thresholds; the smoother worsened tail errors. Neither was enabled merely to fill more space.
 
 214 science tests and 11 relevant dashboard tests passed, with JavaScript syntax checking. The database snapshot concurrency/deadline tests also passed after switching its target to temporary storage.
+
+The bounded campaign finished at 12:22:24 UTC with no recorded campaign errors. It saved 17 Florida and 16 Finch evaluation batches. The last Finch local batch reached the deadline after evaluating 83 of 135 eligible masks; unevaluated cases are not counted as successes. Later substudies with zero evaluated cases contribute no evidence.
 
 ## Dashboard verification
 
