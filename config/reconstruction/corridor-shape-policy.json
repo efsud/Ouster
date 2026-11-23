@@ -1,0 +1,32 @@
+{
+  "method": "shape_feasible_partial_v1",
+  "enabled_regions": [
+    "florida"
+  ],
+  "weight": 0.5,
+  "threshold": 1.5,
+  "margin": 0.25,
+  "prospective_reports": [
+    {
+      "file": "data/reconstruction/eight-hour-20261123/florida/cycle-018.json",
+      "sha256": "00339da9c2ec2e058ae3963f00a645601921697a8e8875ba2d66a05c7d026a0f"
+    },
+    {
+      "file": "data/reconstruction/eight-hour-20261123/florida/cycle-034.json",
+      "sha256": "210e4855bfdb36cfb076e9107905c22077aecf4386370299143b7e300c07a1e6"
+    }
+  ],
+  "validation": {
+    "masked_scenarios": 774,
+    "legacy_correct": 599,
+    "candidate_correct": 674,
+    "legacy_false": 0,
+    "candidate_false": 0
+  },
+  "scope": "Experimental car association with unchanged exact-endpoint final refinement and physical bounds",
+  "limitations": [
+    "Masked scenarios reuse vehicles; not independent identities.",
+    "Actual cross-sensor size biases, clock offsets and identities remain unverified.",
+    "No gate change for Finch."
+  ]
+}

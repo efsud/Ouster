@@ -11,6 +11,14 @@ class SameIdTests(unittest.TestCase):
     def test_class_change_preserves_identity(self):
         a,b=self.pair();rows=list(candidates({'tracks':[a,b]}))
         self.assertEqual(len(rows),1);self.assertEqual(rows[0]['classes'],['2','6'])
+    def test_rejection_audit_does_not_change_admission(self):
+        a,b=self.pair();records=[]
+        expected=list(candidates({'tracks':[a,b]}))
+        self.assertEqual(list(candidates({'tracks':[a,b]},audit=records.append)),expected)
+        self.assertEqual(records[0]['reason'],'candidate')
+        b['lateral_start_m']=10;records=[]
+        self.assertEqual(list(candidates({'tracks':[a,b]},audit=records.append)),[])
+        self.assertEqual(records[0]['reason'],'lateral_displacement_outside_gate')
     def test_other_id_session_direction_overlap_and_lateral_rejected(self):
         for change in ('id','session','direction','lateral','clock','movement'):
             a,b=self.pair()

@@ -595,3 +595,19 @@ scoring denominator to the car class used by the frozen model. In the new long
 outage window, neither corridor had continuously observed cars spanning the
 90/120-second masks; many vehicles were entirely hidden. These are unsupported
 reconstructions, not successful recoveries or zero-error results.
+
+Florida's estimated intersensor layer now uses the frozen 0.5 shape penalty and
+exact feasible-velocity admission gate, followed by the unchanged final bounded
+refinement. Two later masked-association windows yielded 674 correct / 0 false
+versus 599 / 0 for the same shape matcher with its old cubic-only gate, among
+774 eligible scenarios. Scenarios reuse vehicles. Actual cross-sensor identity
+and box-size biases remain unverified; these stay experimental dashed hypotheses.
+A same-window display preview increased Florida links 141→185 without changing
+the 52 local estimates. Finch retains its previous matcher pending more evidence.
+
+Audit improvements keep map-transform manifests separate from model versions,
+track exact reasons for same-ID rejection, and distinguish entirely hidden cars
+from cars with too little visible endpoint context. The lateral-mask validator
+now uses the same 0.5-second actual-frame selection as production and time-based
+endpoint context. Earlier native-cadence lateral results remain historical records,
+not interchangeable with the revised validation. Lateral gate widening remains off.

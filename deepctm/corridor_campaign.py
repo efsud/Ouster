@@ -151,6 +151,7 @@ def run(output,deadline,interval=1800):
                 report=dict(cycle=cycle,region=region,snapshot_sha256=hashlib.sha256(raw).hexdigest(),window=[s['start'],s['end']],evaluated_window=[begin,s['end']-30],
                     model=model,geometry_version=s.get('geometry_version','inter-sensor-chord-v1'),endpoint_context_version=s.get('endpoint_context_version','legacy-five-points'),ingestion_epochs=s.get('ingestion_epochs',[]),results=validation,limitations=['No ground truth between sensors.','Known training/validation IDs excluded from test; multiple gap lengths per test vehicle are not independent.','Geometry version is recorded; projection changes are not evidence of improved prediction accuracy.','No parameter retuning on later test windows.','No automatic promotion from these test scores.'])
                 from .campaign_association import evaluate as association_evaluate
+                report['transform_manifest']=s.get('transform_manifest')
                 report['association']=association_evaluate(subset(s,max(0,begin-s['start']),s['end']-s['start']-30,model.get('excluded_test_ids',[])),model['parameters'],deadline)
                 site_protocol=ROOT/'data/reconstruction/site-policy-review/protocol.json'
                 if region=='finch' and site_protocol.exists():
