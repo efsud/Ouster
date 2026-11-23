@@ -6,15 +6,11 @@ from .figures import recorded_events
 from .archive_extension import cases
 from .corridor_campaign import atomic,evaluate
 
-def run(capture,output,deadline):
+def load_snapshot(capture):
     from dashboard.server import sites
-    from .validate_shape_association import score
-    from .kinematic_gate import path
-    from .validate_rts_prior import prospective
-    from .validate_quadratic_solver import evaluate as quadratic
-    root=Path(__file__).resolve().parents[1];capture=Path(capture);output=Path(output)
+    root=Path(__file__).resolve().parents[1];capture=Path(capture)
     manifest=json.loads((capture/'manifest.json').read_text());entries=[s for s in sites() if s['region']=='Toronto']
-    model=json.loads((root/'data/reconstruction/eight-hour-20261123/finch/model.json').read_text());issues=[];counts={}
+    issues=[];counts={}
     # Temporary copy is isolated from both the original archive and live buffers.
     with tempfile.TemporaryDirectory(prefix='ouster-archive-review-') as tmp:
         db=connect(Path(tmp)/'frames.sqlite3')
@@ -30,6 +26,16 @@ def run(capture,output,deadline):
             print('archive loaded',site['name'],count,flush=True)
         axes=json.loads((root/'config/reconstruction/corridor-road-axes.json').read_text())
         snapshot=build(db,entries,manifest['end'],road_axes=axes,processing_interval_s=.5);db.close()
+    return snapshot,manifest,counts,issues
+
+def run(capture,output,deadline):
+    from .validate_shape_association import score
+    from .kinematic_gate import path
+    from .validate_rts_prior import prospective
+    from .validate_quadratic_solver import evaluate as quadratic
+    root=Path(__file__).resolve().parents[1];capture=Path(capture);output=Path(output)
+    model=json.loads((root/'data/reconstruction/eight-hour-20261123/finch/model.json').read_text())
+    snapshot,manifest,counts,issues=load_snapshot(capture)
     result={'state':'evaluating','capture':str(capture),'window':[manifest['start'],manifest['end']],
         'manifest_sha256':hashlib.sha256((capture/'manifest.json').read_bytes()).hexdigest(),
         'received_frame_counts':counts,'read_issues':issues,'transform_manifest':snapshot['transform_manifest'],
