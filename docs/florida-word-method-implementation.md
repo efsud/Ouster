@@ -152,3 +152,46 @@ CTM cells are 20 m, covering ±120 m of the provisional intersection reference. 
 The current local model accepted 21/39 eligible cases, the integrated model 20/39; common-case metrics exclude rejected cases and must not be read as complete coverage. Spatial variants accepted 22/25. Only one common local case supplied an estimated leader. Eight local and twelve spatial cases supplied estimated signals, but none supplied all three priors together. Signal/no-signal ablations had effectively identical errors here. Therefore these results do not demonstrate full CTM–Newell–signal benefit; small improvements are mostly attributable to the nominal CTM soft prior. All exploratory bootstrap intervals include zero, and neither validation-area outage nor spatial performance consistently improved. No deployment switch was made.
 
 Report: `data/reconstruction/word-v1-collection/integrated-validation.json`. Figure: `integrated-comparison.png` in the same folder, reproducible using `scripts/plot_integrated_validation.py`. The dashboard comparison panel exposes common counts, errors and uncertainty. Fifty-three targeted tests pass, including target exclusion, all-object masking, estimated internal capacity conservation and explicit missing-prior handling. This is an implemented experimental integration with partial field inputs, not a field-validated complete model. Next evidence priorities are sustained same-lane leaders, independently verified movement/phase/stop-line geometry, calibrated queue parameters and independent-day AM/PM evaluations.
+
+## Additional archival experiment: longer gaps and association
+
+The new `deepctm.archive_snapshot` reader preserves the raw archives and never writes to the live buffer. It samples the first hour of each November 13 AM/PM archive at approximately half-second intervals, using the existing provisional road calibration and movement extraction. The AM hour contains 250,328 scanned records, 46,514 sampled frames and 26,614 displayed fragments; PM contains 251,345 scanned records, 46,419 sampled frames and 32,901 fragments. Fragment counts are not unique vehicle counts.
+
+`deepctm.archive_extension` trains an empirical shape prior from AM 07:00–07:30, chooses its weight using complete fragments after 07:31, and freezes that choice before scoring PM 16:00–17:00 (Florida local time). It hides 10/30/60/90 seconds and evaluates only gaps with continuous recorded truth. Training identities are excluded from the local validation sample. Several gap lengths may reuse a track, so mask counts are not independent vehicles.
+
+The prior learns normalized deviations from the endpoint Hermite curve, conditioned on visible endpoint speed, average speed, gap duration and location relative to the intersection. Five nearby training examples supply an optional soft reference; distant cases fall back to the original reference. Both endpoints still have exact position/speed constraints, with the previously frozen physical bounds. Example: a 60-second hidden interval with a visible queue departure can borrow a supported stopping/starting shape, but never the hidden test observations. This is an empirical reference for constrained reconstruction, not a newly trained DeepCTM neural network.
+
+The association candidate calibrates expected travel time on training pairs, then selects an ambiguity margin on validation only. Selection requires at least 98% validation precision and no more wrong matches than the existing matcher in either complete or dropout scenarios. Original object IDs are retained only as scoring labels and never passed to the matcher. Reversed arrival order and deliberate missing arrivals/departures prevent order-based matching shortcuts. Same-sensor 20/50/100 m masks are proxies; they cannot validate identity across the actual sensors.
+
+Archived signal events are not treated as verified state replay. The integrated comparator has CTM and available estimated leader context, without signal evidence. The deployed model is unchanged. Actual adjacent-sensor hypothesis counts are saved separately from measured matching accuracy.
+
+Reproduction:
+
+```sh
+.venv-deepctm/bin/python -m deepctm.archive_snapshot --capture data/sr436/20261113T115900Z-89fb0f --output data/reconstruction/archive-extension/am
+.venv-deepctm/bin/python -m deepctm.archive_snapshot --capture data/sr436/20261113T205900Z-7f94bd --output data/reconstruction/archive-extension/pm
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 .venv-deepctm/bin/python -m deepctm.archive_extension --am data/reconstruction/archive-extension/am/snapshot.json --pm data/reconstruction/archive-extension/pm/snapshot.json --study data/reconstruction/word-v1-collection/evaluation-001/report.json --output data/reconstruction/archive-extension/evaluation
+.venv-deepctm/bin/python scripts/plot_archive_extension.py
+PYTHONPATH=. .venv-deepctm/bin/python scripts/audit_archive_links.py
+```
+
+### Completed archival results
+
+The shape prior used 1,248 training templates. On morning validation its common-case MAE improved from 1.691 m to 1.594 m (weight 0.25) and 1.540 m (weight 0.5), but accepted cases decreased from 69 to 68 and 64 out of 159. It therefore failed the predeclared coverage rule and was not selected for deployment or afternoon selection.
+
+On the frozen afternoon test, current refinement accepted 66/168 cases and the CTM/available-leader comparator 67/168. Their 65 common cases had position MAE 1.812 versus 1.807 m. The exploratory paired 95% improvement interval is −0.101 to +0.110 m; there is no reliable overall gain. At 30/60/90 seconds, common-case MAE was 2.961→2.955 m (13 cases), 2.670→2.613 m (12), and 1.140→1.139 m (13). These are different accepted cohorts; the lower 90-second error does not mean long gaps are easier. Stop-duration error rose overall from 2.505 to 2.554 seconds.
+
+An admission audit found negative endpoint slopes in 84 of 168 attempted masks, although mask creation permits slopes down to −0.5 m/s. Exact endpoint speeds conflict with the nonnegative downstream-speed constraint. These can include stopped-object jitter or genuine small reversals; they were **not** silently clamped to improve test coverage. A noise-aware endpoint model needs validation on another untouched period.
+
+The travel-time-calibrated matcher selected margin 0.25 using morning validation. Afternoon identity-blind results:
+
+| Scenario | Existing correct / eligible | Calibrated correct / eligible | Existing wrong | Calibrated wrong |
+|---|---:|---:|---:|---:|
+| Complete endpoints | 6,895 / 10,215 | 6,968 / 10,215 | 93 | 87 |
+| Missing departures and arrivals | 4,337 / 6,182 | 4,373 / 6,182 | 150 | 141 |
+
+This is a modest proxy matching improvement, not a field-verified cross-sensor identity claim. The dropout precision remains 96.88%, below the 98% validation target when transferred to afternoon data; no production promotion was made. Raw recordings are preserved. Reports, plots and actual-link counts reside in `data/reconstruction/archive-extension/evaluation/`; model code and explanation are versioned, private recordings are not committed.
+
+On the actual seven-sensor PM corridor, the existing matcher proposed 2,200 connections and the calibrated candidate 2,172. These are **unverified hypotheses**, not correct-match counts. The smaller number is consistent with changed ambiguity/cost decisions and does not establish better or worse real identity accuracy. This is why the proxy improvement alone did not change the live layers. The added matching callback defaults to the existing behavior and is used only by the audit script.
+
+Software verification: 38 targeted tests passed, including exact endpoint joins, zero-weight equivalence to the current estimator, identity/order-blind association, ambiguous duplicate rejection, prior availability, spatial matching and dashboard response behavior. Browser verification confirmed the completed archive table on the Florida figures page.

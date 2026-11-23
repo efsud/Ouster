@@ -142,7 +142,7 @@ def associate_residual(left,right,threshold=1.5,margin=.25,max_rounds=None):
         candidates={k:v for k,v in candidates.items() if k[0] not in used_a and k[1] not in used_b}
     return accepted
 
-def reconstruct(snapshot,association_method="augmented"):
+def reconstruct(snapshot,association_method="augmented",matcher=None):
     from statistics import quantiles
     links=[]
     for west,east in zip(snapshot['sites'],snapshot['sites'][1:]):
@@ -173,7 +173,7 @@ def reconstruct(snapshot,association_method="augmented"):
             before_edge=[len(left),len(right)]
             left=[e for e in left if abs(e['x']*sign-out)<=30];right=[e for e in right if abs(e['x']*sign-entry)<=30]
             for counts,before,after in zip(diagnostics,before_edge,[len(left),len(right)]):counts['away_from_coverage_edge']=before-after
-            matches=associate(left,right,method=association_method)
+            matches=associate(left,right,method=association_method) if matcher is None else matcher(left,right)
             paths=[{'points':m['points'],'class_type':left[m['left']]['class_type'],'direction':direction,'association_cost':m['cost'],'ambiguity_margin':m['margin'],'assignment_round':m.get('assignment_round',1),'additional':m.get('additional',False),'upstream_movement':left[m['left']].get('movement',{}),'downstream_movement':right[m['right']].get('movement',{}),'upstream_fragment':left[m['left']]['fragment'],'downstream_fragment':right[m['right']]['fragment']} for m in matches]
             links.append({'sites':[up['id'],down['id']],'names':[up['name'],down['name']],'direction':direction,'departure_candidates':len(left),'arrival_candidates':len(right),'diagnostics':diagnostics,'unmatched_departures':len(left)-len(paths),'unmatched_arrivals':len(right)-len(paths),'paths':paths})
     return {'method':'Estimated cross-sensor associations and monotone endpoint-constrained motion; not verified identities or DeepCTM forecasts','links':links,'limitations':['Unknown clock offsets, turning traffic and occlusion can invalidate associations.','Only unambiguous supported candidates are drawn; missing associations remain blank.','No signal state is inferred. Colors are estimated speed.']}

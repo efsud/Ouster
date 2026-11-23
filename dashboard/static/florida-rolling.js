@@ -112,6 +112,17 @@ async function refreshReconstruction(){
     }
     const p=document.createElement('p');p.textContent='Experimental soft priors, provisional lane/stop-line geometry. No demonstrated reliable improvement yet; the current estimator remains deployed. Spatial masking does not verify vehicle matching between sensors.';host.append(p);
    }
+   const archive=reconstruction.archive_validation;
+   if(archive){
+    const h=document.createElement('h4');h.textContent='Additional Florida archives · longer gaps and blind matching';host.append(h);
+    const info=document.createElement('p');info.textContent=`November 13: morning training/selection, afternoon held out. Selected shape: ${archive.selected_shape}; selected association: ${archive.selected_association}. Existing live estimator unchanged.`;host.append(info);
+    for(const [method,row] of Object.entries(archive.results?.test||{})){
+     const p=document.createElement('p');p.textContent=`${method}: ${row.accepted}/${row.eligible} accepted; ${row.common.n} common masks; mean position error ${row.common.mae_m?.toFixed(3)??'unavailable'} m.`;host.append(p);
+     for(const [gap,m] of Object.entries(row.by_gap||{})){const line=document.createElement('p');line.textContent=`${gap}-second hidden interval: ${m.n} common masks, position error ${m.mae_m?.toFixed(3)??'unavailable'} m, speed error ${m.speed_mae_mps?.toFixed(3)??'unavailable'} m/s.`;host.append(line);}
+    }
+    for(const [scenario,methods] of Object.entries(archive.association_test||{}))for(const [method,m] of Object.entries(methods)){const p=document.createElement('p');p.textContent=`Identity-blind ${scenario} · ${method}: ${m.correct}/${m.eligible} correct matches; ${m.false} wrong matches; precision ${m.precision==null?'unavailable':(m.precision*100).toFixed(1)+'%'}.`;host.append(p);}
+    const p=document.createElement('p');p.textContent='Same-sensor spatial masks are a proxy, not proof of identity or path accuracy between intersections. Archived signal state is unavailable for this comparison. These remain retrospective estimates.';host.append(p);
+   }
    const association=reconstruction.association_validation;
    if(association){
     const heading=document.createElement('h4');heading.textContent='Tracklet matching · held-out spatial masks';host.append(heading);
