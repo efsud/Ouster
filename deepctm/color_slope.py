@@ -28,7 +28,7 @@ def bridge(a,b,max_gap=120,max_residual=20):
     points[-1][1]=b['x']
     return dict(points=points,residual_m=residual,speed_adjustment_mps=correction,color_band_mps=color_band(a.get('color_speed',v)),constant_slope_mps=v)
 
-def associate(left,right,max_gap=120,max_residual=20,max_distance=350):
+def associate(left,right,max_gap=120,max_residual=20,max_distance=350,eligible=None):
     used=set();matches=[]
     ordered=sorted(enumerate(right),key=lambda z:z[1]['t']);times=[b['t'] for _,b in ordered]
     for i,a in sorted(enumerate(left),key=lambda z:(z[1]['t'],z[0])):
@@ -38,6 +38,7 @@ def associate(left,right,max_gap=120,max_residual=20,max_distance=350):
             if a.get('direction')!=b.get('direction'):continue
             if abs(b['x']-a['x'])>max_distance:continue
             if a.get('session') and b.get('session') and a.get('site')==b.get('site') and a['session']!=b['session']:continue
+            if eligible is not None and not eligible(a,b):continue
             p=bridge(a,b,max_gap,max_residual)
             if p:options.append((abs(p['residual_m']),b['t'],j,p))
         if not options:continue

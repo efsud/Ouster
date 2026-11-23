@@ -1,7 +1,7 @@
 'use strict';
 const el=id=>document.getElementById(id),vehicle=new Set(['1','2','3','4','5','6','7','8','9','15']);
 const corridor=document.body.dataset.corridor||'florida',regionName=corridor==='finch'?'Toronto':'Florida';
-let data=null,view=null,points=[],version=0,reconstruction=null;
+let data=null,view=null,points=[],version=0,reconstruction=null,colorExample=null;
 if(new URLSearchParams(location.search).get('between')==='1'&&el('between-layer'))el('between-layer').checked=true;
 const clock=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:corridor==='finch'?'America/Toronto':'America/New_York',hour12:false});
 function color(v){const t=Math.max(0,Math.min(1,v/20));return `hsl(${t*120},75%,40%)`;}
@@ -70,23 +70,39 @@ el('plot').addEventListener('wheel',e=>{e.preventDefault();if(!e.deltaY)return;c
 el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`+(best.receiptTime!=null&&Math.abs(best.receiptTime-best.time)>.05?` · adjusted time; received ${clock(best.receiptTime)} (${(best.receiptTime-best.time).toFixed(2)} s later)`:''):'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();setInterval(refresh,15000);
 
 if(el("additional-matches"))el("additional-matches").onchange=draw;
+function showColorExample(kind){
+ const paths=reconstruction?.residual_color?.[kind]||[];
+ const candidates=paths.filter(p=>p.direction===el('direction').value);
+ const p=candidates.sort((a,b)=>(b.points.at(-1)[0]-b.points[0][0])-(a.points.at(-1)[0]-a.points[0][0]))[0]||paths[0];
+ if(!p||!data)return;
+ el('direction').value=p.direction;el('objects').value='vehicles';el('color-layer').checked=true;
+ el(kind==='within_intersection'?'within-layer':'between-layer').checked=true;
+ const sites=new Set(p.sites||[p.site]);for(const box of el('sites').querySelectorAll('input'))box.checked=sites.has(box.value);
+ const start=data.start+p.points[0][0],end=data.start+p.points.at(-1)[0],padding=Math.max(10,(end-start)*.2);
+ view=[Math.max(data.start,start-padding),Math.min(data.end,end+padding)];colorExample=p.points[0][0]+':'+p.points.at(-1)[0];draw();
+}
+if(el('color-local-example'))el('color-local-example').onclick=()=>showColorExample('within_intersection');
+if(el('color-between-example'))el('color-between-example').onclick=()=>showColorExample('between_intersections');
 
 function paintReconstruction(c,x,y,selected){
  if(!reconstruction||reconstruction.state!=='ready'||reconstruction.snapshot_generated_at!==data.generated_at)return;
- const counts=[0,0],allowed=['all','vehicles'].includes(el('objects').value);
+ const counts=[0,0],extraCounts=[0,0],allowed=['all','vehicles'].includes(el('objects').value);
  const groups=[['within-layer',reconstruction.within_intersection||[],0],['between-layer',reconstruction.between_intersections||[],1]];
+ if(el('color-layer')?.checked&&reconstruction.residual_color){
+  groups.push(['within-layer',reconstruction.residual_color.within_intersection||[],0],['between-layer',reconstruction.residual_color.between_intersections||[],1]);
+ }
  for(const [control,paths,group] of groups){if(!allowed||!el(control)?.checked)continue;
   for(const path of paths){
    if(path.direction!==el('direction').value||!(path.sites||[path.site]).every(id=>selected.has(id)))continue;
    let seen=false,distance=0;
    for(let i=1;i<path.points.length;i++){
     const a=path.points[i-1],b=path.points[i],ta=data.start+a[0],tb=data.start+b[0],length=Math.hypot(x(tb)-x(ta),y(b[1])-y(a[1]));
-    if(tb>=view[0]&&ta<=view[1]){seen=true;c.strokeStyle=color(b[2]);c.lineWidth=1.8;c.setLineDash(group?[8,5]:[3,4]);c.lineDashOffset=-distance;c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],name:'EST '+(group?'between intersections · identity unverified':'within intersection'+((path.identity||'').startsWith('unverified')?' · identity unverified':''))+' · '+({'bounded_stationary_latent_position':'stationary position estimate','endpoint_envelope_grid_retry_v1':'refined endpoint time grid'}[path.estimation_model]||({'kinematic_same_id_lateral_v1':'same-ID lateral-motion estimate'}[path.method]||path.method))+(path.exact_endpoint_interpolation===false?' · stationary estimate; endpoint residual ≤'+(100*Math.max(...(path.endpoint_position_residual_m||[0]).map(Math.abs))).toFixed(1)+' cm':'')+(path.object_id?' · object ID '+path.object_id:'')});}distance+=length;
-   }if(seen)counts[group]++;
+    if(tb>=view[0]&&ta<=view[1]){seen=true;c.strokeStyle=color(b[2]);c.lineWidth=path.layer==='residual_color_slope'&&colorExample===path.points[0][0]+':'+path.points.at(-1)[0]?3:1.8;c.setLineDash(path.layer==='residual_color_slope'?[10,4,2,4]:group?[8,5]:[3,4]);c.lineDashOffset=-distance;c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],name:'EST '+(group?'between intersections · identity unverified':'within intersection'+((path.identity||'').startsWith('unverified')?' · identity unverified':''))+' · '+({'bounded_stationary_latent_position':'stationary position estimate','endpoint_envelope_grid_retry_v1':'refined endpoint time grid'}[path.estimation_model]||({'kinematic_same_id_lateral_v1':'same-ID lateral-motion estimate','color_slope_chronological_v1':'same-color constant-slope proposal'}[path.method]||path.method))+(path.exact_endpoint_interpolation===false?' · stationary estimate; endpoint residual ≤'+(100*Math.max(...(path.endpoint_position_residual_m||[0]).map(Math.abs))).toFixed(1)+' cm':'')+(path.object_id?' · object ID '+path.object_id:'')});}distance+=length;
+   }if(seen){counts[group]++;if(path.layer==='residual_color_slope')extraCounts[group]++;}
   }
  }
  c.setLineDash([]);c.lineDashOffset=0;
- if(el('layer-counts'))el('layer-counts').textContent=`Visible estimates: ${counts[0]} within intersections; ${counts[1]} between intersections. Colors indicate speed, not confidence.`+(el('within-layer')?.checked&&counts[0]===0?' No supported local estimates in this selection; checking the box cannot join unidentified fragments.':'');
+ if(el('layer-counts'))el('layer-counts').textContent=`Visible estimates: ${counts[0]} within intersections; ${counts[1]} between intersections. Colors indicate speed, not confidence.`+(el('color-layer')?.checked?` Requested color-slope additions: ${extraCounts[0]} within; ${extraCounts[1]} between.`:'')+(el('within-layer')?.checked&&counts[0]===0?' No supported local estimates in this selection; checking the box cannot join unidentified fragments.':'');
 }
 async function refreshReconstruction(){
  if(!el('reconstruction-status'))return;
@@ -94,6 +110,9 @@ async function refreshReconstruction(){
   const response=await fetch(`/api/${corridor}-reconstruction`);if(!response.ok)throw Error('Reconstruction study unavailable');reconstruction=await response.json();
   const aligned=reconstruction.state==='ready'&&data&&reconstruction.snapshot_generated_at===data.generated_at;
   for(const id of ['within-layer','between-layer'])el(id).disabled=!aligned;
+  if(el('color-layer'))el('color-layer').disabled=!aligned||!reconstruction.residual_color;
+  if(el('color-local-example'))el('color-local-example').disabled=!aligned||!reconstruction.residual_color?.within_intersection?.length;
+  if(el('color-between-example'))el('color-between-example').disabled=!aligned||!reconstruction.residual_color?.between_intersections?.length;
   const study=reconstruction.study||{},parts=study.readiness?.partitions;
   const fallbackCounts={plateau:0,grid:0};for(const p of reconstruction.within_intersection||[]){if(p.estimation_model==='bounded_stationary_latent_position')fallbackCounts.plateau++;if(p.estimation_model==='endpoint_envelope_grid_retry_v1')fallbackCounts.grid++;}
   const lateralCount=(reconstruction.within_intersection||[]).filter(p=>p.method==='kinematic_same_id_lateral_v1').length;
@@ -101,6 +120,11 @@ async function refreshReconstruction(){
   const fallbackNote=(fallbackCounts.plateau||fallbackCounts.grid)?` Local fallbacks: ${fallbackCounts.grid} exact-endpoint grid retries; ${fallbackCounts.plateau} stationary estimates with up to 5 cm endpoint residual. Observations are unchanged.`:'';
   el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method==='color_slope_chronological_v1'?'Speed-color + constant-slope chronological matching (experimental; 1 m/s color bands; original slope for 80%, bounded correction at the end)':reconstruction.method}${reconstruction.endpoint_corrected_gaps?' + bounded stationary endpoint correction on '+reconstruction.endpoint_corrected_gaps+' gaps':''}.${fallbackNote}${lateralNote}${reconstruction.association_method==='bidirectional_shape_v1'?' Matching uses forward/backward motion evidence (experimental).':''} Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
   const host=el('reconstruction-comparison');host.replaceChildren();
+  if(reconstruction.residual_color){
+   const v=reconstruction.residual_color,p=document.createElement('p');p.textContent=`Requested color-slope method · ${v.within_intersection.length} additional local and ${v.between_intersections.length} additional adjacent-intersection proposals across this hour. Existing estimates and observations are preserved. Departures are processed earliest first; candidates share a 1 m/s speed-color band and the closest eligible extrapolated position is selected. Ties remain unresolved.`;host.append(p);
+   const limits=document.createElement('p');limits.textContent='Original slope is retained for 80% of each extension. Only the final 20% closes the endpoint discrepancy, with speed adjustment ≤0.5 m/s. Maximum gaps: 90 s locally / 120 s between sites; maximum residual: 10 m / 20 m. Local clock, session, movement and lateral checks remain active. This hypothesis layer can make wrong identity matches.';host.append(limits);
+   if(v.validation){const q=v.validation.test.temporal,r=v.validation.test.spatial,line=document.createElement('p');line.textContent=`Later hidden endpoint-association test: local proposals ${q.added_correct} correct / ${q.added_wrong} wrong; spatial proposals ${r.added_correct} correct / ${r.added_wrong} wrong. The endpoint benchmark omits production local lateral/clock gates. It does not validate real cross-sensor identities.`;host.append(line);}
+  }
   if(reconstruction.delivery_timing_validation){
    const v=reconstruction.delivery_timing_validation,q=v.local.test.True.methods,m=v.matching.test;
    const p=document.createElement('p');p.textContent=`Bounded delivery timing · later hidden affected gaps: ${q.receipt.accepted} → ${q.corrected.accepted} accepted. Common-gap position error ${q.receipt.common.mae_m.toFixed(2)} → ${q.corrected.common.mae_m.toFixed(2)} m. Spatial matching proxy: ${m.receipt.correct} → ${m.corrected.correct} correct, ${m.receipt.wrong} → ${m.corrected.wrong} wrong. Raw observations and receipt timestamps remain stored; clock resets, absent frames and unanchored delays remain unresolved.`;host.append(p);
@@ -208,5 +232,5 @@ async function refreshReconstruction(){
   draw();
  }catch(e){reconstruction=null;el('reconstruction-status').textContent=e.message;for(const id of ['within-layer','between-layer'])el(id).disabled=true;draw();}
 }
-for(const id of ['within-layer','between-layer'])if(el(id))el(id).onchange=draw;
+for(const id of ['within-layer','between-layer','color-layer'])if(el(id))el(id).onchange=draw;
 refreshReconstruction();setInterval(refreshReconstruction,15000);

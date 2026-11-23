@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "method": "color_slope_chronological_v1",
+  "scope": "Florida only; residual endpoints unused by current local and corridor estimates",
+  "requested_layer": "Experimental same-color, constant-slope, chronological minimum-distance proposals",
+  "default_visible": true,
+  "color_band_width_mps": 1,
+  "unchanged_slope_fraction": 0.8,
+  "maximum_endpoint_speed_adjustment_mps": 0.5,
+  "local_max_gap_s": 90,
+  "between_max_gap_s": 120,
+  "maximum_spatial_residual_m": {"within": 10, "between": 20},
+  "validation_report": "data/reconstruction/residual-color-review/report.json",
+  "limitations": ["Same speed/color does not establish vehicle identity", "Observed points and existing estimates are never overwritten", "No suitable candidate or ambiguous tie remains unmatched"]
+}

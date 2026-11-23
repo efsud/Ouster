@@ -221,6 +221,12 @@ def main(watch,region='florida',deadline=None):
                             result['color_validation']={k:validation[k] for k in ('summary','association','limitations','snapshot_sha256')}
                     else:
                         result=generate(snapshot,report,terminal_chains=gap_policy.get('terminal_chains',False),stationary_admission=gap_policy.get('stationary_admission',False),local_lateral=local_lateral_enabled,local_lateral_sites=local_lateral_config.get('enabled_sites',[]),adaptive_grid=grid_enabled,stationary_plateau=plateau_enabled,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy)
+                    residual_path=ROOT/'config/reconstruction/florida-residual-color.json'
+                    if region=='florida' and residual_path.exists() and json.loads(residual_path.read_text()).get('enabled'):
+                        from .residual_color_slope import generate as residual_generate
+                        result['residual_color']=residual_generate(snapshot,result)
+                        evidence_path=ROOT/'data/reconstruction/residual-color-review/report.json'
+                        if evidence_path.exists():result['residual_color']['validation']=json.loads(evidence_path.read_text())
                     temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']
                     print(json.dumps({'state':'published','local':len(result['within_intersection']),'between':len(result['between_intersections'])}),flush=True)
         except (OSError,ValueError,KeyError) as exc:
