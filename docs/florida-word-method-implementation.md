@@ -514,3 +514,21 @@ context expands rather than incorrectly rejecting a valid endpoint as too short.
 Discontinuous, reversed-time and genuinely short contexts remain unavailable.
 Snapshots identify this context version and the recording-mode transition; gains
 from fuller observations must not be described as model-accuracy gains.
+
+Full-rate receipt timestamps exposed short arrival-jitter fluctuations that the
+existing sensor/receipt-ratio gate correctly refused to interpret as motion.
+The journal still retains every received frame; figures now select actual frames
+at a stable approximately 0.5-second interval before the established trajectory
+checks. No positions or timestamps are synthesized by this sampling step. On a
+fixed five-minute comparison Renaissance recovered 25 observed fragments instead
+of zero; every available site gained observed track duration. This is a sampling
+and extraction result, not an inference-accuracy result. Raw and processed frame
+counts and fragment-break reasons remain separate in snapshots.
+
+The new whole-recording-outage validator deletes all sites' frames and phase
+samples in fixed 10/30/60-second intervals before rebuilding and estimating.
+It separately counts vehicles wholly concealed by an outage: those lack endpoint
+evidence and cannot legitimately be recovered by drawing connecting lines. An
+experimental stationary-context option retains measured near-stationary fragments
+only with nearby, nonconflicting same-ID direction evidence. It is disabled by
+default and is being tested independently of the published layers.

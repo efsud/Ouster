@@ -19,7 +19,8 @@ def masked(tr,station,width):
     if len(sizes)==len(p):
         from .object_shape import summarize as summarize_shape
         a['shape']=summarize_shape(sizes[i-4:i+1]);b['shape']=summarize_shape(sizes[j:j+5])
-    return a,b,p[i+1:j],p[i-4,0],p[j+4,0]
+    from .endpoint_context import select
+    return a,b,p[i+1:j],select(p[:i+1],True)[0][0],select(p[j:],False)[-1][0]
 
 def run(snapshot,output):
     raw=Path(snapshot).read_bytes();s=json.loads(raw);report={'created_at':time.time(),'source_window':[s['start'],s['end']],'source_sha256':hashlib.sha256(raw).hexdigest(),'method':'Hide entire 20/50/100m strips; assess final 20% time window only. Fixed methods, no fitting. Full visible context and hidden interval must lie in test partition.','groups':[],'examples':[]}

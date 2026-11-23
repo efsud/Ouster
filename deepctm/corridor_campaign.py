@@ -84,6 +84,9 @@ def aggregate(output, complete=False):
         shape=[r['shape_association'] for r in reports if 'shape_association' in r]
         summary['regions'][region]['shape_prospective']={'windows':len(shape),'time_bases':sorted({r.get('time_basis','receipt') for r in shape}),
             'totals':{method:{k:sum(r['totals'].get(method,{}).get(k,0) for r in shape) for k in ('eligible','matched','correct','false')} for method in ('current','0','0.5')}}
+        gates=[r['kinematic_gate_prospective'] for r in reports if 'kinematic_gate_prospective' in r]
+        summary['regions'][region]['kinematic_gate_prospective']={'windows':len(gates),'totals':{
+            method:{k:sum(r[method]['totals'].get('0.5',{}).get(k,0) for r in gates) for k in ('eligible','matched','correct','false')} for method in ('legacy','exact')}}
         lateral=[r['lateral_motion_prospective'] for r in reports if 'lateral_motion_prospective' in r]
         lateral_cases=[c for r in lateral for c in r['cases']];accepted=[c for c in lateral_cases if c['accepted']]
         summary['regions'][region]['lateral_prospective']={'windows':len(lateral),'eligible':len(lateral_cases),'accepted':len(accepted),
@@ -166,6 +169,20 @@ def run(output,deadline,interval=1800):
                     report['shape_association']['time_basis']=s.get('time_basis','receipt')
                     report['shape_association']['protocol_sha256']=hashlib.sha256(shape_protocol.read_bytes()).hexdigest()
                     report['shape_association']['note']='Frozen 0.5 shape weight; no tuning. Single-sensor spatial masks only.'
+                gate_protocol=ROOT/'data/reconstruction/kinematic-gate-review/protocol.json'
+                if gate_protocol.exists() and time.time()<deadline:
+                    proposal=json.loads(gate_protocol.read_text())
+                    gate_begin=max(begin,proposal['after'])
+                    if s['end']-30>gate_begin:
+                        from .validate_shape_association import score as gate_score
+                        from .kinematic_gate import path as exact_gate
+                        gate_input=subset(s,max(0,gate_begin-s['start']),s['end']-s['start']-30,proposal['regions'][region]['excluded_ids'])
+                        gate_report={'selected_method':'kinematic_0.01','calibration':{'parameters':model['parameters']}}
+                        report['kinematic_gate_prospective']={
+                            'legacy':gate_score(gate_input,gate_report,[proposal['weight']],deadline=deadline),
+                            'exact':gate_score(gate_input,gate_report,[proposal['weight']],deadline=deadline,path_gate=exact_gate),
+                            'protocol_sha256':hashlib.sha256(gate_protocol.read_bytes()).hexdigest(),
+                            'note':'Unchanged physics and assignment thresholds; no automatic promotion.'}
                 lateral_protocol=ROOT/'data/reconstruction/lateral-gap-review/protocol.json'
                 if lateral_protocol.exists() and time.time()<deadline:
                     proposal=json.loads(lateral_protocol.read_text())

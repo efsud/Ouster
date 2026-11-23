@@ -35,7 +35,7 @@ def geometry(sites,road_axes=None):
         out.append(dict(s,station_m=station,bearing=bearing,trajectory_road_segments=axis.get('segments_xy') if axis else None))
     return out
 
-def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
+def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",retain_stationary_context=False,processing_interval_s=0.):
     if time_basis not in ("receipt","sensor_elapsed"):raise ValueError("Unknown time basis")
     start=end-WINDOW;output=[]
     for s in geometry(sites,road_axes):
@@ -50,13 +50,17 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
             if break_chain:epochs[key]=epoch+1
             if len(points)<3:return
             net=points[-1][1]-points[0][1];travel=sum(abs(b[1]-a[1]) for a,b in zip(points,points[1:]))
-            if points[-1][0]-points[0][0]<2 or abs(net)<3 or abs(net)<.7*travel:return
-            chunks.setdefault((key,epoch),[]).append(points)
+            if points[-1][0]-points[0][0]<2:return
+            stationary=abs(net)<3 or abs(net)<.7*travel
+            if stationary:
+                if not retain_stationary_context or key[2] not in {'1','2','3','4','5','6','7','8','9','15'}:return
+                if max(p[1] for p in points)-min(p[1] for p in points)>2 or max(p[2] for p in points)-min(p[2] for p in points)>1:return
+            if not stationary:chunks.setdefault((key,epoch),[]).append(points)
             if track_observer is not None:track_observer(s,key,points)
             from statistics import median
             from .endpoint_context import select
             first_context=select(points,False);last_context=select(points,True)
-            tracks.append({'source_key':list(key),'receipt_start':points[0][0],'receipt_end':points[-1][0],
+            tracks.append({'stationary_context':stationary,'source_key':list(key),'receipt_start':points[0][0],'receipt_end':points[-1][0],
                 'lateral_start_m':median(p[2] for p in first_context),'lateral_end_m':median(p[2] for p in last_context),
                 'sensor_start':points[0][4].isoformat(),'sensor_end':points[-1][4].isoformat(),
                 'original_receipt_start':points[0][5],'original_receipt_end':points[-1][5],
@@ -79,6 +83,8 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
                 audit['outside_display_window']=sum(session==audit['session'] and not start<=t<=end for session,t,_,_ in processing_rows)
             processing_rows=[row for row in processing_rows if start<=row[1]<=end]
         else:processing_rows=[(*row,row[1]) for row in source_rows]
+        from .frame_sampling import sample
+        processing_rows=sample(processing_rows,processing_interval_s)
         for session,receipt,payload,original_receipt in processing_rows:
             e=json.loads(payload);frames+=1;first=first or receipt
             if last is not None and receipt-last>1.5:receipt_gaps.append([last-start,receipt-start])
@@ -141,6 +147,9 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
                     local_estimates.append({'class_type':key[2],'direction':'eastbound' if estimated[-1][1]>=estimated[0][1] else 'westbound',
                         'gap_seconds':after[0][0]-before[-1][0], 'method':'motion-constrained local Hermite interpolation',
                         'points':[[round(t-start,2),round(x+s['station_m'],2),round(v,2)] for t,x,v in estimated]})
+        if retain_stationary_context:
+            from .stationary_context import attach
+            tracks=attach(tracks)
         movement_summary=None
         if movements is not None:
             from dashboard.movement_phases import summarize
@@ -166,7 +175,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
         ingestion_epochs=[r for i,r in enumerate(ingestion_epochs) if r['start']>=start or i==len(ingestion_epochs)-1 or ingestion_epochs[i+1]['start']>start]
     except sqlite3.OperationalError:ingestion_epochs=[]
     timeline_note='receipt time' if time_basis=='receipt' else 'experimental sensor elapsed time; absolute synchronization unverified'
-    result={'time_basis':time_basis,'geometry_version':((road_axes or {}).get('version','inter-sensor-chord-v1') if any(s['id'] in (road_axes or {}).get('sites',{}) for s in sites) else 'inter-sensor-chord-v1'),'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':None,'ingestion_epochs':ingestion_epochs,'endpoint_context_version':'visible-minimum-one-second-v1','sites':output,'note':f'Sampled local trajectory fragments; provisional alignment and {timeline_note}. No cross-sensor identity matching.'}
+    result={'time_basis':time_basis,'geometry_version':((road_axes or {}).get('version','inter-sensor-chord-v1') if any(s['id'] in (road_axes or {}).get('sites',{}) for s in sites) else 'inter-sensor-chord-v1'),'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':None,'ingestion_epochs':ingestion_epochs,'endpoint_context_version':'visible-minimum-one-second-v1','stationary_context_enabled':retain_stationary_context,'processing_interval_s':processing_interval_s,'sites':output,'note':f'Sampled local trajectory fragments; provisional alignment and {timeline_note}. No cross-sensor identity matching.'}
     from .rolling_estimates import gap_validation
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)
     if sites and sites[0].get('region')=='Florida':
@@ -208,7 +217,9 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
         try:
             axis_path=ROOT/'config/reconstruction/corridor-road-axes.json'
             axes=json.loads(axis_path.read_text()) if axis_path.exists() else None
-            return build(reader,entries,end,road_axes=axes)
+            journal_config=ROOT/'config/reconstruction/frame-journal.json'
+            processing_interval=json.loads(journal_config.read_text()).get('figure_processing_interval_s',0.) if journal_config.exists() else 0.
+            return build(reader,entries,end,road_axes=axes,processing_interval_s=processing_interval)
         finally:reader.close()
     phase_saved={}
     journal_path=ROOT/'config/reconstruction/frame-journal.json'

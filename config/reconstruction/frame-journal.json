@@ -1,4 +1,9 @@
 {
-  "enabled_regions": ["florida", "toronto"],
-  "description": "Capture each received preview update through a bounded 120-second handoff journal; rolling raw history remains limited to 90 minutes. Journal lease expires after 90 seconds without a rolling-worker renewal."
+  "enabled_regions": [
+    "florida",
+    "toronto"
+  ],
+  "description": "Capture each received preview update through a bounded 120-second handoff journal; rolling raw history remains limited to 90 minutes. Journal lease expires after 90 seconds without a rolling-worker renewal.",
+  "figure_processing_interval_s": 0.5,
+  "figure_sampling_note": "All received journal frames are retained for 90 minutes. Figures use a stable approximately 2 Hz subset of actual observations, preserving their timestamps, to avoid arrival-jitter fragmentation at native frame rate."
 }
