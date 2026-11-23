@@ -25,8 +25,8 @@ def run(region,report,limit=5,after=None,excluded_ids=(),excluded_hashes=(),dead
     excluded_ids=set(excluded_ids);excluded_hashes=set(excluded_hashes)
     for site in s['sites']:
         site['tracks']=[tr for tr in site['tracks'] if identity(site,tr) not in excluded_ids and hashlib.sha256(identity(site,tr).encode()).hexdigest() not in excluded_hashes and (after is None or tr.get('original_receipt_start',0)>=after)]
-    params=report['calibration']['parameters'];records=[]
-    for rank,site,tr,gap,(a,b,truth) in cases(s,'test',limit):
+    params=report['calibration']['parameters'];records=[];rows=cases(s,'test',limit)
+    for rank,site,tr,gap,(a,b,truth) in rows:
         if deadline is not None and time.time()>=deadline:break
         raw=observed[site['id'],tuple(tr['source_key']),round(tr['receipt_start'],2)]
         p=np.asarray(tr['points'],float);sign=1 if tr['direction']=='eastbound' else -1;p[:,1]*=sign
@@ -47,7 +47,7 @@ def run(region,report,limit=5,after=None,excluded_ids=(),excluded_hashes=(),dead
     common=[r for r in records if len(r['metrics'])==2]
     summaries={m:{'accepted':sum(m in r['metrics'] for r in records),'quality':summarize([r['metrics'][m] for r in records if m in r['metrics']]),
                   'common':summarize([r['metrics'][m] for r in common])} for m in ('receipt','sensor_elapsed')}
-    return {'state':'deadline_reached' if deadline is not None and time.time()>=deadline else 'complete','created_at':time.time(),'window':[s['start'],s['end']],'test_after':after,'processing_interval_s':.5,'transform_manifest':s.get('transform_manifest'),'clock_audits':{site['id']:site['clock_audit'] for site in s['sites']},'evaluated':len(records),'parameters':params,'summary':summaries,'cases':records,
+    return {'state':'deadline_reached' if deadline is not None and time.time()>=deadline else 'complete','created_at':time.time(),'window':[s['start'],s['end']],'test_after':after,'processing_interval_s':.5,'transform_manifest':s.get('transform_manifest'),'clock_audits':{site['id']:site['clock_audit'] for site in s['sites']},'eligible':len(rows),'evaluated':len(records),'parameters':params,'summary':summaries,'cases':records,
             'limitations':['Exactly the same physical observations are hidden in both time bases.','Cases selected from continuous sensor-time tracks; availability comparisons are conditional on that selection.','No absolute timezone or cross-sensor synchronization is verified.','Same fixed physics; no parameter fitting.','Several gap lengths can reuse one vehicle.']}
 
 if __name__=='__main__':

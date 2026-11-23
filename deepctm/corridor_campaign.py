@@ -46,7 +46,7 @@ def evaluate(rows,params,deadline):
         if time.time()>=deadline:break
         rank,site,tr,gap,(a,b,truth)=row
         baseline=reconstruct(a,b,params,None);new=baseline if baseline['state']=='candidate' else reconstruct(a,b,params,POLICY)
-        entry=dict(site=site['id'],name=site['name'],gap_s=gap,rank=rank,states={},metrics={})
+        entry=dict(site=site['id'],name=site['name'],gap_s=gap,rank=rank,identity_hash=hashlib.sha256(identity(site,tr).encode()).hexdigest(),states={},metrics={})
         for name,r in [('strict',baseline),('noise',new)]:
             entry['states'][name]=r['state']
             if r['state']=='candidate':scores[name][i]=metrics(r['points'],truth,params);entry['metrics'][name]=scores[name][i]
@@ -104,6 +104,10 @@ def aggregate(output, complete=False):
         site_rows=[c for r in reports for c in r.get('site_policy_prospective',{}).get('cases',[])]
         new=[c['metrics']['noise'] for c in site_rows if 'noise' in c['metrics'] and 'strict' not in c['metrics']]
         summary['regions'][region]['site_policy_prospective']={'evaluated':len(site_rows),'new':summarize(new)}
+        expansion=[c for r in reports for c in r.get('site_policy_expansion',{}).get('cases',[])]
+        summary['regions'][region]['site_policy_expansion']={sid:{'evaluated':sum(c['site']==sid for c in expansion),
+            'distinct_new_ids':len({c['identity_hash'] for c in expansion if c['site']==sid and 'noise' in c['metrics'] and 'strict' not in c['metrics']}),
+            'new':summarize([c['metrics']['noise'] for c in expansion if c['site']==sid and 'noise' in c['metrics'] and 'strict' not in c['metrics']])} for sid in sorted({c['site'] for c in expansion})}
     atomic(output/'summary.json',summary)
     return summary
 
@@ -172,6 +176,14 @@ def run(output,deadline,interval=1800):
                     report['site_policy_prospective']=evaluate(cases(unseen,'test',4),model['parameters'],deadline)
                     report['site_policy_prospective']['protocol_sha256']=hashlib.sha256(site_protocol.read_bytes()).hexdigest()
                 shape_protocol=ROOT/'data/reconstruction/shape-review/protocol.json'
+                expansion_protocol=ROOT/'data/reconstruction/site-policy-review/expansion-protocol.json'
+                if region=='finch' and expansion_protocol.exists():
+                    proposal=json.loads(expansion_protocol.read_text())
+                    if proposal['parameters']!=POLICY:raise ValueError('Expansion differs from frozen endpoint parameters')
+                    unseen=subset(s,max(0,max(begin,proposal['after'])-s['start']),s['end']-s['start']-30,proposal['excluded_ids'])
+                    unseen['sites']=[site for site in unseen['sites'] if site['id'] in proposal['sites']]
+                    report['site_policy_expansion']=evaluate(cases(unseen,'test',5),model['parameters'],deadline)
+                    report['site_policy_expansion']['protocol_sha256']=hashlib.sha256(expansion_protocol.read_bytes()).hexdigest()
                 if shape_protocol.exists() and any(t.get('dimensions') for site in s['sites'] for t in site['tracks']):
                     protocol=json.loads(shape_protocol.read_text());plan=protocol['regions'][region]
                     from .validate_shape_association import score as shape_score

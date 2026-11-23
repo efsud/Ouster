@@ -619,3 +619,12 @@ sensor elapsed time is not a verified timezone or intersensor synchronization.
 Raw clock resets/reordering still reject an experimental session; no timestamp
 repair or unvalidated timeline change is deployed. The campaign records clock
 exclusions and keeps windows/identities separate across repeated evaluations.
+
+The seven accumulated early windows support testing the stationary-endpoint rule
+at six additional Finch sites: Islington, Signet, Martin Grove, Norfinch, Driftwood
+and York Gate. This site selection is post-hoc; those earlier results are now
+development evidence, not independent confirmation of the expansion. A separate
+protocol frozen at 07:36:39 UTC excludes earlier IDs and requires at least three
+future windows and ten distinct newly recovered IDs per site before review.
+Albion has too few development examples, and Jane has no authorized stream.
+No additional site has been enabled by this protocol alone.
