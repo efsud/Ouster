@@ -96,10 +96,12 @@ def generate(snapshot,existing):
         right=[dict(e,direction='eastbound' if e['v']>0 else 'westbound') for e in right]
         return remaining_matches(left,right,reserved)
     links=reconstruct(snapshot,matcher=matcher)['links']
+    from .trajectory_provenance import fragment_index,link_references
+    source_index=fragment_index(snapshot);by_id={s['id']:s for s in snapshot['sites']}
     for link in links:
         for q in link['paths']:
             p=dict(sites=link['sites'],direction=link['direction'],class_type=q['class_type'],points=q['points'],method=METHOD,layer='residual_color_slope',source='inferred',
-                identity='unverified_cross_sensor_association',association_cost=q['association_cost'])
+                identity='unverified_cross_sensor_association',association_cost=q['association_cost'],endpoint_provenance=link_references(link['sites'][0],link['sites'][1],by_id[link['sites'][0]]['tracks'][q['upstream_fragment']],by_id[link['sites'][1]]['tracks'][q['downstream_fragment']],source_index))
             between.append(p)
     return dict(method=METHOD,within_intersection=local,between_intersections=between,
         parameters=dict(color_band_mps=1,constant_slope_fraction=.8,max_tail_speed_adjustment_mps=.5,local_max_gap_s=90,between_max_gap_s=120,local_residual_m=10,between_residual_m=20),

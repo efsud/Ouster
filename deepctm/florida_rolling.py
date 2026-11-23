@@ -35,7 +35,7 @@ def geometry(sites,road_axes=None):
         out.append(dict(s,station_m=station,bearing=bearing,trajectory_road_segments=axis.get('segments_xy') if axis else None))
     return out
 
-def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",retain_stationary_context=False,processing_interval_s=0.,merge_vehicle_classes=False,clock_reorder_s=0.):
+def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",retain_stationary_context=False,processing_interval_s=0.,merge_vehicle_classes=False,clock_reorder_s=0.,moderate_timing_sites=()):
     if time_basis not in ("receipt","sensor_elapsed","receipt_debursted"):raise ValueError("Unknown time basis")
     start=end-WINDOW;output=[]
     for s in geometry(sites,road_axes):
@@ -84,7 +84,10 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
         duplicate_frames=len(source_rows)-len(unique_rows)
         clock_audit=[]
         if time_basis=='receipt_debursted':
-            from .delivery_timing import correct
+            if s['id'] in moderate_timing_sites:
+                from .moderate_delivery_timing import correct_for_build as correct
+            else:
+                from .delivery_timing import correct
             processing_rows,clock_audit=correct(unique_rows)
         elif time_basis=='sensor_elapsed':
             from .event_clock import align_frames
@@ -193,6 +196,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
     from .transform_manifest import manifest
     result['transform_manifest']=manifest(sites)
     result['clock_reorder_limit_s']=clock_reorder_s if time_basis=='sensor_elapsed' else 0.
+    result['moderate_timing_sites']=list(moderate_timing_sites) if time_basis=='receipt_debursted' else []
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)
     if sites and sites[0].get('region')=='Florida':
         from .spatial_bridges import reconstruct
@@ -238,7 +242,7 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
             timing_path=ROOT/'config/reconstruction/florida-delivery-timing.json'
             timing=json.loads(timing_path.read_text()) if region=='Florida' and timing_path.exists() else {}
             basis='receipt_debursted' if timing.get('enabled') else 'receipt'
-            return build(reader,entries,end,road_axes=axes,processing_interval_s=processing_interval,time_basis=basis)
+            return build(reader,entries,end,road_axes=axes,processing_interval_s=processing_interval,time_basis=basis,moderate_timing_sites=timing.get('moderate_timing_sites',[]))
         finally:reader.close()
     phase_saved={}
     journal_path=ROOT/'config/reconstruction/frame-journal.json'

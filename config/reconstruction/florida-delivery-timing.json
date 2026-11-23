@@ -98,5 +98,32 @@
     "Exactly the same observed positions hidden in each time basis; timestamps are anchored estimates.",
     "Absolute clock offsets and cross-sensor identities unverified.",
     "The original 12:08 raw window has expired from the 90-minute buffer; saved audit remains. This validates the same delay mechanism on later data."
-  ]
+  ],
+  "moderate_timing_sites": [
+    "OBC-AG-SA-C257222",
+    "OBC-AG-SA-C257223",
+    "OBC-AG-SA-C257236",
+    "OBC-AG-SA-C257227",
+    "OBC-AG-SA-C257225"
+  ],
+  "moderate_policy": {
+    "method": "bounded_moderate_delivery_v1",
+    "scope": "Frame timing at five qualified Florida sites; car-position validation; raw positions/receipts unchanged",
+    "parameters": {
+      "receipt_step_min_s": 0.5,
+      "receipt_step_max_s": 1.5,
+      "delay_trigger_s": 0.25,
+      "stable_preceding_frames": 5
+    },
+    "evidence": "data/reconstruction/moderate-delivery-validation",
+    "evidence_sha256": {
+      "protocol.json": "5572ae4231363641b71a9c098bda9954f2fa4548782b3c5d9ad397c074034bd4",
+      "report.json": "0b39204004246f49b0692041a96b536e69bd51ec14a1530d735ff28e141c943b",
+      "matching-validation.json": "5ae835996afd7a2f0d76c3911dff70edc5935e13d64795048bd30bb1821134b1"
+    },
+    "withheld": {
+      "OBC-AG-SA-C251068": "Insufficient development common identities and development speed regression",
+      "OBC-AG-SA-C257206": "Insufficient development common identities and development regression"
+    }
+  }
 }

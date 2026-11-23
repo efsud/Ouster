@@ -1,7 +1,7 @@
 'use strict';
 const el=id=>document.getElementById(id),vehicle=new Set(['1','2','3','4','5','6','7','8','9','15']);
 const corridor=document.body.dataset.corridor||'florida',regionName=corridor==='finch'?'Toronto':'Florida';
-let data=null,view=null,points=[],version=0,reconstruction=null,colorExample=null;
+let data=null,view=null,points=[],version=0,reconstruction=null,colorExample=null,overlapExample=null;
 if(new URLSearchParams(location.search).get('between')==='1'&&el('between-layer'))el('between-layer').checked=true;
 const clock=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:corridor==='finch'?'America/Toronto':'America/New_York',hour12:false});
 function color(v){const t=Math.max(0,Math.min(1,v/20));return `hsl(${t*120},75%,40%)`;}
@@ -20,14 +20,14 @@ function draw(){
   const filter=el('objects').value,code=tr.class_type;if(tr.direction!==el('direction').value)continue;
   if(filter==='vehicles'&&!vehicle.has(code)||filter==='pedestrians'&&!['0','10','11','14','16'].includes(code)||filter==='cyclists'&&!['12','13','17'].includes(code))continue;
   if(tr.method)continue;
-  let seen=false;
+  let seen=false;const overlapSelected=overlapExample?.sites.includes(site.id)&&overlapExample.source_keys.some(k=>JSON.stringify(k)===JSON.stringify(tr.source_key));
   for(let i=1;i<tr.points.length;i++){
    const a=tr.points[i-1],b=tr.points[i],ta=data.start+a[0],tb=data.start+b[0],dt=b[0]-a[0];
    if(dt<=0||dt>1.5||tb<view[0]||ta>view[1])continue;
-   seen=true;c.strokeStyle=color(b[2]);c.lineWidth=1;c.setLineDash([]);
+   seen=true;c.strokeStyle=color(b[2]);c.lineWidth=overlapSelected?3:1;c.setLineDash([]);
    c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();
    const receiptTime=data.start+(tr.original_receipt_offsets_s?.[i]??b[0]);
-   points.push({x:x(tb),y:y(b[1]),time:tb,receiptTime,speed:b[2],name:'Observed position · '+site.name});
+   points.push({x:x(tb),y:y(b[1]),time:tb,receiptTime,speed:b[2],name:'Observed position · '+site.name+(overlapSelected?' · overlap correspondence hypothesis; identity unverified':'')});
   }
   if(seen)count++;
  }
@@ -61,7 +61,7 @@ async function refresh(){if(data&&Date.now()/1000-data.start>5400){data=null;poi
   const audits=next.sites.flatMap(s=>s.clock_audit||[]),events=audits.flatMap(a=>a.events||[]);
   el('message').textContent+=` Timing: ${events.length} bounded delivery bursts corrected using continuous sensor elapsed time between receipt anchors. Positions are measured; adjusted times are estimates. Hover to compare receipt time. Cross-sensor clock offsets remain unverified.`;
  }
- if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();refreshReconstruction();
+ if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;overlapExample=null;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();refreshReconstruction();
  }catch(e){el('message').textContent=e.message;}}
 if(el('spatial-estimates'))el('spatial-estimates').onchange=draw;
 el('direction').onchange=draw;el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
@@ -75,6 +75,7 @@ function showColorExample(kind){
  const candidates=paths.filter(p=>p.direction===el('direction').value);
  const p=candidates.sort((a,b)=>(b.points.at(-1)[0]-b.points[0][0])-(a.points.at(-1)[0]-a.points[0][0]))[0]||paths[0];
  if(!p||!data)return;
+ overlapExample=null;
  el('direction').value=p.direction;el('objects').value='vehicles';el('color-layer').checked=true;
  el(kind==='within_intersection'?'within-layer':'between-layer').checked=true;
  const sites=new Set(p.sites||[p.site]);for(const box of el('sites').querySelectorAll('input'))box.checked=sites.has(box.value);
@@ -83,6 +84,28 @@ function showColorExample(kind){
 }
 if(el('color-local-example'))el('color-local-example').onclick=()=>showColorExample('within_intersection');
 if(el('color-between-example'))el('color-between-example').onclick=()=>showColorExample('between_intersections');
+if(el('overlap-example'))el('overlap-example').onclick=()=>{
+ const link=reconstruction?.coverage_audit?.overlap_links?.find(l=>l.example&&l.direction===el('direction').value);if(!link||!data)return;
+ overlapExample={...link.example,sites:link.sites};el('objects').value='vehicles';
+ for(const box of el('sites').querySelectorAll('input'))box.checked=link.sites.includes(box.value);
+ view=[Math.max(data.start,data.start+link.example.overlap_time[0]-8),Math.min(data.end,data.start+link.example.overlap_time[1]+8)];
+ draw();el('plot').scrollIntoView({block:'center'});
+};
+
+function renderGapAudit(audit){
+ const host=el('coverage-audit');if(!host)return;host.replaceChildren();
+ if(!audit){host.textContent='Waiting for an audit aligned with this figure window.';return;}
+ const note=document.createElement('p');note.textContent='Whole-window audit, both directions. Local counts cover vehicle classes with observed same-session/object endpoints; the baseline corridor matcher currently covers cars. Entirely unseen vehicles and changed IDs are not counted. Estimated paths are excluded from measured KPI inputs. Cross-sensor travel times remain experimental.';host.append(note);
+ function table(headers,rows){const t=document.createElement('table'),h=document.createElement('tr');for(const label of headers){const cell=document.createElement('th');cell.textContent=label;h.append(cell);}t.append(h);for(const values of rows){const r=document.createElement('tr');for(const value of values){const cell=document.createElement('td');cell.textContent=value;r.append(cell);}t.append(r);}host.append(t);}
+ table(['Intersection','Observable same-ID gaps','Baseline filled','Experimental filled','Unresolved'],audit.sites.map(s=>[s.name,s.observable_same_id_gaps,s.baseline_estimated,s.experimental_estimated,s.unresolved]));
+ for(const s of audit.sites){const p=document.createElement('p');p.textContent=s.name+': '+Object.entries(s.unresolved_reasons).map(([k,v])=>`${k.replaceAll('_',' ')}: ${v}`).join('; ')+`. Classified exit fragments: ${s.movement_roles.corridor_exit||0}; unknown movement fragments: ${s.movement_roles.unknown||0}. Exit classifications are provisional; unknowns are not treated as exits.`;host.append(p);}
+ table(['Link','Direction','Eligible departures','Baseline estimated','Still unmatched departures','Additional experimental proposals'],audit.links.map(l=>[l.names.join(' → '),l.direction,l.eligible_departures,l.baseline_estimated,l.baseline_unmatched_departures,l.experimental_estimated]));
+ if(audit.overlap_links){
+  const label=document.createElement('p');label.textContent='Observed coverage overlap: negative median end-to-start distance means the views overlap, so a forward dashed gap would be inappropriate. Concurrent motion/size matches are identity hypotheses, not recovered missing samples.';host.append(label);
+  table(['Adjacent views','Direction','Median end-to-start distance','Overlap association hypotheses'],audit.overlap_links.map(l=>[l.names.join(' → '),l.direction,l.median_signed_end_to_start_m==null?'Unavailable':l.median_signed_end_to_start_m.toFixed(1)+' m',l.overlap_hypotheses]));
+ }
+ const caveat=document.createElement('p');caveat.textContent='Link counts are fragment endpoints, not unique vehicles. The experimental layer can use a different class pool and does not reduce the baseline unmatched count. Unknown movements, clock conflicts and ambiguous identities remain unresolved; a fully connected drawing would not prove accurate KPIs.';host.append(caveat);
+}
 
 function paintReconstruction(c,x,y,selected){
  if(!reconstruction||reconstruction.state!=='ready'||reconstruction.snapshot_generated_at!==data.generated_at)return;
@@ -109,6 +132,8 @@ async function refreshReconstruction(){
  try{
   const response=await fetch(`/api/${corridor}-reconstruction`);if(!response.ok)throw Error('Reconstruction study unavailable');reconstruction=await response.json();
   const aligned=reconstruction.state==='ready'&&data&&reconstruction.snapshot_generated_at===data.generated_at;
+  renderGapAudit(aligned?reconstruction.coverage_audit:null);
+  if(el('overlap-example'))el('overlap-example').disabled=!aligned||!reconstruction.coverage_audit?.overlap_links?.some(l=>l.example);
   for(const id of ['within-layer','between-layer'])el(id).disabled=!aligned;
   if(el('color-layer'))el('color-layer').disabled=!aligned||!reconstruction.residual_color;
   if(el('color-local-example'))el('color-local-example').disabled=!aligned||!reconstruction.residual_color?.within_intersection?.length;
@@ -120,6 +145,11 @@ async function refreshReconstruction(){
   const fallbackNote=(fallbackCounts.plateau||fallbackCounts.grid)?` Local fallbacks: ${fallbackCounts.grid} exact-endpoint grid retries; ${fallbackCounts.plateau} stationary estimates with up to 5 cm endpoint residual. Observations are unchanged.`:'';
   el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method==='color_slope_chronological_v1'?'Speed-color + constant-slope chronological matching (experimental; 1 m/s color bands; original slope for 80%, bounded correction at the end)':reconstruction.method}${reconstruction.endpoint_corrected_gaps?' + bounded stationary endpoint correction on '+reconstruction.endpoint_corrected_gaps+' gaps':''}.${fallbackNote}${lateralNote}${reconstruction.association_method==='bidirectional_shape_v1'?' Matching uses forward/backward motion evidence (experimental).':''} Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
   const host=el('reconstruction-comparison');host.replaceChildren();
+  if(reconstruction.moderate_timing_validation){
+   const v=reconstruction.moderate_timing_validation,q=v.pooled.test.methods,m=v.matching.test,p=document.createElement('p');
+   p.textContent=`Smaller bounded delivery delays corrected at ${v.sites.length} qualified sites. Later hidden gaps: ${q.baseline.accepted} → ${q.moderate.accepted} reconstructed; common-case position MAE ${q.baseline.common.mae_m.toFixed(2)} → ${q.moderate.common.mae_m.toFixed(2)} m. Matching proxy: ${m.baseline.correct} → ${m.moderate.correct} correct, ${m.baseline.wrong} → ${m.moderate.wrong} wrong. Renaissance and Boston retain previous timing. These are car-trajectory interpolation checks, not verified sensor synchronization or KPI accuracy.`;host.append(p);
+  }
+  if(reconstruction.local_lateral_recheck){const r=reconstruction.local_lateral_recheck,p=document.createElement('p');p.textContent=`Later all-site recheck: Plaza Entrance now enabled under the unchanged short same-ID policy. Plaza later test: ${r.test.ids} distinct IDs; position MAE ${r.test.quality.mae_m.toFixed(2)} m, speed MAE ${r.test.quality.speed_mae_mps.toFixed(2)} m/s. Its earlier failed test remains recorded; Boston and Palm remain withheld for insufficient examples. This does not validate KPI values inside missing intervals.`;host.append(p);}
   if(reconstruction.residual_color){
    const v=reconstruction.residual_color,p=document.createElement('p');p.textContent=`Requested color-slope method · ${v.within_intersection.length} additional local and ${v.between_intersections.length} additional adjacent-intersection proposals across this hour. Existing estimates and observations are preserved. Departures are processed earliest first; candidates share a 1 m/s speed-color band and the closest eligible extrapolated position is selected. Ties remain unresolved.`;host.append(p);
    const limits=document.createElement('p');limits.textContent='Original slope is retained for 80% of each extension. Only the final 20% closes the endpoint discrepancy, with speed adjustment ≤0.5 m/s. Maximum gaps: 90 s locally / 120 s between sites; maximum residual: 10 m / 20 m. Local clock, session, movement and lateral checks remain active. This hypothesis layer can make wrong identity matches.';host.append(limits);

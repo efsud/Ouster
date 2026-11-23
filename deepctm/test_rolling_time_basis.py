@@ -2,6 +2,21 @@ import unittest,sqlite3,json
 from datetime import datetime,timedelta
 from .florida_rolling import build,connect
 class RollingTimeBasisTests(unittest.TestCase):
+    def test_moderate_delivery_is_site_opt_in(self):
+        db=connect(':memory:');stamp=datetime(2026,1,1)
+        for i in range(300):
+            t=i*.1;receipt=1000+t+(max(0,.8-(i-80)*.01) if 80<=i<160 else 0)
+            raw={'frame':{'timestamp':(stamp+timedelta(seconds=t)).isoformat(),'objects':[{'id':'car','classType':'2','centerX':t,'centerY':0}]}}
+            db.execute('insert into frames values(?,?,?,?,?)',('site','session',str(i),receipt,json.dumps(raw)))
+        db.commit();rows=db.execute('select * from frames order by received').fetchall()
+        site={'id':'site','name':'site','region':'Florida','reference_location':{'lat':0,'lng':0},'preview_rotation_deg':0}
+        old=build(db,[site],1030,time_basis='receipt_debursted',moderate_timing_sites=['other'])
+        new=build(db,[site],1030,time_basis='receipt_debursted',moderate_timing_sites=['site'])
+        self.assertEqual(old['sites'][0]['clock_audit'][0]['corrected_frames'],0)
+        self.assertGreater(new['sites'][0]['clock_audit'][0]['corrected_frames'],0)
+        self.assertEqual(new['moderate_timing_sites'],['site'])
+        self.assertEqual(db.execute('select * from frames order by received').fetchall(),rows)
+        db.close()
     def test_bounded_delivery_correction_keeps_raw_receipts(self):
         db=connect(':memory:');stamp=datetime(2026,1,1)
         for i in range(300):

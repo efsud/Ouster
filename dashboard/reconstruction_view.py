@@ -65,6 +65,15 @@ def read(now=None,folder=FOLDER):
                 [('stationary','stationary-validation.json'),('terminals','terminal-validation.json'),('timing','screenshot-outage.json')]}
         except (OSError,ValueError):pass
     pair_diagnostics=[]
+    if layers.get('moderate_timing_sites'):
+        try:
+            evidence=json.loads((folder.parent/'moderate-delivery-validation/report.json').read_text())
+            matching=json.loads((folder.parent/'moderate-delivery-validation/matching-validation.json').read_text())
+            layers['moderate_timing_validation']={'sites':layers['moderate_timing_sites'],'pooled':evidence['qualified_site_pooled'],'matching':matching}
+        except (OSError,ValueError,KeyError):pass
+    if folder.name!='finch' and layers.get('local_lateral'):
+        try:layers['local_lateral_recheck']=json.loads((folder.parent/'all-sites-local-review/deployment.json').read_text())
+        except (OSError,ValueError):pass
     for link in layers.get('association_diagnostics',[]):
         displayed=sum(p['sites']==link['sites'] and p['direction']==link['direction'] for p in layers.get('between_intersections',[]))
         pair_diagnostics.append({**link,'displayed_matches':displayed,'final_rejections':link['proposed_matches']-displayed})

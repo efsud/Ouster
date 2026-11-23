@@ -157,14 +157,16 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
         endpoint_enricher=lambda ep,tr,is_exit:dict(ep,motion_context=motion_context(tr['points'],is_exit))
     associations=reconstruct(association_snapshot,association_method='feasible',matcher=matcher,endpoint_enricher=endpoint_enricher)
     by_id={s['id']:s for s in association_snapshot['sites']}
+    from .trajectory_provenance import fragment_index,link_references
+    source_index=fragment_index(snapshot)
     for link in associations['links']:
         for path in link['paths']:
             a=endpoint(by_id[link['sites'][0]]['tracks'][path['upstream_fragment']]['points'],True)
             b=endpoint(by_id[link['sites'][1]]['tracks'][path['downstream_fragment']]['points'],False)
             p=prediction(a,b,report,exact_join=True)
             if p is None:rejected['between_physical_rejection']+=1;continue
-            between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin'],shape_evidence=path.get('shape_evidence')))
-    return dict(state='ready',transform_manifest=snapshot.get('transform_manifest'),time_basis=snapshot.get('time_basis','receipt'),generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
+            between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin'],shape_evidence=path.get('shape_evidence'),endpoint_provenance=link_references(link['sites'][0],link['sites'][1],by_id[link['sites'][0]]['tracks'][path['upstream_fragment']],by_id[link['sites'][1]]['tracks'][path['downstream_fragment']],source_index)))
+    return dict(state='ready',moderate_timing_sites=snapshot.get('moderate_timing_sites',[]),transform_manifest=snapshot.get('transform_manifest'),time_basis=snapshot.get('time_basis','receipt'),generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
       stationary_admission=stationary_admission,terminal_chains=terminal_chains,local_lateral=local_lateral,local_lateral_sites=list(local_lateral_sites),same_class_recovery=same_class_recovery,stationary_plateau=stationary_plateau,adaptive_grid=adaptive_grid,endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
       method=report['selected_method'],association_method=association_policy or 'feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
       association_diagnostics=[{k:v for k,v in link.items() if k!='paths'} | {'proposed_matches':len(link['paths'])} for link in associations['links']],
@@ -227,6 +229,12 @@ def main(watch,region='florida',deadline=None):
                         result['residual_color']=residual_generate(snapshot,result)
                         evidence_path=ROOT/'data/reconstruction/residual-color-review/report.json'
                         if evidence_path.exists():result['residual_color']['validation']=json.loads(evidence_path.read_text())
+                    if region=='florida':
+                        from .coverage_audit import audit as audit_coverage
+                        result['coverage_audit']=audit_coverage(snapshot,result)
+                        from .between_coverage_audit import audit as audit_overlap
+                        overlap=audit_overlap(snapshot,result)
+                        result['coverage_audit']['overlap_links']=[{k:v for k,v in link.items() if k!='hypotheses'} for link in overlap['links']]
                     temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']
                     print(json.dumps({'state':'published','local':len(result['within_intersection']),'between':len(result['between_intersections'])}),flush=True)
         except (OSError,ValueError,KeyError) as exc:

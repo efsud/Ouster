@@ -6,12 +6,12 @@
     "OBC-AG-SA-C251068",
     "OBC-AG-SA-C257222",
     "OBC-AG-SA-C257223",
-    "OBC-AG-SA-C257236"
+    "OBC-AG-SA-C257236",
+    "OBC-AG-SA-C257227"
   ],
   "withheld": {
     "OBC-AG-SA-C257206": "insufficient distinct development/test identities",
-    "OBC-AG-SA-C257225": "insufficient distinct identities; development speed error also high",
-    "OBC-AG-SA-C257227": "site-level speed error exceeds 1 m/s"
+    "OBC-AG-SA-C257225": "insufficient distinct identities; development speed error also high"
   },
   "test": {
     "accepted": 109,
@@ -30,5 +30,16 @@
     "lateral_mae_m": 0.27398747025500625
   },
   "report_sha256": "1611009c7730dba408785c5a5f30c01be504bcc899f4c3fd1d10288fb003b634",
-  "note": "Additional conservative site safeguards applied after aggregate test; not independent site-specific tuning. Same IDs only; cross-ID and long-gap gates unchanged."
+  "note": "Additional conservative site safeguards applied after aggregate test; not independent site-specific tuning. Same IDs only; cross-ID and long-gap gates unchanged.",
+  "subsequent_validation": {
+    "report": "data/reconstruction/all-sites-local-review/report.json",
+    "report_sha256": "ac6bf96ac181a3bd613ccc5305a4bb3a50a8e43da3e546f679b9d8850e165a5d",
+    "per_site": "data/reconstruction/all-sites-local-review/per-site.json",
+    "enabled_site": "OBC-AG-SA-C257227",
+    "policy": "Unchanged 10-second same-ID/clock/2D/physics gates. Plaza now meets previous site safeguards on later hour; earlier failed evidence retained. Boston and Palm remain withheld for insufficient distinct identities.",
+    "window": [
+      1795457689.465423,
+      1795461289.465423
+    ]
+  }
 }
