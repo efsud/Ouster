@@ -532,3 +532,14 @@ evidence and cannot legitimately be recovered by drawing connecting lines. An
 experimental stationary-context option retains measured near-stationary fragments
 only with nearby, nonconflicting same-ID direction evidence. It is disabled by
 default and is being tested independently of the published layers.
+
+An additional RTS smoother comparison follows the Word document's optional
+short-gap preprocessing recommendation. The implementation uses a position-only
+white-jerk state model and the fixed-interval recursion in Särkkä (2013), §8.2:
+https://users.aalto.fi/~ssarkka/pub/cup_book_online_20131111.pdf . Measurement-noise
+variance is estimated from the training partition (or an explicit fallback);
+process-noise selection uses validation only, with embargoes and earlier-ID
+exclusion. The final optimization retains the same physical bounds. The first
+Florida selection retained the baseline: the smoother's best common-case position
+error did not compensate for fewer accepted gaps and weaker stop recovery. No
+Gaussian covariance is advertised as a calibrated field confidence interval.

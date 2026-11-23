@@ -31,7 +31,7 @@ function draw(){
   if(seen)count++;
  }
  paintReconstruction(c,x,y,selected);
- c.restore();el('coverage').textContent=`${count} visible recorded fragments · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time. `+sites.map(s=>`${s.name}: ${s.frames} sampled frames`).join(' · ');
+ c.restore();el('coverage').textContent=`${count} visible recorded fragments · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time. `+sites.map(s=>`${s.name}: ${s.frames} plotted frames / ${s.raw_frames??s.frames} received frames`).join(' · ');
 }
 
 function renderMovements(sites){

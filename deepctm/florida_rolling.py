@@ -35,7 +35,7 @@ def geometry(sites,road_axes=None):
         out.append(dict(s,station_m=station,bearing=bearing,trajectory_road_segments=axis.get('segments_xy') if axis else None))
     return out
 
-def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",retain_stationary_context=False,processing_interval_s=0.):
+def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",retain_stationary_context=False,processing_interval_s=0.,merge_vehicle_classes=False):
     if time_basis not in ("receipt","sensor_elapsed"):raise ValueError("Unknown time basis")
     start=end-WINDOW;output=[]
     for s in geometry(sites,road_axes):
@@ -43,7 +43,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
         movements=TrackCollector() if s.get('region') in ('Florida','Toronto') else None
         from collections import Counter
         breaks=Counter()
-        active={};tracks=[];chunks={};epochs={};identity_class={};local_estimates=[];receipt_gaps=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
+        active={};tracks=[];chunks={};epochs={};identity_class={};vehicle_keys={};local_estimates=[];receipt_gaps=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
         def flush(key,break_chain=True):
             points=active.pop(key,[])
             epoch=epochs.get(key,0)
@@ -60,11 +60,13 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
             from statistics import median
             from .endpoint_context import select
             first_context=select(points,False);last_context=select(points,True)
-            tracks.append({'stationary_context':stationary,'source_key':list(key),'receipt_start':points[0][0],'receipt_end':points[-1][0],
+            class_counts=Counter(p[7] for p in points)
+            displayed_class=class_counts.most_common(1)[0][0]
+            tracks.append({'observed_class_counts':dict(class_counts),'stationary_context':stationary,'source_key':list(key),'receipt_start':points[0][0],'receipt_end':points[-1][0],
                 'lateral_start_m':median(p[2] for p in first_context),'lateral_end_m':median(p[2] for p in last_context),
                 'sensor_start':points[0][4].isoformat(),'sensor_end':points[-1][4].isoformat(),
                 'original_receipt_start':points[0][5],'original_receipt_end':points[-1][5],
-                'class_type':key[2],'direction':'eastbound' if net>0 else 'westbound','points':[[round(p[0]-start,2),round(p[1]+s['station_m'],2),round(p[3],2)] for p in points]})
+                'class_type':displayed_class,'direction':'eastbound' if net>0 else 'westbound','points':[[round(p[0]-start,2),round(p[1]+s['station_m'],2),round(p[3],2)] for p in points]})
             from .object_shape import summarize as summarize_shape
             sizes=[p[6] for p in points]
             tracks[-1].update(dimensions=sizes,shape_start=summarize_shape(sizes[:5]),shape_end=summarize_shape(sizes[-5:]))
@@ -95,7 +97,10 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
             except (ValueError,KeyError,TypeError):continue
             for o in e.get('frame',{}).get('objects',[]):
                 if not o.get('id'):continue
-                key=(session,str(o['id']),str(o.get('classType','unknown')))
+                actual_class=str(o.get('classType','unknown'))
+                key=(session,str(o['id']),actual_class)
+                if merge_vehicle_classes and actual_class in {'1','2','3','4','5','6','7','8','9','15'}:
+                    key=vehicle_keys.setdefault(key[:2],key)
                 if movements is not None:
                     previous_class=identity_class.get(key[:2])
                     if previous_class is not None and previous_class!=key[2]:
@@ -126,7 +131,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
                         speed=math.hypot(along-old[-1][1],across-old[-1][2])/dt
                         if speed>60:breaks['speed_outlier']+=1;flush(key);speed=0
                 from .object_shape import dimensions
-                active.setdefault(key,[]).append((receipt,along,across,speed,stamp,original_receipt,dimensions(o)))
+                active.setdefault(key,[]).append((receipt,along,across,speed,stamp,original_receipt,dimensions(o),actual_class))
             if movements is not None:movements.expire(receipt)
             for key in list(active):
                 if receipt-active[key][-1][0]>3:
@@ -175,7 +180,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
         ingestion_epochs=[r for i,r in enumerate(ingestion_epochs) if r['start']>=start or i==len(ingestion_epochs)-1 or ingestion_epochs[i+1]['start']>start]
     except sqlite3.OperationalError:ingestion_epochs=[]
     timeline_note='receipt time' if time_basis=='receipt' else 'experimental sensor elapsed time; absolute synchronization unverified'
-    result={'time_basis':time_basis,'geometry_version':((road_axes or {}).get('version','inter-sensor-chord-v1') if any(s['id'] in (road_axes or {}).get('sites',{}) for s in sites) else 'inter-sensor-chord-v1'),'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':None,'ingestion_epochs':ingestion_epochs,'endpoint_context_version':'visible-minimum-one-second-v1','stationary_context_enabled':retain_stationary_context,'processing_interval_s':processing_interval_s,'sites':output,'note':f'Sampled local trajectory fragments; provisional alignment and {timeline_note}. No cross-sensor identity matching.'}
+    result={'time_basis':time_basis,'geometry_version':((road_axes or {}).get('version','inter-sensor-chord-v1') if any(s['id'] in (road_axes or {}).get('sites',{}) for s in sites) else 'inter-sensor-chord-v1'),'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':None,'ingestion_epochs':ingestion_epochs,'endpoint_context_version':'visible-minimum-one-second-v1','stationary_context_enabled':retain_stationary_context,'processing_interval_s':processing_interval_s,'merge_vehicle_classes':merge_vehicle_classes,'sites':output,'note':f'Sampled local trajectory fragments; provisional alignment and {timeline_note}. No cross-sensor identity matching.'}
     from .rolling_estimates import gap_validation
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)
     if sites and sites[0].get('region')=='Florida':
@@ -257,7 +262,9 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
         purge(db,now)
         if pending is not None and pending.done():
             result=pending.result();temp=folder/'snapshot.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'snapshot.json');pending=None
-        if pending is None and ((not last_publish and now-begin>=30) or (last_publish and now>=last_publish+REFRESH)):
+        requested=(folder/'refresh.request').exists()
+        if pending is None and (requested or (not last_publish and now-begin>=30) or (last_publish and now>=last_publish+REFRESH)):
+            if requested:(folder/'refresh.request').unlink(missing_ok=True)
             pending=pool.submit(compute,now);last_publish=now
         health={'ingestion':'frame_journal' if journal_enabled else 'latest_preview_poll','journal_rows_copied':journal_rows,'journal_cursor':journal_cursor,'updated_at':time.time(),'buffer_start':db.execute('SELECT min(received) FROM frames').fetchone()[0],'buffer_end':db.execute('SELECT max(received) FROM frames').fetchone()[0],'next_update':last_publish+REFRESH if last_publish else begin+30}
         temp=folder/'status.tmp';temp.write_text(json.dumps(health));temp.replace(folder/'status.json')
