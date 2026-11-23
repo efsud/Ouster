@@ -628,3 +628,32 @@ protocol frozen at 07:36:39 UTC excludes earlier IDs and requires at least three
 future windows and ten distinct newly recovered IDs per site before review.
 Albion has too few development examples, and Jane has no authorized stream.
 No additional site has been enabled by this protocol alone.
+
+### Separate vehicle-class audit, November 23
+
+A chronological class-specific diagnostic fits speed/acceleration bounds using
+only the first half hour and tests later IDs in the final quarter, with a
+30-second embargo. Default car-only admission is unchanged. Finch strict local
+masks accepted 9/12 class-4 cases (MAE 1.42 m), 21/36 class-5 cases (3.29 m),
+and 8/16 class-8 cases (0.70 m). Recalibrating bounds per class produced no
+meaningful improvement or extra accepted cases. Florida had no eligible held-out
+class-4/8 cases and insufficient class-5 training. These are vendor classes,
+not manually confirmed vehicle types; class 8 may describe trailers. No broader
+class matching is enabled. Unit checks preserve the car-only default and require
+distinct training IDs rather than counting repeated fragments as new vehicles.
+
+### Finch association deployment after future-window comparison
+
+On the same two later cohorts (cycles 034 and 040), the current production
+matcher produced 617 correct and 9 false masked associations; the frozen
+shape-plus-exact-feasibility candidate produced 667 correct and 5 false, over
+1,024 eligible scenarios. Scenarios reuse vehicles and are not independent.
+No site increased its false-match count in this comparison. An earlier third
+gate study supports the exact gate but has a different cohort from the production
+comparison, so its totals are not combined with those two cohorts.
+
+The experimental Finch between-intersection layer now uses this candidate.
+On the identical current snapshot, local estimates stay at 46 and intersite
+estimates rise from 108 to 114. Final endpoint/physical bounds remain unchanged.
+This improves masked association evidence, not verified cross-sensor identities.
+Raw observations, signal permissions and recorded KPI inputs are unchanged.

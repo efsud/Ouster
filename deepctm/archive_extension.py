@@ -13,11 +13,11 @@ from .validate_spatial import masked
 from .spatial_bridges import associate,curve,pair_cost
 
 GAPS=(10,30,60,90)
-def cases(snapshot,part,limit=3):
+def cases(snapshot,part,limit=3,classes=('2',)):
     groups={}
     for site in snapshot['sites']:
         for tr in site['tracks']:
-            if tr['class_type']!='2':continue
+            if tr['class_type'] not in classes:continue
             p=tr['points']
             if part=='train' and p[-1][0]>1800:continue
             if part=='validation' and p[0][0]<1860:continue
