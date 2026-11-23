@@ -1,0 +1,102 @@
+{
+  "enabled": true,
+  "method": "bounded_sdk_elapsed_delivery_v1",
+  "scope": "Florida retrospective figures only",
+  "window": [
+    1795455889.0613272,
+    1795459489.0613272
+  ],
+  "bounds": {
+    "max_span_s": 60,
+    "max_delay_s": 15,
+    "anchor_tolerance_s": 0.2,
+    "stable_frames": 5,
+    "max_rate_error": 0.01
+  },
+  "local_test": {
+    "masks": 1180,
+    "distinct_ids": 296,
+    "common": 194,
+    "methods": {
+      "receipt": {
+        "accepted": 213,
+        "quality": {
+          "n": 213,
+          "mae_m": 3.1681726582648198,
+          "rmse_m": 4.096803424069959,
+          "speed_mae_mps": 1.0289609700753242,
+          "stop_time_error_s": 1.79757741314553,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 12.494265128701231,
+          "stop_precision": 0.9469026548672567,
+          "stop_recall": 0.7925925925925926
+        },
+        "common": {
+          "n": 194,
+          "mae_m": 3.4308433144185604,
+          "rmse_m": 4.4357452005322,
+          "speed_mae_mps": 1.1017319487583224,
+          "stop_time_error_s": 1.71531522164947,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 13.249141981716278,
+          "stop_precision": 0.9479166666666666,
+          "stop_recall": 0.7711864406779662
+        }
+      },
+      "corrected": {
+        "accepted": 475,
+        "quality": {
+          "n": 475,
+          "mae_m": 1.2878137732839356,
+          "rmse_m": 1.5455686309666123,
+          "speed_mae_mps": 0.650780611466016,
+          "stop_time_error_s": 0.8147578947368521,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 6.2106233567633895,
+          "stop_precision": 0.986784140969163,
+          "stop_recall": 0.8682170542635659
+        },
+        "common": {
+          "n": 194,
+          "mae_m": 1.9812795999338229,
+          "rmse_m": 2.380298258070812,
+          "speed_mae_mps": 0.7477837539247717,
+          "stop_time_error_s": 1.2587113402061882,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 9.477576452615216,
+          "stop_precision": 1.0,
+          "stop_recall": 0.7777777777777778
+        }
+      }
+    }
+  },
+  "matching_test": {
+    "receipt": {
+      "correct": 4074,
+      "wrong": 25,
+      "eligible": 4681,
+      "affected_correct": 11,
+      "affected_wrong": 0,
+      "affected_eligible": 56
+    },
+    "corrected": {
+      "correct": 4084,
+      "wrong": 22,
+      "eligible": 4681,
+      "affected_correct": 33,
+      "affected_wrong": 0,
+      "affected_eligible": 56
+    }
+  },
+  "evidence_sha256": {
+    "protocol.json": "c8f6caffaa797b4c466ba0a6dee516c1c0034b91963a710a7c44134f5b2642eb",
+    "report.json": "f30f306aa00005a83b00167fa1c5d6a326c62f924f2232564b51bbe7620c74be",
+    "matching-validation.json": "29fa49e228f0b654f0a549de8f0cbc4abeb7b222abe9ee2c2ae955ad29b67f28"
+  },
+  "limitations": [
+    "Cases selected from corrected continuous tracks; not corridor-wide recall.",
+    "Exactly the same observed positions hidden in each time basis; timestamps are anchored estimates.",
+    "Absolute clock offsets and cross-sensor identities unverified.",
+    "The original 12:08 raw window has expired from the 90-minute buffer; saved audit remains. This validates the same delay mechanism on later data."
+  ]
+}

@@ -25,7 +25,9 @@ def run(folder):
     from .buffer_snapshot import copy_buffer
     db=copy_buffer(root/'data/florida-rolling/buffer.sqlite3',max_seconds=30)
     def observation(site,tr,t):
-        target=s['start']+t
+        offsets=tr.get('original_receipt_offsets_s')
+        index=min(range(len(tr['points'])),key=lambda i:abs(tr['points'][i][0]-t))
+        target=s['start']+(offsets[index] if offsets is not None else t)
         row=db.execute('SELECT payload FROM frames WHERE site=? AND session=? AND received BETWEEN ? AND ? ORDER BY abs(received-?) LIMIT 1',(site['id'],tr['source_key'][0],target-.02,target+.02,target)).fetchone()
         if row is None:return None
         event=json.loads(row[0]);frame=event.get('frame',{});obj=next((o for o in frame.get('objects',[]) if str(o.get('id'))==str(tr['source_key'][1])),None)

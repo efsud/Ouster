@@ -26,7 +26,8 @@ function draw(){
    if(dt<=0||dt>1.5||tb<view[0]||ta>view[1])continue;
    seen=true;c.strokeStyle=color(b[2]);c.lineWidth=1;c.setLineDash([]);
    c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();
-   points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],name:'Observed · '+site.name});
+   const receiptTime=data.start+(tr.original_receipt_offsets_s?.[i]??b[0]);
+   points.push({x:x(tb),y:y(b[1]),time:tb,receiptTime,speed:b[2],name:'Observed position · '+site.name});
   }
   if(seen)count++;
  }
@@ -56,13 +57,17 @@ function zoom(f,fraction=.5){
 }
 async function refresh(){if(data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(`/api/${corridor}-rolling`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
  el('message').textContent=`Figure updated ${clock(next.generated_at)} · Next update ${clock(next.next_update)} ${regionName} time. Shows ${clock(next.start)}–${clock(next.end)}; early collection may cover less than one hour.`;
+ if(next.time_basis==='receipt_debursted'){
+  const audits=next.sites.flatMap(s=>s.clock_audit||[]),events=audits.flatMap(a=>a.events||[]);
+  el('message').textContent+=` Timing: ${events.length} bounded delivery bursts corrected using continuous sensor elapsed time between receipt anchors. Positions are measured; adjusted times are estimates. Hover to compare receipt time. Cross-sensor clock offsets remain unverified.`;
+ }
  if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();refreshReconstruction();
  }catch(e){el('message').textContent=e.message;}}
 if(el('spatial-estimates'))el('spatial-estimates').onchange=draw;
 el('direction').onchange=draw;el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
 el('time').oninput=()=>{if(data){const span=view[1]-view[0],start=data.start+(data.end-data.start-span)*Number(el('time').value)/1000;view=[start,start+span];draw();}};
 el('plot').addEventListener('wheel',e=>{e.preventDefault();if(!e.deltaY)return;const canvas=el('plot'),rect=canvas.getBoundingClientRect();if(rect.width<=0||canvas.clientWidth<=110)return;const pointerX=(e.clientX-rect.left)*canvas.clientWidth/rect.width;zoom(e.deltaY>0?1.25:.8,(pointerX-90)/(canvas.clientWidth-110));},{passive:false});el('plot').ondblclick=()=>el('reset').click();
-el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`:'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();setInterval(refresh,15000);
+el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`+(best.receiptTime!=null&&Math.abs(best.receiptTime-best.time)>.05?` · adjusted time; received ${clock(best.receiptTime)} (${(best.receiptTime-best.time).toFixed(2)} s later)`:''):'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();setInterval(refresh,15000);
 
 if(el("additional-matches"))el("additional-matches").onchange=draw;
 
@@ -96,11 +101,15 @@ async function refreshReconstruction(){
   const fallbackNote=(fallbackCounts.plateau||fallbackCounts.grid)?` Local fallbacks: ${fallbackCounts.grid} exact-endpoint grid retries; ${fallbackCounts.plateau} stationary estimates with up to 5 cm endpoint residual. Observations are unchanged.`:'';
   el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method==='color_slope_chronological_v1'?'Speed-color + constant-slope chronological matching (experimental; 1 m/s color bands; original slope for 80%, bounded correction at the end)':reconstruction.method}${reconstruction.endpoint_corrected_gaps?' + bounded stationary endpoint correction on '+reconstruction.endpoint_corrected_gaps+' gaps':''}.${fallbackNote}${lateralNote}${reconstruction.association_method==='bidirectional_shape_v1'?' Matching uses forward/backward motion evidence (experimental).':''} Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
   const host=el('reconstruction-comparison');host.replaceChildren();
+  if(reconstruction.delivery_timing_validation){
+   const v=reconstruction.delivery_timing_validation,q=v.local.test.True.methods,m=v.matching.test;
+   const p=document.createElement('p');p.textContent=`Bounded delivery timing · later hidden affected gaps: ${q.receipt.accepted} → ${q.corrected.accepted} accepted. Common-gap position error ${q.receipt.common.mae_m.toFixed(2)} → ${q.corrected.common.mae_m.toFixed(2)} m. Spatial matching proxy: ${m.receipt.correct} → ${m.corrected.correct} correct, ${m.receipt.wrong} → ${m.corrected.wrong} wrong. Raw observations and receipt timestamps remain stored; clock resets, absent frames and unanchored delays remain unresolved.`;host.append(p);
+  }
   if(reconstruction.gap_integrity_validation){
    const v=reconstruction.gap_integrity_validation,quiet=(reconstruction.within_intersection||[]).filter(p=>p.stationary_noise_admission).length;
    const p=document.createElement('p');p.textContent=`Gap review · ${quiet} additional quiet same-ID gaps use the stationary estimator, with at most 5 cm endpoint residual. Internal endpoints of accepted same-ID chains are excluded from between-intersection matching. Original observations stay unchanged.`;host.append(p);
    const q=v.stationary.test, t=v.terminals.test, score=document.createElement('p');score.textContent=`Later hidden-data tests: ${q.accepted} quiet-gap masks from ${q.distinct_ids} IDs, ${(q.quality.mae_m*100).toFixed(1)} cm mean position error. Fragmented matching proxy: ${t.baseline.correct} → ${t.terminals.correct} correct, ${t.baseline.wrong_identity} → ${t.terminals.wrong_identity} wrong. These conditional tests do not verify cross-sensor identities.`;host.append(score);
-   const timing=document.createElement('p');timing.textContent='November 23 timing audit: the apparent interruption around 12:08 included 4–8 second receipt delays while sensor timestamps advanced only 0.1 second. Receipt-time distortions remain unresolved; curves are not fabricated to hide them.';host.append(timing);
+   const timing=document.createElement('p');timing.textContent='November 23 timing audit: the apparent interruption around 12:08 included 4–8 second receipt delays while sensor timestamps advanced only 0.1 second. '+(data?.time_basis==='receipt_debursted'?'Supported bounded delivery bursts are now corrected in newer windows; the original 12:08 raw window has expired. Unanchored delays remain unresolved.':'Receipt-time distortions remain unresolved; curves are not fabricated to hide them.');host.append(timing);
   }
   if(reconstruction.local_lateral_validation){
    const v=reconstruction.local_lateral_validation,p=document.createElement('p');

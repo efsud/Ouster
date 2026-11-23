@@ -11,6 +11,10 @@ from dashboard.movement_phases import summarize as phase_summary
 
 
 def phase_inputs(snapshot,db):
+    if snapshot.get('time_basis','receipt')!='receipt':
+        # Phase delivery timestamps have not undergone the object-frame timing
+        # correction. Never infer signal permission by joining unlike clocks.
+        return {site['id']:({},[]) for site in snapshot['sites']}
     cutoff=snapshot['start']+.6*(snapshot['end']-snapshot['start']);output={}
     for site in snapshot['sites']:
         rows=db.execute('SELECT received,session,payload FROM phase_samples WHERE site=? AND received>=? AND received<=? ORDER BY received',(site['id'],snapshot['start'],snapshot['end'])).fetchall()

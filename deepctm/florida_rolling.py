@@ -36,7 +36,7 @@ def geometry(sites,road_axes=None):
     return out
 
 def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",retain_stationary_context=False,processing_interval_s=0.,merge_vehicle_classes=False,clock_reorder_s=0.):
-    if time_basis not in ("receipt","sensor_elapsed"):raise ValueError("Unknown time basis")
+    if time_basis not in ("receipt","sensor_elapsed","receipt_debursted"):raise ValueError("Unknown time basis")
     start=end-WINDOW;output=[]
     for s in geometry(sites,road_axes):
         from dashboard.movements import TrackCollector
@@ -72,7 +72,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
             tracks[-1].update(dimensions=sizes,shape_start=summarize_shape(sizes[:5]),shape_end=summarize_shape(sizes[-5:]))
             tracks[-1].update(lateral_start_context=[[round(p[0]-start,2),p[2]] for p in first_context],
                               lateral_end_context=[[round(p[0]-start,2),p[2]] for p in last_context])
-            if time_basis=='sensor_elapsed':tracks[-1]['original_receipt_offsets_s']=[round(p[5]-start,6) for p in points]
+            if time_basis!='receipt':tracks[-1]['original_receipt_offsets_s']=[round(p[5]-start,6) for p in points]
         angle=math.radians(s.get('preview_rotation_deg',220))-s['bearing'];c=math.cos(angle);sn=math.sin(angle)
         source_rows=db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall()
         raw_receipts=[r[1] for r in source_rows]
@@ -83,7 +83,10 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
             if signature not in seen_payloads:unique_rows.append(row);seen_payloads.add(signature)
         duplicate_frames=len(source_rows)-len(unique_rows)
         clock_audit=[]
-        if time_basis=='sensor_elapsed':
+        if time_basis=='receipt_debursted':
+            from .delivery_timing import correct
+            processing_rows,clock_audit=correct(unique_rows)
+        elif time_basis=='sensor_elapsed':
             from .event_clock import align_frames
             processing_rows,clock_audit=align_frames(unique_rows,max_reorder_s=clock_reorder_s)
             for audit in clock_audit:
@@ -184,7 +187,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt",r
         ingestion_epochs=[{'start':r[0],'mode':r[1]} for r in db.execute('SELECT start,mode FROM ingestion_epochs WHERE start<=? ORDER BY start',(end,))]
         ingestion_epochs=[r for i,r in enumerate(ingestion_epochs) if r['start']>=start or i==len(ingestion_epochs)-1 or ingestion_epochs[i+1]['start']>start]
     except sqlite3.OperationalError:ingestion_epochs=[]
-    timeline_note='receipt time' if time_basis=='receipt' else 'experimental sensor elapsed time; absolute synchronization unverified'
+    timeline_note={'receipt':'receipt time','sensor_elapsed':'experimental sensor elapsed time; absolute synchronization unverified','receipt_debursted':'receipt time with bounded SDK-elapsed delivery correction; cross-sensor synchronization unverified'}[time_basis]
     result={'time_basis':time_basis,'geometry_version':((road_axes or {}).get('version','inter-sensor-chord-v1') if any(s['id'] in (road_axes or {}).get('sites',{}) for s in sites) else 'inter-sensor-chord-v1'),'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':None,'ingestion_epochs':ingestion_epochs,'endpoint_context_version':'visible-minimum-one-second-v1','stationary_context_enabled':retain_stationary_context,'processing_interval_s':processing_interval_s,'merge_vehicle_classes':merge_vehicle_classes,'sites':output,'note':f'Sampled local trajectory fragments; provisional alignment and {timeline_note}. No cross-sensor identity matching.'}
     from .rolling_estimates import gap_validation
     from .transform_manifest import manifest
@@ -232,7 +235,10 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
             axes=json.loads(axis_path.read_text()) if axis_path.exists() else None
             journal_config=ROOT/'config/reconstruction/frame-journal.json'
             processing_interval=json.loads(journal_config.read_text()).get('figure_processing_interval_s',0.) if journal_config.exists() else 0.
-            return build(reader,entries,end,road_axes=axes,processing_interval_s=processing_interval)
+            timing_path=ROOT/'config/reconstruction/florida-delivery-timing.json'
+            timing=json.loads(timing_path.read_text()) if region=='Florida' and timing_path.exists() else {}
+            basis='receipt_debursted' if timing.get('enabled') else 'receipt'
+            return build(reader,entries,end,road_axes=axes,processing_interval_s=processing_interval,time_basis=basis)
         finally:reader.close()
     phase_saved={}
     journal_path=ROOT/'config/reconstruction/frame-journal.json'
