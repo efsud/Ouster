@@ -28,3 +28,13 @@ class ReconstructionViewTests(unittest.TestCase):
             result=read(100,p)
             self.assertIn('color_validation',result)
             self.assertNotIn('association_validation',result)
+
+    def test_bidirectional_validation_is_separate_from_old_study(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);p=root/'collection';p.mkdir();e=root/'bidirectional-review';e.mkdir()
+            (p/'status.json').write_text(json.dumps({'state':'evaluated_ablation','updated_at':80}))
+            (p/'layers.json').write_text(json.dumps({'state':'ready','expires_at':200,'association_method':'bidirectional_shape_v1'}))
+            (e/'report.json').write_text(json.dumps({'state':'complete','test':{'0.5':{}},'limitations':['proxy only'],'deployment_eligible':True,'private_raw':'not returned'}))
+            result=read(100,p)['bidirectional_validation']
+            self.assertEqual(result['test'],{'0.5':{}})
+            self.assertNotIn('private_raw',result)

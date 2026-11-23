@@ -121,7 +121,7 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             local.extend(reconnect_local(site,lambda a,b:prediction(a,b,report),reserved))
     # Existing movement-aware associations; do not create global vehicle identities.
     association_snapshot={**snapshot,'sites':[{**s,'tracks':[t for t in s['tracks'] if t['class_type']=='2']} for s in snapshot['sites']]}
-    matcher=None
+    matcher=None;endpoint_enricher=None
     if association_policy=='strict_physics_v1':
         from .matching_physics import associate as physical_associate
         matcher=lambda a,b:physical_associate(a,b,report['calibration']['parameters'],max_distance=association_distance_limit)
@@ -130,7 +130,11 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
         from .kinematic_gate import path as exact_gate
         gate=exact_gate if association_policy=='shape_feasible_partial_v1' else None
         matcher=lambda a,b:shape_associate(a,b,report['calibration']['parameters'],weight=.5,max_distance=association_distance_limit,path_gate=gate)
-    associations=reconstruct(association_snapshot,association_method='feasible',matcher=matcher)
+    elif association_policy=='bidirectional_shape_v1':
+        from .bidirectional_association import associate as bidirectional_associate,motion_context
+        matcher=lambda a,b:bidirectional_associate(a,b,report['calibration']['parameters'],blend=.5,max_distance=association_distance_limit)
+        endpoint_enricher=lambda ep,tr,is_exit:dict(ep,motion_context=motion_context(tr['points'],is_exit))
+    associations=reconstruct(association_snapshot,association_method='feasible',matcher=matcher,endpoint_enricher=endpoint_enricher)
     by_id={s['id']:s for s in association_snapshot['sites']}
     for link in associations['links']:
         for path in link['paths']:
@@ -168,6 +172,10 @@ def main(watch,region='florida',deadline=None):
                     if shape_path.exists():
                         shape_policy=json.loads(shape_path.read_text())
                         if region in shape_policy.get('enabled_regions',[]) and shape_policy.get('method') in ('shape_partial_v1','shape_feasible_partial_v1') and shape_policy.get('weight')==.5:association_policy=shape_policy['method']
+                    bidirectional_path=ROOT/'config/reconstruction/florida-bidirectional.json'
+                    if region=='florida' and bidirectional_path.exists():
+                        bidirectional=json.loads(bidirectional_path.read_text())
+                        if bidirectional.get('enabled') and bidirectional.get('blend')==.5:association_policy='bidirectional_shape_v1'
                     recovery_path=ROOT/'config/reconstruction/same-class-recovery.json'
                     recovery=json.loads(recovery_path.read_text()) if recovery_path.exists() else {}
                     plateau_path=ROOT/'config/reconstruction/stationary-plateau.json'

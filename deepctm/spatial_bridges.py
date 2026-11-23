@@ -145,7 +145,7 @@ def associate_residual(left,right,threshold=1.5,margin=.25,max_rounds=None,edge_
         candidates={k:v for k,v in candidates.items() if k[0] not in used_a and k[1] not in used_b}
     return accepted
 
-def reconstruct(snapshot,association_method="augmented",matcher=None):
+def reconstruct(snapshot,association_method="augmented",matcher=None,endpoint_enricher=None):
     from statistics import quantiles
     links=[]
     for west,east in zip(snapshot['sites'],snapshot['sites'][1:]):
@@ -165,7 +165,8 @@ def reconstruct(snapshot,association_method="augmented",matcher=None):
                         if not movement.get(flag) or movement.get(route_direction)!=direction:
                             counts['movement_rejected']+=1;continue
                     ep=endpoint(tr['points'],is_exit)
-                    if ep and ep['v']*sign>=1:group.append(dict(ep,class_type=tr['class_type'],fragment=index,movement=movement,shape=tr.get('shape_end' if is_exit else 'shape_start')))
+                    if ep and endpoint_enricher is not None:ep=endpoint_enricher(ep,tr,is_exit)
+                    if ep and ep['v']*sign>=1:group.append(dict(ep,site=site['id'],class_type=tr['class_type'],fragment=index,movement=movement,shape=tr.get('shape_end' if is_exit else 'shape_start')))
                     else:counts['endpoint_rejected']+=1
                 diagnostics.append(counts);groups.append(group)
             left,right=groups
