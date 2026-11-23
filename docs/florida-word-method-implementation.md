@@ -803,3 +803,15 @@ for explicitly supplied clocks. A regression test reproduces the concurrent
 arrival; eleven live/preview/combined tests passed. Only the dashboard server
 was restarted. The subsequent API check showed all seven Florida and all nine
 authorized Finch sensors fresh within 0.71 s; Jane remained unavailable.
+
+### Inspecting accepted-case failures
+
+`deepctm.render_gap_examples` saves median-error and worst-error accepted masks
+for each corridor from the latest hour's final quarter, excluding earlier IDs.
+It uses frozen published parameters, performs no fitting, and retains source
+hashes and scoring metadata. The inspected figure shows that exact endpoints
+and physical bounds alone do not recover stop location inside a long gap: the
+worst illustrated Florida 30-second gap has 17.57 m MAE; Finch's 60-second gap
+has 18.54 m MAE. Median illustrated cases are 0.45 m and 0.29 m. These are
+declared selected examples, not aggregate error claims. No missing trajectory
+is represented as a recovered ground-truth identity.
