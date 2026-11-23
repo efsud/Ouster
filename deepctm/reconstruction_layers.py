@@ -25,7 +25,7 @@ def prediction(a,b,report):
     if abs(p[0,2]-aa['v'])>1.00001 or abs(p[-1,2]-bb['v'])>1.00001:return None
     p[:,1]*=sign;return p.tolist()
 
-def generate(snapshot,report):
+def generate(snapshot,report,experimental_changed_ids=False):
     if report.get('state')!='evaluated_ablation':raise ValueError('Completed held-out study required')
     local=[];between=[];rejected=defaultdict(int)
     for site in snapshot['sites']:
@@ -71,6 +71,11 @@ def generate(snapshot,report):
                 p=prediction(a,b,report)
                 if p is None:rejected['local_physical_rejection']+=1;continue
                 local.append(dict(site=site['id'],direction=before['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='same_sensor_session_and_track',gap_s=b['t']-a['t']))
+    from .local_tracklet_matching import reconstruct as reconnect_local
+    if experimental_changed_ids:
+        for site in snapshot['sites']:
+            reserved=[(round(p['points'][0][0],2),round(p['points'][-1][0],2)) for p in local if p['site']==site['id']]
+            local.extend(reconnect_local(site,lambda a,b:prediction(a,b,report),reserved))
     # Existing movement-aware associations; do not create global vehicle identities.
     association_snapshot={**snapshot,'sites':[{**s,'tracks':[t for t in s['tracks'] if t['class_type']=='2']} for s in snapshot['sites']]}
     associations=reconstruct(association_snapshot,association_method='feasible')

@@ -47,7 +47,11 @@ def build(db,sites,end,track_observer=None):
             if points[-1][0]-points[0][0]<2 or abs(net)<3 or abs(net)<.7*travel:return
             chunks.setdefault((key,epoch),[]).append(points)
             if track_observer is not None:track_observer(s,key,points)
-            tracks.append({'source_key':list(key),'receipt_start':points[0][0],'receipt_end':points[-1][0],'class_type':key[2],'direction':'eastbound' if net>0 else 'westbound','points':[[round(p[0]-start,2),round(p[1]+s['station_m'],2),round(p[3],2)] for p in points]})
+            from statistics import median
+            tracks.append({'source_key':list(key),'receipt_start':points[0][0],'receipt_end':points[-1][0],
+                'lateral_start_m':median(p[2] for p in points[:5]),'lateral_end_m':median(p[2] for p in points[-5:]),
+                'sensor_start':points[0][4].isoformat(),'sensor_end':points[-1][4].isoformat(),
+                'class_type':key[2],'direction':'eastbound' if net>0 else 'westbound','points':[[round(p[0]-start,2),round(p[1]+s['station_m'],2),round(p[3],2)] for p in points]})
         angle=math.radians(s.get('preview_rotation_deg',220))-s['bearing'];c=math.cos(angle);sn=math.sin(angle)
         for session,receipt,payload in db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall():
             e=json.loads(payload);frames+=1;first=first or receipt;last=receipt

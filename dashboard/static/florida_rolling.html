@@ -4,7 +4,7 @@
 <p id="message">Loading…</p><p id="coverage"></p>
 <div id="sites"></div><div class="controls"><label>Direction <select id="direction"><option value="eastbound">Eastbound</option><option value="westbound">Westbound</option></select></label><label>Objects <select id="objects"><option value="vehicles">Vehicles</option><option value="all">All recorded classes</option><option value="pedestrians">Pedestrians</option><option value="cyclists">Cyclists</option></select></label><button id="zoom-in">Zoom in</button><button id="zoom-out">Zoom out</button><button id="reset">Full hour</button><label>Move through time <input id="time" type="range" min="0" max="1000" value="0"></label></div>
 <fieldset><legend>Florida reconstruction layers · passenger cars only</legend>
-<label><input id="within-layer" type="checkbox" disabled> 1. Cover missing data within intersections</label><br>
+<label><input id="within-layer" type="checkbox" checked disabled> 1. Automatically estimate missing data within intersections</label><br>
 <label><input id="between-layer" type="checkbox" disabled> 2. Estimate between intersections</label>
 <p id="reconstruction-status">Checking training and validation coverage…</p><p id="layer-counts"></p>
 <details><summary>Method comparison and limitations</summary><div id="reconstruction-comparison"></div></details></fieldset>
