@@ -10,6 +10,15 @@ from .spatial_bridges import endpoint,reconstruct
 ROOT=Path(__file__).resolve().parents[1]
 FOLDER=ROOT/'data/reconstruction/word-v1-collection'
 
+def finch_endpoint_config(model,override=None):
+    config={'parameters':model.get('endpoint_policy'),'excluded_sites':model.get('excluded_sites',[])}
+    if not override:return config
+    if override.get('version')!='stationary_noise_correction_v1' or override.get('parameters')!=config['parameters']:
+        raise ValueError('Finch endpoint override differs from validated parameters')
+    allowed=set(override.get('enabled_sites',[]))
+    config['excluded_sites']=[site for site in config['excluded_sites'] if site not in allowed]
+    return config
+
 def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None):
     method=report['selected_method'];params=report['calibration']['parameters']
     sign=1 if b['x']>=a['x'] else -1
@@ -137,7 +146,10 @@ def main(watch,region='florida',deadline=None):
                     association_path=ROOT/'config/reconstruction/florida-association.json'
                     association_policy=json.loads(association_path.read_text()).get('method') if association_path.exists() else None
                     if region=='finch':
-                        model=json.loads((folder/'policy.json').read_text());policy_config={'parameters':model.get('endpoint_policy'),'excluded_sites':model.get('excluded_sites',[])};association_policy='strict_physics_v1'
+                        model=json.loads((folder/'policy.json').read_text())
+                        override_path=ROOT/'config/reconstruction/finch-endpoint-speed.json'
+                        override=json.loads(override_path.read_text()) if override_path.exists() else None
+                        policy_config=finch_endpoint_config(model,override);association_policy='strict_physics_v1'
                     shape_path=ROOT/'config/reconstruction/corridor-shape-policy.json'
                     if shape_path.exists():
                         shape_policy=json.loads(shape_path.read_text())

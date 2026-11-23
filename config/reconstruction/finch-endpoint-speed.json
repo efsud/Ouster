@@ -1,0 +1,38 @@
+{
+  "version": "stationary_noise_correction_v1",
+  "parameters": {
+    "negative_speed_limit_mps": 0.1,
+    "position_span_limit_m": 0.1,
+    "trend_limit_mps": 0.05,
+    "step_speed_limit_mps": 0.5
+  },
+  "enabled_sites": [
+    "OBC-AG-SA-C257220",
+    "OBC-AG-SA-C257238"
+  ],
+  "scope": "Finch same-intersection car gaps >1.5 and <=90 seconds; original observations unchanged",
+  "selection_protocol_sha256": "2c79c92b1146570ca8720cb8043b61a9bc405c7fb618e49054ce570363246098",
+  "prospective_reports": [
+    {
+      "file": "data/reconstruction/eight-hour-20261123/finch/cycle-004.json",
+      "sha256": "e5aab693656b655564beb11c85edabc3f6c309a6db9cb9a59ecb8d1731c0eb09"
+    },
+    {
+      "file": "data/reconstruction/eight-hour-20261123/finch/cycle-008.json",
+      "sha256": "fa2c95b4903dea892fe64a678027f0f9ab1d09ea0c5523bbb1709e876c394013"
+    },
+    {
+      "file": "data/reconstruction/eight-hour-20261123/finch/cycle-018.json",
+      "sha256": "3ddaa2f103afde8cf148655235e5eb8d7638a060f3f85fe4c536eaff8ae51be5"
+    }
+  ],
+  "new_masks": 37,
+  "distinct_fragment_ranks": 31,
+  "new_case_mae_m": 0.07868903321738019,
+  "new_case_p95_mae_m": 0.2961874275880792,
+  "limitations": [
+    "Several gap lengths can share a vehicle; counts are correlated.",
+    "No validation of intersensor identity or field-calibrated uncertainty.",
+    "Only compact stationary visible context can correct a small negative endpoint derivative."
+  ]
+}

@@ -563,3 +563,14 @@ separate earlier selection from later comparison, preserve missing evidence, and
 never change calibration or establish cross-sensor identity. In particular, long
 Finch links cannot be validated by simply extending a line or increasing a time
 gate until it meets another trajectory.
+
+Finch's stationary-endpoint correction is now enabled only at Weston and Kipling,
+selected before three later test windows. It recovered 37 masks across 31 distinct
+fragment ranks (not necessarily independent vehicles), with mean position error
+0.079 m and case-MAE 95th percentile 0.296 m. The frozen threshold requires a
+negative derivative no larger than 0.1 m/s, position span no larger than 0.1 m,
+and near-zero trend. For example, a visible -0.03 m/s derivative in an otherwise
+stationary endpoint may be estimated as zero for the dashed gap; the recorded
+positions remain unchanged. Other Finch sites retain their original exclusions.
+A same-snapshot publication preview increased local estimates 34→41, all seven
+additional estimates at Weston; that count is not new ground-truth validation.
