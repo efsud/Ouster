@@ -1,7 +1,8 @@
 {
   "method": "bounded_stationary_latent_position",
   "enabled_regions": [
-    "finch"
+    "finch",
+    "florida"
   ],
   "scope": "Same-ID local car gaps only; no between-sensor fallback. Plateau additionally restricted to endpoint-correction-enabled sites.",
   "protocol_sha256": "2daa5679b796ab0a5e362bcce95aff4e30803ae13ff9b8b0afe59be41b019b66",
@@ -57,5 +58,47 @@
       "stop_precision": 1.0,
       "stop_recall": 1.0
     }
+  },
+  "florida_validation": {
+    "protocol_sha256": "2daa5679b796ab0a5e362bcce95aff4e30803ae13ff9b8b0afe59be41b019b66",
+    "prospective_validation": {
+      "windows": 4,
+      "evaluated": 354,
+      "added": 15,
+      "distinct_added_ids": 15,
+      "maximum_error_m": 0.30999999999994543,
+      "added_quality": {
+        "n": 15,
+        "mae_m": 0.01511676239518866,
+        "rmse_m": 0.021183384613287944,
+        "speed_mae_mps": 0.04503491120353866,
+        "stop_time_error_s": 0.10333333333334546,
+        "physics_violation": 0.0,
+        "p95_case_mae_m": 0.0282791443850162,
+        "stop_precision": 1.0,
+        "stop_recall": 1.0
+      }
+    },
+    "reports": [
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-061.json",
+        "sha256": "5b52eb25a35663a9a6b399ad9fdc34eeeb8155a59af50c78b2b032b15ddddd12"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-086.json",
+        "sha256": "df27b116b75470d9e7b0f0474ba91b1b8b7a6523e433f7d29914428505b8dedd"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-109.json",
+        "sha256": "f1c61a858109c9decb4636a123180a2c04fbeaba4818e4865864962913b732fb"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/florida/cycle-132.json",
+        "sha256": "8fd744fb04d7c3fe79bef856f791596295504bd6699541a8527ca9ccf4290ff9"
+      }
+    ],
+    "excluded_sites": [
+      "OBC-AG-SA-C257223"
+    ]
   }
 }

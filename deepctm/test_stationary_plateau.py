@@ -33,3 +33,15 @@ class StationaryPlateauTests(unittest.TestCase):
             self.assertAlmostEqual(a['x']-result[0][1],meta['endpoint_position_residual_m'][0])
             self.assertAlmostEqual(b['x']-result[-1][1],meta['endpoint_position_residual_m'][1])
             self.assertEqual(meta['observed_endpoint_speeds_mps'],[a['v'],b['v']])
+
+    def test_layer_never_applies_plateau_at_excluded_site(self):
+        from .reconstruction_layers import generate
+        a,b=self.endpoints()
+        snapshot={'start':0,'end':100,'generated_at':100,'sites':[{'id':'S','station_m':0,'tracks':[],
+            'local_gap_candidates':[{'class_type':'2','source_key':['session','car','2'],'a':a,'b':b}]}]}
+        report={'state':'evaluated_ablation','selected_method':'kinematic_0.01','calibration':{'parameters':dict(vmax=30,amin=-6,amax=4)},'test':{},'uncertainty':{}}
+        enabled=generate(snapshot,report,stationary_plateau=True)
+        excluded=generate(snapshot,report,stationary_plateau=True,endpoint_excluded_sites=['S'])
+        self.assertEqual(len(enabled['within_intersection']),1)
+        self.assertEqual(excluded['within_intersection'],[])
+        self.assertEqual(enabled['between_intersections'],[])

@@ -840,3 +840,15 @@ stationary latent-position estimates, including the latter's endpoint residual.
 Browser verification showed the two grid retries and one stationary fallback
 with both estimated layers enabled; the current eastbound view displayed 18
 local and 62 between-site estimates. JavaScript syntax validation passed.
+
+### Florida stationary fallback enabled
+
+Four future windows supplied 15 added stationary masks from 15 distinct IDs:
+MAE 0.0151 m, maximum error 0.31 m, stop precision 1.0, zero physical violations.
+The same frozen criteria passed. Hattaway remains excluded by the published
+site policy; 14 of the 15 qualifying IDs belong to permitted sites. The Florida
+layer worker now enables the bounded stationary fallback. On the deployment
+snapshot it added no new paths: all 61 local and 249 between-site estimates
+were unchanged. Enablement is not a promise of an extra line in every window.
+A regression test confirms excluded sites cannot receive this fallback.
+Florida's adaptive-grid retry remains withheld at seven distinct added IDs.
