@@ -852,3 +852,19 @@ snapshot it added no new paths: all 61 local and 249 between-site estimates
 were unchanged. Enablement is not a promise of an extra line in every window.
 A regression test confirms excluded sites cannot receive this fallback.
 Florida's adaptive-grid retry remains withheld at seven distinct added IDs.
+
+### Larger prospective matching sample
+
+After nine matching-validation windows, the feasible gate recovered 4,564
+correct Florida masked matches versus 4,063 for the previous gate; wrong matches
+increased from 10 to 12. Finch improved from 3,651 correct / 43 wrong to 3,968
+correct / 33 wrong. The extra Florida errors are retained in the report rather
+than hidden by the higher recall. These are correlated same-sensor scenarios,
+not actual cross-sensor identity labels. The dashboard now shows this direct
+gate comparison and labels older comparators as frozen references.
+
+The RTS reference improved mean error on 617 accepted Finch masks, with an
+identity-grouped mean gain of 0.124 m (exploratory bootstrap interval 0.009–0.252
+m across 554 IDs). Its p95 case error worsened and Islington/Martin Grove mean
+errors worsened, so a blanket deployment remains withheld. No test-based site
+selection is silently promoted.

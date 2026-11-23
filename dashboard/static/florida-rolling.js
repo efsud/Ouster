@@ -103,7 +103,11 @@ async function refreshReconstruction(){
    }
    const shapes=c.cumulative?.shape_prospective;
    if(shapes?.windows){
-    for(const [method,r] of Object.entries(shapes.totals)){const row=document.createElement('p');row.textContent=`Prospective masked matching · ${method==='current'?'current matcher':method==='0'?'global assignment':'size-assisted assignment'}: ${r.correct}/${r.eligible} correct matches; ${r.false} wrong. These are same-sensor masks, not verified identities between intersections.`;host.append(row);}
+    for(const [method,r] of Object.entries(shapes.totals)){const row=document.createElement('p');row.textContent=`Prospective masked matching · ${method==='current'?'frozen reference matcher':method==='0'?'global assignment':'size-assisted assignment'}: ${r.correct}/${r.eligible} correct matches; ${r.false} wrong. These are same-sensor masks, not verified identities between intersections.`;host.append(row);}
+   }
+   const gates=c.cumulative?.kinematic_gate_prospective;
+   if(gates?.windows){
+    for(const [method,r] of Object.entries(gates.totals)){const row=document.createElement('p');row.textContent=`Endpoint-feasibility comparison · ${method==='legacy'?'previous gate':'published feasible gate'}: ${r.correct}/${r.eligible} correct; ${r.false} wrong matches across ${gates.windows} future windows. Correlated same-sensor masks; actual between-sensor identities remain unverified.`;host.append(row);}
    }
    const lateral=c.cumulative?.lateral_prospective;
    if(lateral?.windows){const row=document.createElement('p');row.textContent=`Prospective lateral-motion candidate: ${lateral.accepted}/${lateral.eligible} hidden gaps reconstructed; longitudinal MAE ${lateral.quality?.mae_m?.toFixed(2)??'unavailable'} m; lateral MAE ${lateral.lateral_mae_m?.toFixed(2)??'unavailable'} m. Evaluation does not automatically enable this candidate.`;host.append(row);}
