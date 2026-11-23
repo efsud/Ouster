@@ -2,20 +2,65 @@
 const el=id=>document.getElementById(id),vehicle=new Set(['1','2','3','4','5','6','7','8','9','15']);
 const corridor=document.body.dataset.corridor||'florida',regionName=corridor==='finch'?'Toronto':'Florida';
 let data=null,view=null,points=[],version=0,reconstruction=null,colorExample=null,overlapExample=null;
+let aggregateCache=null,aggregateRects=[];
+const isAggregate=()=>Boolean(el('aggregate-mode')?.checked);
+if(el('aggregate-mode'))el('aggregate-mode').checked=new URLSearchParams(location.search).get('aggregate')==='1';
 if(new URLSearchParams(location.search).get('between')==='1'&&el('between-layer'))el('between-layer').checked=true;
 const clock=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:corridor==='finch'?'America/Toronto':'America/New_York',hour12:false});
 function color(v){const t=Math.max(0,Math.min(1,v/20));return `hsl(${t*120},75%,40%)`;}
+function aggregateModeUI(){
+ const active=isAggregate();
+ for(const id of ['aggregate-options','aggregate-note','aggregate-legend'])if(el(id))el(id).hidden=!active;
+ if(el('reconstruction-controls'))el('reconstruction-controls').hidden=active;
+ if(el('plot-caption'))el('plot-caption').textContent=active?'Colored cells summarize retained observations; individual lines and estimated connections are hidden.':'Solid lines show recorded positions; any timing corrections are noted above. Dashed layers estimate missing positions. Missing evidence stays blank.';
+ if(el('plot-explanation'))el('plot-explanation').textContent=active?'Speed is averaged once per sensor/session/object within each cell, then equally across those objects. Counts are sensor-local tracked IDs, not corridor flow or density. Short and wholly stationary tracks may be absent from the retained data. Gray means no retained observations—not necessarily no traffic or a sensor outage.':'Red = slow, yellow = about 10 m/s, green = 20+ m/s. Colors show observed or estimated speed, not signal state. Samples are taken at up to 2 Hz. Observed lines stop at gaps longer than 1.5 seconds. Supported missing portions can be shown using the separate estimate layers.';
+ el('plot').setAttribute('aria-label',active?'Florida time-distance cells colored by mean observed speed':'Time-distance trajectories colored by speed');
+ el('hover').textContent=active?'Hover over a colored cell for mean speed and observation support.':'Hover over a trajectory for its time and speed.';
+}
+function paintAggregate(c,x,y,sites,w,h){
+ const dt=Number(el('aggregate-time').value),dx=Number(el('aggregate-space').value);
+ const key=JSON.stringify([version,sites.map(s=>s.id),el('direction').value,el('objects').value,dt,dx]);
+ if(aggregateCache?.key!==key)aggregateCache={key,...TrajectoryAggregation.build(sites,{direction:el('direction').value,objects:el('objects').value,timeBinSeconds:dt,spaceBinMeters:dx,start:0,end:data.end-data.start})};
+ c.fillStyle='#e9eef2';c.fillRect(90,20,w-110,h-70);aggregateRects=[];
+ const overlapping=new Map();
+ for(const cell of aggregateCache.cells){
+  if(data.start+cell.timeEnd<=view[0]||data.start+cell.timeStart>=view[1])continue;
+  const bin=cell.timeStart+':'+cell.spaceStart;
+  if(!overlapping.has(bin))overlapping.set(bin,[]);overlapping.get(bin).push(cell);
+ }
+ const names=new Map(sites.map(s=>[s.id,s.name]));let visible=0,sparse=0;
+ for(const cells of overlapping.values()){
+  cells.sort((a,b)=>a.site.localeCompare(b.site));
+  cells.forEach((cell,i)=>{
+   const left=x(data.start+cell.timeStart),right=x(data.start+cell.timeEnd),part=(right-left)/cells.length;
+   const x0=left+i*part,x1=left+(i+1)*part,y0=y(cell.spaceEnd),y1=y(cell.spaceStart);
+   if(Math.min(w-20,x1)<=Math.max(90,x0)||Math.min(h-50,y1)<=Math.max(20,y0))return;
+   c.fillStyle=color(cell.speed);c.fillRect(x0,y0,x1-x0,y1-y0);
+   aggregateRects.push({x0:Math.max(90,x0),x1:Math.min(w-20,x1),y0:Math.max(20,y0),y1:Math.min(h-50,y1),cell,name:names.get(cell.site),overlap:cells.length});
+   visible++;if(cell.objectCount===1)sparse++;
+  });
+ }
+ el('aggregate-note').textContent=`${dt}-second × ${dx}-m fixed cells · mean observed speed · ${visible.toLocaleString()} visible sensor cells (${sparse.toLocaleString()} supported by one ID). Zoom keeps the same bins. Where sensors overlap, side-by-side strips retain separate sensor summaries.`;
+ return visible;
+}
 function draw(){
  if(!data)return;const panRange=data.end-data.start-(view[1]-view[0]);el('time').value=panRange>0?1000*(view[0]-data.start)/panRange:0;const selected=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value)),sites=data.sites.filter(s=>selected.has(s.id));
  renderMovements(sites);
- const canvas=el('plot'),w=canvas.clientWidth,h=650,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);points=[];
+ const canvas=el('plot'),w=canvas.clientWidth,h=650,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);points=[];aggregateRects=[];
  if(!sites.length){c.fillText('Select an intersection.',30,40);return;}
  const lo=Math.min(...sites.map(s=>s.station_m))-130,hi=Math.max(...sites.map(s=>s.station_m))+130;
  const x=t=>90+(t-view[0])/(view[1]-view[0])*(w-110),y=s=>h-50-(s-lo)/(hi-lo)*(h-80);
  c.font='12px sans-serif';c.fillStyle='#52636d';c.strokeStyle='#dbe3e8';
- for(let i=0;i<=6;i++){const t=view[0]+i*(view[1]-view[0])/6;c.beginPath();c.moveTo(x(t),20);c.lineTo(x(t),h-50);c.stroke();c.fillText(clock(t),Math.min(w-65,x(t)-25),h-25);}
+ const ticks=Math.max(2,Math.min(6,Math.floor((w-110)/100)));
+ for(let i=0;i<=ticks;i++){const t=view[0]+i*(view[1]-view[0])/ticks;c.beginPath();c.moveTo(x(t),20);c.lineTo(x(t),h-50);c.stroke();c.textAlign=i===0?'left':i===ticks?'right':'center';c.fillText(clock(t),x(t),h-25);}c.textAlign='left';
  for(const s of sites){c.fillStyle='#263b46';c.fillText(s.name,95,y(s.station_m)-8);c.fillText(Math.round(s.station_m)+' m',4,y(s.station_m));c.strokeStyle='#c3cdd3';c.beginPath();c.moveTo(90,y(s.station_m));c.lineTo(w-20,y(s.station_m));c.stroke();}
  c.save();c.beginPath();c.rect(90,20,w-110,h-70);c.clip();let count=0;
+ if(isAggregate()){
+  count=paintAggregate(c,x,y,sites,w,h);c.restore();
+  for(const s of sites){c.strokeStyle='rgba(38,59,70,.45)';c.beginPath();c.moveTo(90,y(s.station_m));c.lineTo(w-20,y(s.station_m));c.stroke();c.fillStyle='rgba(255,255,255,.9)';c.fillRect(93,y(s.station_m)-23,c.measureText(s.name).width+8,18);c.fillStyle='#263b46';c.fillText(s.name,97,y(s.station_m)-9);}
+  el('coverage').textContent=`${count.toLocaleString()} visible aggregated sensor cells · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time · ${sites.length} selected intersections. Estimated paths are excluded.`;
+  return;
+ }
  for(const site of sites)for(const tr of site.tracks){
   const filter=el('objects').value,code=tr.class_type;if(tr.direction!==el('direction').value)continue;
   if(filter==='vehicles'&&!vehicle.has(code)||filter==='pedestrians'&&!['0','10','11','14','16'].includes(code)||filter==='cyclists'&&!['12','13','17'].includes(code))continue;
@@ -64,10 +109,23 @@ async function refresh(){if(data&&Date.now()/1000-data.start>5400){data=null;poi
  if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;overlapExample=null;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=draw;label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();refreshReconstruction();
  }catch(e){el('message').textContent=e.message;}}
 if(el('spatial-estimates'))el('spatial-estimates').onchange=draw;
+for(const id of ['aggregate-mode','aggregate-time','aggregate-space'])if(el(id))el(id).onchange=()=>{
+ aggregateModeUI();
+ const url=new URL(location.href);if(isAggregate())url.searchParams.set('aggregate','1');else url.searchParams.delete('aggregate');history.replaceState(null,'',url);
+ draw();
+};
+aggregateModeUI();
 el('direction').onchange=draw;el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
 el('time').oninput=()=>{if(data){const span=view[1]-view[0],start=data.start+(data.end-data.start-span)*Number(el('time').value)/1000;view=[start,start+span];draw();}};
 el('plot').addEventListener('wheel',e=>{e.preventDefault();if(!e.deltaY)return;const canvas=el('plot'),rect=canvas.getBoundingClientRect();if(rect.width<=0||canvas.clientWidth<=110)return;const pointerX=(e.clientX-rect.left)*canvas.clientWidth/rect.width;zoom(e.deltaY>0?1.25:.8,(pointerX-90)/(canvas.clientWidth-110));},{passive:false});el('plot').ondblclick=()=>el('reset').click();
-el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`+(best.receiptTime!=null&&Math.abs(best.receiptTime-best.time)>.05?` · adjusted time; received ${clock(best.receiptTime)} (${(best.receiptTime-best.time).toFixed(2)} s later)`:''):'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();setInterval(refresh,15000);
+el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+ if(!data){el('hover').textContent='Waiting for recorded observations.';return;}
+ if(isAggregate()){
+  const hit=aggregateRects.find(r=>x>=r.x0&&x<r.x1&&y>=r.y0&&y<r.y1);
+  el('hover').textContent=hit?`${hit.name} · ${clock(data.start+hit.cell.timeStart)}–${clock(data.start+hit.cell.timeEnd)} · ${hit.cell.spaceStart}–${hit.cell.spaceEnd} m · mean ${hit.cell.speed.toFixed(1)} m/s · ${hit.cell.objectCount} sensor-local IDs · ${hit.cell.sampleCount} observations`+(hit.overlap>1?` · ${hit.overlap} sensors share this cell; strips are separate summaries`:''):'No retained observations in this cell; this does not establish zero traffic.';
+  return;
+ }
+ let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`+(best.receiptTime!=null&&Math.abs(best.receiptTime-best.time)>.05?` · adjusted time; received ${clock(best.receiptTime)} (${(best.receiptTime-best.time).toFixed(2)} s later)`:''):'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();setInterval(refresh,15000);
 
 if(el("additional-matches"))el("additional-matches").onchange=draw;
 function showColorExample(kind){
