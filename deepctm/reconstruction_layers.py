@@ -19,7 +19,7 @@ def finch_endpoint_config(model,override=None):
     config['excluded_sites']=[site for site in config['excluded_sites'] if site not in allowed]
     return config
 
-def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None):
+def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None,stationary_plateau=False):
     method=report['selected_method'];params=report['calibration']['parameters']
     sign=1 if b['x']>=a['x'] else -1
     from .endpoint_speed import orient,reconstruct as noise_reconstruct
@@ -35,6 +35,13 @@ def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None):
         if metadata is not None:
             metadata.update(endpoint_policy=r.get('endpoint_policy','strict'),endpoint_corrections=r.get('endpoint_corrections',[]))
             if r.get('endpoint_corrections'):metadata['uncertainty']='not_calibrated_for_endpoint_correction'
+        if r['state']!='candidate' and stationary_plateau and exact_join:
+            from .stationary_plateau import estimate
+            r=estimate(aa,bb,same_identity=True)
+            if r['state']=='candidate' and metadata is not None:
+                metadata.update(estimation_model=r['method'],exact_endpoint_interpolation=False,
+                    endpoint_position_residual_m=[sign*v for v in r['endpoint_position_residual_m']],
+                    observed_endpoint_speeds_mps=[sign*v for v in r['observed_endpoint_speeds_mps']],uncertainty=r['uncertainty'])
         if r['state']!='candidate':return None
         p=r['points']
     acc=np.diff(p[:,2])/np.diff(p[:,0])
@@ -42,12 +49,12 @@ def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None):
     if abs(p[0,2]-aa['v'])>1.00001 or abs(p[-1,2]-bb['v'])>1.00001:return None
     p[:,1]*=sign;return p.tolist()
 
-def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None,association_distance_limit=350,same_class_recovery=False):
+def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None,association_distance_limit=350,same_class_recovery=False,stationary_plateau=False):
     if report.get('state')!='evaluated_ablation':raise ValueError('Completed held-out study required')
     local=[];between=[];rejected=defaultdict(int);endpoint_metadata={}
     def local_prediction(a,b,allow_correction=True):
         endpoint_metadata.clear()
-        return prediction(a,b,report,exact_join=True,endpoint_policy=endpoint_policy if allow_correction and site['id'] not in endpoint_excluded_sites and 1.5<b['t']-a['t']<=90 else None,metadata=endpoint_metadata)
+        return prediction(a,b,report,exact_join=True,endpoint_policy=endpoint_policy if allow_correction and site['id'] not in endpoint_excluded_sites and 1.5<b['t']-a['t']<=90 else None,metadata=endpoint_metadata,stationary_plateau=stationary_plateau and allow_correction)
     for site in snapshot['sites']:
         groups=defaultdict(list)
         for tr in site['tracks']:
@@ -128,7 +135,7 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             if p is None:rejected['between_physical_rejection']+=1;continue
             between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin'],shape_evidence=path.get('shape_evidence')))
     return dict(state='ready',transform_manifest=snapshot.get('transform_manifest'),time_basis=snapshot.get('time_basis','receipt'),generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
-      same_class_recovery=same_class_recovery,endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
+      same_class_recovery=same_class_recovery,stationary_plateau=stationary_plateau,endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
       method=report['selected_method'],association_method=association_policy or 'feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
       association_diagnostics=[{k:v for k,v in link.items() if k!='paths'} | {'proposed_matches':len(link['paths'])} for link in associations['links']],
       comparison=report['test'],uncertainty=report['uncertainty'],
@@ -158,7 +165,10 @@ def main(watch,region='florida',deadline=None):
                         if region in shape_policy.get('enabled_regions',[]) and shape_policy.get('method') in ('shape_partial_v1','shape_feasible_partial_v1') and shape_policy.get('weight')==.5:association_policy=shape_policy['method']
                     recovery_path=ROOT/'config/reconstruction/same-class-recovery.json'
                     recovery=json.loads(recovery_path.read_text()) if recovery_path.exists() else {}
-                    result=generate(snapshot,report,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy);temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']
+                    plateau_path=ROOT/'config/reconstruction/stationary-plateau.json'
+                    plateau=json.loads(plateau_path.read_text()) if plateau_path.exists() else {}
+                    plateau_enabled=plateau.get('method')=='bounded_stationary_latent_position' and region in plateau.get('enabled_regions',[])
+                    result=generate(snapshot,report,stationary_plateau=plateau_enabled,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy);temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']
                     print(json.dumps({'state':'published','local':len(result['within_intersection']),'between':len(result['between_intersections'])}),flush=True)
         except (OSError,ValueError,KeyError) as exc:
             print(type(exc).__name__+': layers not published',flush=True)

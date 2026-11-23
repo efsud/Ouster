@@ -784,3 +784,11 @@ stationary endpoint correction is enabled; York Gate remains withheld.
 On the identical current snapshot this raised local estimates from 39 to 41,
 with 132 between-intersection estimates unchanged. Ten relevant endpoint/config
 tests passed. Evidence hashes are saved in the configuration.
+
+The plateau candidate now has an explicitly disabled layer-builder option. It
+can run only as a same-intersection car fallback after the regular estimate
+fails. Between-intersection matching never invokes it. Metadata preserves the
+original endpoint speeds and signed position residuals, and states that this is
+not exact interpolation. No region is enabled until the prospective criteria
+pass. The full 210-test scientific suite passed, including both-direction
+residual-sign and observation-preservation checks.

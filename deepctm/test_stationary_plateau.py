@@ -17,3 +17,19 @@ class StationaryPlateauTests(unittest.TestCase):
         b['v']=1.;self.assertEqual(estimate(a,b,True)['state'],'unavailable')
         a,b=self.endpoints();b['t']=60.;self.assertEqual(estimate(a,b,True)['state'],'unavailable')
         a,b=self.endpoints();b['x']=101.;self.assertEqual(estimate(a,b,True)['state'],'unavailable')
+
+    def test_renderer_option_preserves_observations_and_labels_residual(self):
+        import copy
+        from .reconstruction_layers import prediction
+        from .endpoint_speed import orient
+        report={'selected_method':'kinematic_0.01','calibration':{'parameters':dict(vmax=30,amin=-6,amax=4)}}
+        for sign in (1,-1):
+            a,b=self.endpoints();a=orient(a,sign);b=orient(b,sign);before=copy.deepcopy((a,b));meta={}
+            self.assertIsNone(prediction(a,b,report,exact_join=True))
+            result=prediction(a,b,report,exact_join=True,stationary_plateau=True,metadata=meta)
+            self.assertIsNotNone(result);self.assertEqual((a,b),before)
+            self.assertFalse(meta['exact_endpoint_interpolation'])
+            self.assertEqual(meta['estimation_model'],'bounded_stationary_latent_position')
+            self.assertAlmostEqual(a['x']-result[0][1],meta['endpoint_position_residual_m'][0])
+            self.assertAlmostEqual(b['x']-result[-1][1],meta['endpoint_position_residual_m'][1])
+            self.assertEqual(meta['observed_endpoint_speeds_mps'],[a['v'],b['v']])
