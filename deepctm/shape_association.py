@@ -4,13 +4,13 @@ from .matching_physics import reachability
 from .object_shape import discrepancy
 from .global_association import solve_edges
 
-def associate(left,right,params,weight=.25,threshold=1.5,margin=.25,max_distance=350):
+def associate(left,right,params,weight=.25,threshold=1.5,margin=.25,max_distance=350,path_gate=None):
     edges={};paths={};shape_scores={};baseline_edges={}
     for i,a in enumerate(left):
         for j,b in enumerate(right):
             score=pair_cost(a,b,max_distance=max_distance)
             if score is None or score>=threshold or reachability(a,b,params) is not None:continue
-            points=curve(a,b)
+            points=curve(a,b) if path_gate is None else path_gate(a,b,params)
             if points is None:continue
             baseline_edges[i,j]=score
             shape=discrepancy(a.get('shape'),b.get('shape'))
@@ -24,4 +24,5 @@ def associate(left,right,params,weight=.25,threshold=1.5,margin=.25,max_distance
     selected=[m for m in selected if shape_scores[m['left'],m['right']] is not None or (m['left'],m['right']) in baseline]
     for match in selected:
         key=(match['left'],match['right']);match['points']=paths[key];match['shape_discrepancy']=shape_scores[key]
+        match['motion_cost']=baseline_edges[key];match['shape_weight']=weight
     return selected

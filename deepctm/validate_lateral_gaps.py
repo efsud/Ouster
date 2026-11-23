@@ -16,7 +16,7 @@ from .reconstruction_study import metrics,summarize
 def identity_hash(site,key):
     return hashlib.sha256(json.dumps([site,key[:2]]).encode()).hexdigest()
 
-def run(region,report,limit=12,after=None,excluded_ids=(),max_gap=30):
+def run(region,report,limit=12,after=None,excluded_ids=(),max_gap=30,deadline=None):
     from dashboard.server import sites
     root=Path(__file__).resolve().parents[1];source=sqlite3.connect(f'file:{root}/data/{region}-rolling/buffer.sqlite3?mode=ro',uri=True)
     memory=sqlite3.connect(':memory:');source.backup(memory,pages=128,sleep=.01);source.close()
@@ -28,8 +28,9 @@ def run(region,report,limit=12,after=None,excluded_ids=(),max_gap=30):
     excluded_ids=set(excluded_ids)
     for site in snapshot['sites']:
         site['tracks']=[tr for tr in site['tracks'] if (after is None or tr['receipt_start']>=after) and identity_hash(site['id'],tr['source_key']) not in excluded_ids]
-    results=[];missing=0
+    results=[];missing=0;stopped=False
     for rank,site,tr,gap,(a,b,truth) in cases(snapshot,'test',limit):
+        if deadline is not None and time.time()>=deadline:stopped=True;break
         if gap>max_gap:continue
         points=raw.get((site['id'],tuple(tr['source_key']),round(tr['receipt_start'],2)))
         if points is None:missing+=1;continue
@@ -55,7 +56,8 @@ def run(region,report,limit=12,after=None,excluded_ids=(),max_gap=30):
                     row.update(accepted=True,metrics=metrics(pred,truth,report['calibration']['parameters']),lateral_mae_m=float(np.mean(error)))
         results.append(row)
     accepted=[r for r in results if r['accepted']]
-    return {'created_at':time.time(),'window':[snapshot['start'],snapshot['end']],'test_after':after,'max_gap_s':max_gap,'missing_source_tracks':missing,'eligible_lateral_masks':len(results),'accepted':len(accepted),
+    return {'state':'deadline_reached' if stopped else 'complete','created_at':time.time(),'window':[snapshot['start'],snapshot['end']],'test_after':after,'max_gap_s':max_gap,'missing_source_tracks':missing,'eligible_lateral_masks':len(results),'accepted':len(accepted),
+            'parameters':report['calibration']['parameters'],'implementation_sha256':{name:hashlib.sha256((root/'deepctm'/name).read_bytes()).hexdigest() for name in ('validate_lateral_gaps.py','lateral_gap.py','same_id_gaps.py','trajectory_reconstruction.py')},
             'quality':summarize([r['metrics'] for r in accepted]),'lateral_mae_m':float(np.mean([r['lateral_mae_m'] for r in accepted])) if accepted else None,'cases':results,
             'limitations':['Development masks of observed same-ID tracks; no cross-sensor identity evidence.','Road region and lateral projection provisional.','No production gate changed.','Multiple mask lengths may share a vehicle.']}
 

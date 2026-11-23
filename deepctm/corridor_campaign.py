@@ -81,6 +81,17 @@ def aggregate(output, complete=False):
         if extra.exists() and reports and 'association' not in reports[0]:associations.insert(0,json.loads(extra.read_text()))
         summary['regions'][region]={'windows':len(reports),'geometry_versions':sorted({r.get('geometry_version','inter-sensor-chord-v1') for r in reports}),'methods':methods,
             'association':{method:{k:sum(r['totals'].get(method,{}).get(k,0) for r in associations) for k in ('eligible','matched','correct','false')} for method in ('baseline','physics_screened','global_partial')}}
+        shape=[r['shape_association'] for r in reports if 'shape_association' in r]
+        summary['regions'][region]['shape_prospective']={'windows':len(shape),'time_bases':sorted({r.get('time_basis','receipt') for r in shape}),
+            'totals':{method:{k:sum(r['totals'].get(method,{}).get(k,0) for r in shape) for k in ('eligible','matched','correct','false')} for method in ('current','0','0.5')}}
+        lateral=[r['lateral_motion_prospective'] for r in reports if 'lateral_motion_prospective' in r]
+        lateral_cases=[c for r in lateral for c in r['cases']];accepted=[c for c in lateral_cases if c['accepted']]
+        summary['regions'][region]['lateral_prospective']={'windows':len(lateral),'eligible':len(lateral_cases),'accepted':len(accepted),
+            'distinct_accepted_ids':len({c['identity_hash'] for c in accepted}),'quality':summarize([c['metrics'] for c in accepted]),
+            'lateral_mae_m':float(np.mean([c['lateral_mae_m'] for c in accepted])) if accepted else None}
+        site_rows=[c for r in reports for c in r.get('site_policy_prospective',{}).get('cases',[])]
+        new=[c['metrics']['noise'] for c in site_rows if 'noise' in c['metrics'] and 'strict' not in c['metrics']]
+        summary['regions'][region]['site_policy_prospective']={'evaluated':len(site_rows),'new':summarize(new)}
     atomic(output/'summary.json',summary)
     return summary
 
@@ -92,12 +103,15 @@ def run(output,deadline,interval=1800):
     if (output/'status.json').exists():
         previous_status=json.loads((output/'status.json').read_text())
         status.update(started_at=previous_status.get('started_at',status['started_at']),regions=previous_status.get('regions',{}),errors=previous_status.get('errors',[]))
-    models={};last={};cycle=0
+    models={};last={};last_lateral={};lateral_ids={'florida':set(),'finch':set()};cycle=0
     for region in ('florida','finch'):
         folder=output/region
         if (folder/'model.json').exists():models[region]=json.loads((folder/'model.json').read_text())
         for path in sorted(folder.glob('cycle-*.json')):
             previous=json.loads(path.read_text());last[region]=previous['window'][1];cycle=max(cycle,previous['cycle'])
+            if 'lateral_motion_prospective' in previous:
+                experiment=previous['lateral_motion_prospective'];last_lateral[region]=experiment['window'][1]
+                lateral_ids[region].update(r['identity_hash'] for r in experiment['cases'])
             status['regions'][region]={'state':'evaluated','last_report':f'{region}/{path.name}','summary':previous['results']['summary'],'snapshot_end':previous['window'][1]}
     atomic(output/'status.json',status)
     while time.time()<deadline:
@@ -150,7 +164,19 @@ def run(output,deadline,interval=1800):
                     shape_report={'selected_method':'kinematic_0.01','calibration':{'parameters':model['parameters']}}
                     report['shape_association']=shape_score(shape_input,shape_report,['current',0,protocol['weight']],deadline=deadline)
                     report['shape_association']['time_basis']=s.get('time_basis','receipt')
+                    report['shape_association']['protocol_sha256']=hashlib.sha256(shape_protocol.read_bytes()).hexdigest()
                     report['shape_association']['note']='Frozen 0.5 shape weight; no tuning. Single-sensor spatial masks only.'
+                lateral_protocol=ROOT/'data/reconstruction/lateral-gap-review/protocol.json'
+                if lateral_protocol.exists() and time.time()<deadline:
+                    proposal=json.loads(lateral_protocol.read_text())
+                    from .validate_lateral_gaps import run as lateral_evaluate
+                    lateral_report={'selected_method':'kinematic_0.01','calibration':{'parameters':model['parameters']}}
+                    lateral_begin=max(proposal['after'],last_lateral.get(region,0)+30)
+                    report['lateral_motion_prospective']=lateral_evaluate(region,lateral_report,after=lateral_begin,
+                        excluded_ids=set(proposal['excluded_ids'][region])|lateral_ids[region],max_gap=proposal['max_gap_s'],deadline=deadline)
+                    report['lateral_motion_prospective']['protocol_sha256']=hashlib.sha256(lateral_protocol.read_bytes()).hexdigest()
+                    last_lateral[region]=report['lateral_motion_prospective']['window'][1]
+                    lateral_ids[region].update(r['identity_hash'] for r in report['lateral_motion_prospective']['cases'])
                 atomic(folder/f'cycle-{cycle:03}.json',report);last[region]=s['end'];state.update(state='evaluated',last_report=f'{region}/cycle-{cycle:03}.json',summary=validation['summary'])
                 # Publish only a calibration/validation-selected Finch model for a
                 # separate layer worker; test scores cannot change its parameters.

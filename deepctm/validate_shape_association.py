@@ -11,7 +11,7 @@ from .shape_association import associate
 from .reconstruction_layers import prediction
 from .matching_physics import associate as current_associate
 
-def score(snapshot,report,weights,limit=25,deadline=None):
+def score(snapshot,report,weights,limit=25,deadline=None,path_gate=None):
     groups=association_groups(snapshot,'test');records=[];cache={};stopped=False
     for group,rows in sorted(groups.items()):
         if deadline is not None and time.time()>=deadline:stopped=True;break
@@ -21,7 +21,7 @@ def score(snapshot,report,weights,limit=25,deadline=None):
             bi=[i for i,r in enumerate(rows) if scenario=='complete' or int(r[0][16:24],16)%4][::-1]
             left=[rows[i][1] for i in ai];right=[rows[i][2] for i in bi]
             for weight in weights:
-                proposed=current_associate(left,right,report['calibration']['parameters']) if weight=='current' else associate(left,right,report['calibration']['parameters'],weight=weight)
+                proposed=current_associate(left,right,report['calibration']['parameters']) if weight=='current' else associate(left,right,report['calibration']['parameters'],weight=weight,path_gate=path_gate)
                 accepted=[]
                 for match in proposed:
                     i,j=ai[match['left']],bi[match['right']];key=(*group,i,j)

@@ -104,6 +104,9 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
     if association_policy=='strict_physics_v1':
         from .matching_physics import associate as physical_associate
         matcher=lambda a,b:physical_associate(a,b,report['calibration']['parameters'],max_distance=association_distance_limit)
+    elif association_policy=='shape_partial_v1':
+        from .shape_association import associate as shape_associate
+        matcher=lambda a,b:shape_associate(a,b,report['calibration']['parameters'],weight=.5,max_distance=association_distance_limit)
     associations=reconstruct(association_snapshot,association_method='feasible',matcher=matcher)
     by_id={s['id']:s for s in association_snapshot['sites']}
     for link in associations['links']:
@@ -112,7 +115,7 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             b=endpoint(by_id[link['sites'][1]]['tracks'][path['downstream_fragment']]['points'],False)
             p=prediction(a,b,report,exact_join=True)
             if p is None:rejected['between_physical_rejection']+=1;continue
-            between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin']))
+            between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin'],shape_evidence=path.get('shape_evidence')))
     return dict(state='ready',time_basis=snapshot.get('time_basis','receipt'),generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
       same_class_recovery=same_class_recovery,endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
       method=report['selected_method'],association_method=association_policy or 'feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
@@ -135,6 +138,10 @@ def main(watch,region='florida',deadline=None):
                     association_policy=json.loads(association_path.read_text()).get('method') if association_path.exists() else None
                     if region=='finch':
                         model=json.loads((folder/'policy.json').read_text());policy_config={'parameters':model.get('endpoint_policy'),'excluded_sites':model.get('excluded_sites',[])};association_policy='strict_physics_v1'
+                    shape_path=ROOT/'config/reconstruction/corridor-shape-policy.json'
+                    if shape_path.exists():
+                        shape_policy=json.loads(shape_path.read_text())
+                        if region in shape_policy.get('enabled_regions',[]) and shape_policy.get('method')=='shape_partial_v1' and shape_policy.get('weight')==.5:association_policy='shape_partial_v1'
                     recovery_path=ROOT/'config/reconstruction/same-class-recovery.json'
                     recovery=json.loads(recovery_path.read_text()) if recovery_path.exists() else {}
                     result=generate(snapshot,report,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy);temp=folder/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'layers.json');last=snapshot['generated_at']

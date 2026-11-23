@@ -456,3 +456,53 @@ fragment ranks across multiple windows and passed the specified error thresholds
 Those earlier windows are reused development evidence for this site-selection
 choice. A new timestamp embargo and exclusion of known IDs separate subsequent
 prospective checks; no automatic site promotion is enabled.
+
+### Paired clock experiment and projected coverage overlap
+
+A paired clock check hid exactly the same physical observations under receipt and
+receipt-anchored sensor-elapsed timelines. Among cases reconstructed in both views,
+Florida mean position error changed from 2.80 m to 2.36 m (67 masks), and Finch
+from 1.87 m to 1.84 m (135 masks). Exploratory fragment-cluster bootstrap ranges for
+mean improvement included zero: -0.07 to 1.21 m in Florida and -0.02 to 0.11 m in
+Finch. Availability was conditional on selecting continuous sensor-time tracks.
+These results do not verify absolute clock synchronization or justify changing the
+published time basis automatically.
+
+A projected coverage audit found Cranes Roost–Hattaway edges overlapping by about
+3.3 m eastbound and 16.8 m westbound in the evaluated hour. A positive blind-gap
+matcher is inappropriate for many of these endpoints. Projected overlap is not
+proof of shared physical sensor coverage or vehicle identity. A separate
+`overlap_association.py` experiment compares simultaneous observed positions,
+speeds and available dimensions, requires separation from competing assignments,
+and fits no clock or position offset. It never treats overlapping observations as
+missing road data. Validation uses disjoint, interleaved observations from known
+single-sensor tracks; additional position/clock perturbations are explicitly
+synthetic robustness checks. No overlap associations are published yet.
+
+### Received-frame journal (2026-11-23)
+The rolling recorder previously read only the latest preview frame every 0.5 s.
+A 106-second comparison found about 10 received frames/s but only 2 archived
+frames/s at most active sites. This is sampling loss, separate from upstream
+outages or model errors. `deepctm.frame_journal` now captures every committed
+preview update in a 120-second SQLite handoff queue. Rolling workers copy by
+sequence, deduplicate by event key, and retain the usual 90-minute raw window.
+Existing authenticated collectors do not need restarting. A renewable 90-second
+lease stops new journaling if the rolling worker disappears; subsequent preview
+updates purge expired handoff rows. An idle database may retain its last queue
+until its next update. A worker outage longer than the handoff retention can still
+lose data; this does not promise lossless upstream reception.
+
+Tests cover a 50-frame burst overwritten in the preview cache, replay duplication,
+lease expiry/retention, and restart-safe copying. The first implementation exposed
+SQLite's outer-UPSERT conflict handling; explicit duplicate exclusion fixed it
+before installing the live pilot. Pilot measurements are saved in ignored
+`data/reconstruction/journal-review/comparison.json`. No upstream settings changed.
+
+A separate unpublished association experiment replaces the legacy cubic-only
+precheck with an exact discrete feasible-velocity envelope, while retaining the
+same physical limits, assignment costs, ambiguity margins and final refinement.
+On the first second-half masked window it increased Florida correct matches
+580→629 and false matches 5→3; Finch correct matches 396→427 but false matches
+1→2. These are correlated masked scenarios, not verified intersensor identities.
+The Finch false-match increase prevents treating this as a universal improvement.
+Reproduce with `deepctm.validate_kinematic_gate`; production defaults are unchanged.

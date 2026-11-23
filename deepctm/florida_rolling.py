@@ -197,8 +197,21 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
             return build(reader,entries,end,road_axes=axes)
         finally:reader.close()
     phase_saved={}
+    journal_path=ROOT/'config/reconstruction/frame-journal.json'
+    journal_enabled=journal_path.exists() and region.lower() in json.loads(journal_path.read_text()).get('enabled_regions',[])
+    journal_cursor=0;journal_lease=0;journal_rows=0
     while True:
         now=time.time()
+        if journal_enabled:
+            from .frame_journal import install,copy_batch
+            if now>=journal_lease:
+                writer=sqlite3.connect(ROOT/'data'/source_name,timeout=20)
+                try:install(writer,now+90)
+                finally:writer.close()
+                journal_lease=now+30
+            journal_cursor,count=copy_batch(source,db,ids,journal_cursor,now)
+            journal_rows+=count
+        # Bootstrap/fallback only: journal replay is idempotent against preview.
         for site,session,key,receipt,payload in source.execute('SELECT site,session,event_key,received_at,payload FROM preview_frames'):
             if site in ids and 0<=now-receipt<=3:
                 db.execute('INSERT OR IGNORE INTO frames VALUES(?,?,?,?,?)',(site,session,key,receipt,payload))
@@ -217,7 +230,7 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
             result=pending.result();temp=folder/'snapshot.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'snapshot.json');pending=None
         if pending is None and ((not last_publish and now-begin>=30) or (last_publish and now>=last_publish+REFRESH)):
             pending=pool.submit(compute,now);last_publish=now
-        health={'updated_at':time.time(),'buffer_start':db.execute('SELECT min(received) FROM frames').fetchone()[0],'buffer_end':db.execute('SELECT max(received) FROM frames').fetchone()[0],'next_update':last_publish+REFRESH if last_publish else begin+30}
+        health={'ingestion':'frame_journal' if journal_enabled else 'latest_preview_poll','journal_rows_copied':journal_rows,'journal_cursor':journal_cursor,'updated_at':time.time(),'buffer_start':db.execute('SELECT min(received) FROM frames').fetchone()[0],'buffer_end':db.execute('SELECT max(received) FROM frames').fetchone()[0],'next_update':last_publish+REFRESH if last_publish else begin+30}
         temp=folder/'status.tmp';temp.write_text(json.dumps(health));temp.replace(folder/'status.json')
         time.sleep(.5)
 

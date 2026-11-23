@@ -99,6 +99,12 @@ async function refreshReconstruction(){
    for(const [method,r] of Object.entries(c.cumulative?.methods||{})){
     const row=document.createElement('p');row.textContent=`Run total · ${method}: ${r.accepted}/${r.eligible} hidden gaps reconstructed. Added-case position MAE ${r.new?.mae_m?.toFixed(2)??'unavailable'} m. Candidate comparison, not automatic deployment.`;host.append(row);
    }
+   const shapes=c.cumulative?.shape_prospective;
+   if(shapes?.windows){
+    for(const [method,r] of Object.entries(shapes.totals)){const row=document.createElement('p');row.textContent=`Prospective masked matching · ${method==='current'?'current matcher':method==='0'?'global assignment':'size-assisted assignment'}: ${r.correct}/${r.eligible} correct matches; ${r.false} wrong. These are same-sensor masks, not verified identities between intersections.`;host.append(row);}
+   }
+   const lateral=c.cumulative?.lateral_prospective;
+   if(lateral?.windows){const row=document.createElement('p');row.textContent=`Prospective lateral-motion candidate: ${lateral.accepted}/${lateral.eligible} hidden gaps reconstructed; longitudinal MAE ${lateral.quality?.mae_m?.toFixed(2)??'unavailable'} m; lateral MAE ${lateral.lateral_mae_m?.toFixed(2)??'unavailable'} m. Evaluation does not automatically enable this candidate.`;host.append(row);}
   }
   if(reconstruction.comparison){
    const note=document.createElement('p');note.textContent='Candidate comparisons below may include corrections withheld from deployment at individual sites.';host.append(note);
@@ -123,7 +129,7 @@ async function refreshReconstruction(){
     const p=document.createElement('p');p.textContent='Experimental soft priors, provisional lane/stop-line geometry. This integrated-prior experiment did not demonstrate reliable improvement and was not deployed. Endpoint correction is assessed separately below. Spatial masking does not verify vehicle matching between sensors.';host.append(p);
    }
    if(reconstruction.pair_diagnostics?.length){
-    const h=document.createElement('h4');h.textContent='Every Florida pair · current recorded hour';host.append(h);
+    const h=document.createElement('h4');h.textContent=`Every ${corridor==='finch'?'Finch':'Florida'} pair · current recorded hour`;host.append(h);
     const table=document.createElement('table'),head=document.createElement('tr');
     for(const label of ['From → To','Direction','Departures','Arrivals','Displayed estimates','Final motion rejection']){const th=document.createElement('th');th.textContent=label;head.append(th);}table.append(head);
     for(const link of reconstruction.pair_diagnostics){const row=document.createElement('tr');for(const value of [link.names.join(' → '),link.direction,link.departure_candidates,link.arrival_candidates,link.displayed_matches,link.final_rejections]){const td=document.createElement('td');td.textContent=value;row.append(td);}table.append(row);}host.append(table);
@@ -160,7 +166,7 @@ async function refreshReconstruction(){
     for(const [scenario,methods] of Object.entries(association.test||{}))for(const [method,m] of Object.entries(methods)){
      const p=document.createElement('p');p.textContent=`${scenario==='complete'?'All endpoints available':'Missing departures and arrivals'} · ${method}: ${m.correct}/${m.eligible} correct recovered matches (${m.recall==null?'unavailable':(100*m.recall).toFixed(1)+'%'}); ${m.false} wrong matches; precision ${m.precision==null?'unavailable':(100*m.precision).toFixed(1)+'%'}.`;host.append(p);
     }
-    const p=document.createElement('p');p.textContent='The global method recovered more matches but made more errors. The conservative matcher remains displayed. Same-sensor masks do not verify identities between intersections.';host.append(p);
+    const p=document.createElement('p');p.textContent='This earlier global-method experiment recovered more matches but made more errors. Current displayed association policy: '+(reconstruction.association_method||'conservative matcher')+'. Same-sensor masks do not verify identities between intersections.';host.append(p);
    }
    for(const text of reconstruction.limitations||[]){const p=document.createElement('p');p.textContent=text;host.append(p);}
   }else host.textContent='No method has completed the required held-out comparison yet.';

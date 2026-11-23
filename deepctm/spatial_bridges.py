@@ -164,7 +164,7 @@ def reconstruct(snapshot,association_method="augmented",matcher=None):
                         if not movement.get(flag) or movement.get(route_direction)!=direction:
                             counts['movement_rejected']+=1;continue
                     ep=endpoint(tr['points'],is_exit)
-                    if ep and ep['v']*sign>=1:group.append(dict(ep,class_type=tr['class_type'],fragment=index,movement=movement))
+                    if ep and ep['v']*sign>=1:group.append(dict(ep,class_type=tr['class_type'],fragment=index,movement=movement,shape=tr.get('shape_end' if is_exit else 'shape_start')))
                     else:counts['endpoint_rejected']+=1
                 diagnostics.append(counts);groups.append(group)
             left,right=groups
@@ -177,5 +177,7 @@ def reconstruct(snapshot,association_method="augmented",matcher=None):
             for counts,before,after in zip(diagnostics,before_edge,[len(left),len(right)]):counts['away_from_coverage_edge']=before-after
             matches=associate(left,right,method=association_method) if matcher is None else matcher(left,right)
             paths=[{'points':m['points'],'class_type':left[m['left']]['class_type'],'direction':direction,'association_cost':m['cost'],'ambiguity_margin':m['margin'],'assignment_round':m.get('assignment_round',1),'additional':m.get('additional',False),'upstream_movement':left[m['left']].get('movement',{}),'downstream_movement':right[m['right']].get('movement',{}),'upstream_fragment':left[m['left']]['fragment'],'downstream_fragment':right[m['right']]['fragment']} for m in matches]
+            for path,match in zip(paths,matches):
+                if 'shape_discrepancy' in match:path['shape_evidence']={k:match[k] for k in ('shape_discrepancy','shape_weight','motion_cost')}
             links.append({'sites':[up['id'],down['id']],'names':[up['name'],down['name']],'direction':direction,'departure_candidates':len(left),'arrival_candidates':len(right),'diagnostics':diagnostics,'unmatched_departures':len(left)-len(paths),'unmatched_arrivals':len(right)-len(paths),'paths':paths})
     return {'method':'Estimated cross-sensor associations and monotone endpoint-constrained motion; not verified identities or DeepCTM forecasts','links':links,'limitations':['Unknown clock offsets, turning traffic and occlusion can invalidate associations.','Only unambiguous supported candidates are drawn; missing associations remain blank.','No signal state is inferred. Colors are estimated speed.']}
