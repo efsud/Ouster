@@ -33,12 +33,12 @@ def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None):
     if abs(p[0,2]-aa['v'])>1.00001 or abs(p[-1,2]-bb['v'])>1.00001:return None
     p[:,1]*=sign;return p.tolist()
 
-def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None):
+def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None):
     if report.get('state')!='evaluated_ablation':raise ValueError('Completed held-out study required')
     local=[];between=[];rejected=defaultdict(int);endpoint_metadata={}
     def local_prediction(a,b,allow_correction=True):
         endpoint_metadata.clear()
-        return prediction(a,b,report,exact_join=True,endpoint_policy=endpoint_policy if allow_correction and 1.5<b['t']-a['t']<=90 else None,metadata=endpoint_metadata)
+        return prediction(a,b,report,exact_join=True,endpoint_policy=endpoint_policy if allow_correction and site['id'] not in endpoint_excluded_sites and 1.5<b['t']-a['t']<=90 else None,metadata=endpoint_metadata)
     for site in snapshot['sites']:
         groups=defaultdict(list)
         for tr in site['tracks']:
@@ -100,7 +100,11 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             local.extend(reconnect_local(site,lambda a,b:prediction(a,b,report),reserved))
     # Existing movement-aware associations; do not create global vehicle identities.
     association_snapshot={**snapshot,'sites':[{**s,'tracks':[t for t in s['tracks'] if t['class_type']=='2']} for s in snapshot['sites']]}
-    associations=reconstruct(association_snapshot,association_method='feasible')
+    matcher=None
+    if association_policy=='strict_physics_v1':
+        from .matching_physics import associate as physical_associate
+        matcher=lambda a,b:physical_associate(a,b,report['calibration']['parameters'])
+    associations=reconstruct(association_snapshot,association_method='feasible',matcher=matcher)
     by_id={s['id']:s for s in association_snapshot['sites']}
     for link in associations['links']:
         for path in link['paths']:
@@ -110,8 +114,8 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             if p is None:rejected['between_physical_rejection']+=1;continue
             between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin']))
     return dict(state='ready',generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
-      endpoint_policy=endpoint_policy,endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
-      method=report['selected_method'],association_method='feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
+      endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
+      method=report['selected_method'],association_method=association_policy or 'feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
       association_diagnostics=[{k:v for k,v in link.items() if k!='paths'} | {'proposed_matches':len(link['paths'])} for link in associations['links']],
       comparison=report['test'],uncertainty=report['uncertainty'],
       limitations=['Selected local reconstruction ablation; not full Newell+CTM+signal model','Between-intersection accuracy and identities are unverified; applying local method across sensors is domain transfer','No inferred signal permissions or invented same-lane leaders','Validation uncertainty applies to prior local masked gaps only, not corrected endpoints or between sensors'])
@@ -125,8 +129,10 @@ def main(watch):
                 report=json.loads(Path(status['report']).read_text());snapshot=json.loads((ROOT/'data/florida-rolling/snapshot.json').read_text())
                 if snapshot['start']>=time.time()-5400 and snapshot['generated_at']!=last:
                     policy_path=ROOT/'config/reconstruction/florida-endpoint-speed.json'
-                    policy=json.loads(policy_path.read_text()).get('parameters') if policy_path.exists() else None
-                    result=generate(snapshot,report,endpoint_policy=policy);temp=FOLDER/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(FOLDER/'layers.json');last=snapshot['generated_at']
+                    policy_config=json.loads(policy_path.read_text()) if policy_path.exists() else {}
+                    association_path=ROOT/'config/reconstruction/florida-association.json'
+                    association_policy=json.loads(association_path.read_text()).get('method') if association_path.exists() else None
+                    result=generate(snapshot,report,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy);temp=FOLDER/'layers.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(FOLDER/'layers.json');last=snapshot['generated_at']
                     print(json.dumps({'state':'published','local':len(result['within_intersection']),'between':len(result['between_intersections'])}),flush=True)
         except (OSError,ValueError,KeyError) as exc:
             print(type(exc).__name__+': layers not published',flush=True)

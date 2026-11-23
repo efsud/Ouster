@@ -14,5 +14,9 @@
   "test_eligible": 270,
   "new_case_mae_m": 1.5330667981480195,
   "new_case_p95_mae_m": 9.41811316339442,
-  "uncertainty": "Earlier local uncertainty bands do not cover these new cases; retrospective experimental estimates"
+  "uncertainty": "Earlier local uncertainty bands do not cover these new cases; retrospective experimental estimates",
+  "excluded_sites": [
+    "OBC-AG-SA-C257223"
+  ],
+  "site_restriction_reason": "Post-hoc site audit found Hattaway newly admitted gaps mean position error 5.93m; withhold correction there pending independent validation. Original held-out results remain unchanged."
 }

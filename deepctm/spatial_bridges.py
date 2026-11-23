@@ -111,7 +111,7 @@ def associate(left,right,threshold=1.5,margin=.25,method="legacy"):
         used_a.add(i);used_b.add(j);accepted.append({'left':i,'right':j,'cost':cost,'margin':separation,'points':points})
     return accepted
 
-def associate_residual(left,right,threshold=1.5,margin=.25,max_rounds=None):
+def associate_residual(left,right,threshold=1.5,margin=.25,max_rounds=None,edge_filter=None):
     """Resolve mutual-best matches in rounds; remove occupied endpoints from rivals.
 
     Infeasible curves cannot compete. Never relax cost/margin gates, reuse an
@@ -123,6 +123,7 @@ def associate_residual(left,right,threshold=1.5,margin=.25,max_rounds=None):
         for j,b in enumerate(right):
             cost=pair_cost(a,b)
             if cost is None or cost>threshold:continue
+            if edge_filter is not None and not edge_filter(a,b):continue
             points=curve(a,b)
             if points is not None:candidates[i,j]=(cost,points)
     accepted=[];round_number=0

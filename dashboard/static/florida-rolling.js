@@ -2,6 +2,7 @@
 const el=id=>document.getElementById(id),vehicle=new Set(['1','2','3','4','5','6','7','8','9','15']);
 const corridor=document.body.dataset.corridor||'florida',regionName=corridor==='finch'?'Toronto':'Florida';
 let data=null,view=null,points=[],version=0,reconstruction=null;
+if(corridor==='florida'&&new URLSearchParams(location.search).get('between')==='1'&&el('between-layer'))el('between-layer').checked=true;
 const clock=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:corridor==='finch'?'America/Toronto':'America/New_York',hour12:false});
 function color(v){const t=Math.max(0,Math.min(1,v/20));return `hsl(${t*120},75%,40%)`;}
 function draw(){
@@ -111,6 +112,17 @@ async function refreshReconstruction(){
      const gain=integration.paired_gain?.[key];if(gain){const p=document.createElement('p');p.textContent=`Exploratory 95% range for mean improvement: ${gain.bootstrap95_m.map(x=>x.toFixed(3)).join(' to ')} m; positive means improvement.`;host.append(p);}
     }
     const p=document.createElement('p');p.textContent='Experimental soft priors, provisional lane/stop-line geometry. This integrated-prior experiment did not demonstrate reliable improvement and was not deployed. Endpoint correction is assessed separately below. Spatial masking does not verify vehicle matching between sensors.';host.append(p);
+   }
+   if(reconstruction.pair_diagnostics?.length){
+    const h=document.createElement('h4');h.textContent='Every Florida pair · current recorded hour';host.append(h);
+    const table=document.createElement('table'),head=document.createElement('tr');
+    for(const label of ['From → To','Direction','Departures','Arrivals','Displayed estimates','Final motion rejection']){const th=document.createElement('th');th.textContent=label;head.append(th);}table.append(head);
+    for(const link of reconstruction.pair_diagnostics){const row=document.createElement('tr');for(const value of [link.names.join(' → '),link.direction,link.departure_candidates,link.arrival_candidates,link.displayed_matches,link.final_rejections]){const td=document.createElement('td');td.textContent=value;row.append(td);}table.append(row);}host.append(table);
+    const note=document.createElement('p');note.textContent='Enable “Estimate between intersections” to show the supported dashed connections. These counts cover all sites and both directions for this hour; the plot follows your filters. Unmatched endpoints are fragments, not counts of missing unique vehicles. Turning exits, incomplete movements, ambiguous identity and motion conflicts remain unconnected.';host.append(note);
+   }
+   if(reconstruction.all_site_validation?.length){
+    const h=document.createElement('h4');h.textContent='Local endpoint correction · site-by-site validation';host.append(h);
+    for(const site of reconstruction.all_site_validation){const p=document.createElement('p');p.textContent=`${site.name}: ${site.methods.strict.accepted} → ${site.methods['noise_0.1'].accepted} of ${site.methods.strict.eligible} masked gaps accepted; new-case error ${site.new_cases.mae_m?.toFixed(2)??'unavailable'} m. ${site.correction_enabled?'Bounded correction enabled.':'Correction withheld: site error exceeds the quality threshold; strict estimator remains.'}`;host.append(p);}
    }
    const endpointStudy=reconstruction.endpoint_validation;
    if(endpointStudy){

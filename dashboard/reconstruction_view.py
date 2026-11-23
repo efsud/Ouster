@@ -26,4 +26,10 @@ def read(now=None,folder=FOLDER):
     try:endpoint=json.loads((folder.parent/'endpoint-speed/evaluation/report.json').read_text())
     except (OSError,ValueError):endpoint=None
     if endpoint and endpoint.get('state')!='complete':endpoint=None
-    return {**layers,'endpoint_validation':endpoint,'archive_validation':archive,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}
+    try:all_sites=json.loads((folder.parent/'all-florida/pair-audit.json').read_text()).get('site_validation',[])
+    except (OSError,ValueError):all_sites=[]
+    pair_diagnostics=[]
+    for link in layers.get('association_diagnostics',[]):
+        displayed=sum(p['sites']==link['sites'] and p['direction']==link['direction'] for p in layers.get('between_intersections',[]))
+        pair_diagnostics.append({**link,'displayed_matches':displayed,'final_rejections':link['proposed_matches']-displayed})
+    return {**layers,'all_site_validation':all_sites,'pair_diagnostics':pair_diagnostics,'endpoint_validation':endpoint,'archive_validation':archive,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}
