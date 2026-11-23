@@ -51,8 +51,15 @@ def read(now=None,folder=FOLDER):
     if layers.get('local_lateral'):
         try:local_lateral=json.loads((folder.parent/'local-lateral-review/deployment.json').read_text())
         except (OSError,ValueError):pass
+    gap_integrity=None
+    if layers.get('stationary_admission') or layers.get('terminal_chains'):
+        review=folder.parent/'nov23-gap-review'
+        try:
+            gap_integrity={name:json.loads((review/file).read_text()) for name,file in
+                [('stationary','stationary-validation.json'),('terminals','terminal-validation.json'),('timing','screenshot-outage.json')]}
+        except (OSError,ValueError):pass
     pair_diagnostics=[]
     for link in layers.get('association_diagnostics',[]):
         displayed=sum(p['sites']==link['sites'] and p['direction']==link['direction'] for p in layers.get('between_intersections',[]))
         pair_diagnostics.append({**link,'displayed_matches':displayed,'final_rejections':link['proposed_matches']-displayed})
-    return {**layers,'local_lateral_validation':local_lateral,'bidirectional_validation':bidirectional,'campaign':campaign,'all_site_validation':all_sites,'pair_diagnostics':pair_diagnostics,'endpoint_validation':endpoint,'archive_validation':archive,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}
+    return {**layers,'gap_integrity_validation':gap_integrity,'local_lateral_validation':local_lateral,'bidirectional_validation':bidirectional,'campaign':campaign,'all_site_validation':all_sites,'pair_diagnostics':pair_diagnostics,'endpoint_validation':endpoint,'archive_validation':archive,'study':safe,'later_validation':later,'association_validation':association,'integration_validation':integration}

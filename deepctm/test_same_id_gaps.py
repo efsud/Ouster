@@ -55,6 +55,35 @@ class RecordingInterruptionTests(unittest.TestCase):
 
 
 class SameClassRecoveryTests(unittest.TestCase):
+    def test_stationary_noise_admission_is_narrow_and_explicit(self):
+        a=track('same',0,3);b=track('same',8,11)
+        for p in a['points']:p[1]=10;p[2]=0
+        for p in b['points']:p[1]=9.96;p[2]=0
+        site={'tracks':[a,b]}
+        self.assertEqual(list(candidates(site,include_same_class=True)),[])
+        found=list(candidates(site,include_same_class=True,allow_stationary_noise=True))
+        self.assertEqual(len(found),1);self.assertTrue(found[0]['stationary_noise_admission'])
+        b['lateral_start_m']=4
+        self.assertEqual(list(candidates(site,include_same_class=True,allow_stationary_noise=True)),[])
+        b['lateral_start_m']=0
+        for p in b['points']:p[1]=9.8
+        self.assertEqual(list(candidates(site,include_same_class=True,allow_stationary_noise=True)),[])
+
+    def test_stationary_admission_uses_latent_plateau_not_reverse_curve(self):
+        from .reconstruction_layers import generate
+        a=track('same',0,3);b=track('same',8,11)
+        for p in a['points']:p[1]=10;p[2]=0
+        for p in b['points']:p[1]=9.96;p[2]=0
+        site={'id':'site','name':'site','tracks':[a,b],'local_gap_candidates':[]}
+        report={'state':'evaluated_ablation','selected_method':'kinematic_0.01','calibration':{'parameters':{'vmax':30,'amin':-4,'amax':3}},'test':{},'uncertainty':{}}
+        snapshot={'sites':[site],'start':0,'end':100,'generated_at':0}
+        r=generate(snapshot,report,same_class_recovery=True,stationary_plateau=True,stationary_admission=True)
+        path=r['within_intersection'][0]
+        self.assertTrue(path['stationary_noise_admission'])
+        self.assertTrue(all(abs(p[1]-9.98)<1e-9 and p[2]==0 for p in path['points']))
+        self.assertFalse(path['exact_endpoint_interpolation'])
+        r=generate(snapshot,report,same_class_recovery=True,stationary_plateau=True,stationary_admission=True,endpoint_excluded_sites=['site'])
+        self.assertEqual(r['within_intersection'],[])
     def test_lateral_experiment_never_silently_widens_default(self):
         a=track('same',0,3);b=track('same',8,11);b['lateral_start_m']=3.5
         self.assertEqual(list(candidates({'tracks':[a,b]},include_same_class=True)),[])

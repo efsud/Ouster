@@ -5,7 +5,7 @@ from .local_gaps import VEHICLES
 from .spatial_bridges import endpoint
 
 
-def candidates(site,include_same_class=False,allow_lateral_motion=False,audit=None):
+def candidates(site,include_same_class=False,allow_lateral_motion=False,audit=None,allow_stationary_noise=False):
     groups=defaultdict(list)
     for tr in site['tracks']:
         key=tr.get('source_key',[])
@@ -53,9 +53,14 @@ def candidates(site,include_same_class=False,allow_lateral_motion=False,audit=No
             if ma and mb and ma!=mb:
                 record('movement_labels_disagree');continue
             sign=1 if before['direction']=='eastbound' else -1
+            quiet=False
             if (b['x']-a['x'])*sign<0 or min(a['v']*sign,b['v']*sign)<-.25:
-                record('reverse_displacement_or_endpoint_speed');continue
+                from .stationary_plateau import estimate
+                quiet=allow_stationary_noise and estimate(a,b,same_identity=True)['state']=='candidate'
+                if not quiet:
+                    record('reverse_displacement_or_endpoint_speed');continue
             record('candidate')
             yield dict(a=a,b=b,identity=identity,classes=[before['class_type'],after['class_type']],direction=before['direction'],
+                stationary_noise_admission=quiet,
                 requires_lateral_check=lateral>2,
                 recording_gap=outage,frame_gap_basis=site.get('frame_gap_basis','receipt'),classification_changed=not same_class,missing_receipt_fraction=min(1.,missing/duration))

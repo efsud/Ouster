@@ -153,10 +153,12 @@ def reconstruct(snapshot,association_method="augmented",matcher=None,endpoint_en
             sign=1 if direction=='eastbound' else -1;up,down=(west,east) if sign==1 else (east,west)
             groups=[];diagnostics=[]
             for site,is_exit in [(up,True),(down,False)]:
-                group=[];counts=dict(vehicle_fragments=0,movement_rejected=0,endpoint_rejected=0)
+                group=[];counts=dict(vehicle_fragments=0,movement_rejected=0,endpoint_rejected=0,internal_chain_endpoint=0)
                 for index,tr in enumerate(site['tracks']):
                     if tr['direction']!=direction or tr['class_type'] not in VEHICLES:continue
                     counts['vehicle_fragments']+=1
+                    if ('departure' if is_exit else 'arrival') in tr.get('internal_chain_endpoints',[]):
+                        counts['internal_chain_endpoint']+=1;continue
                     movement=tr.get('movement',{})
                     if site.get('movement_summary') is not None:
                         # Leaving SR-436 ends a corridor path; joining starts one.
