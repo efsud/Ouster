@@ -32,11 +32,14 @@ class DirectionalSignalTest(unittest.TestCase):
             store=Store(Path(t)/'db');site={'id':'S'}
             store.save_preview([dict(site='S',session='s',received_at=100,status='received',event={'phaseChange':{'absolute':True,'phases':[{'phaseNumber':2,'status':1}]}})])
             store.set_health('S',session='s')
-            estimates={'updated_at':100,'sites':{'S':{'session':'s','last_receipt':100,'directions':{'E':{'accepted':True,'phase_numbers':['2']}}}}}
+            estimates={'updated_at':100,'sites':{'S':{'session':'s','last_receipt':100,'geometry_key':[220,False],'directions':{'E':{'accepted':True,'phase_numbers':['2']}}}}}
             def east(now):return next(d for d in directional_snapshot(store,site,{},now,estimates)['directions'] if d['direction']=='E')
             self.assertEqual(east(101)['status'],'GREEN')
             self.assertTrue(east(101)['estimated'])
             self.assertEqual(east(101)['confidence'],'provisional')
+            site['preview_mirror_y']=True
+            self.assertEqual(east(101)['status'],'UNKNOWN')
+            site['preview_mirror_y']=False
             from unittest.mock import patch
             with patch('dashboard.directional_signals.check_definition',return_value={'conflict':True}):
                 self.assertEqual(east(101)['status'],'UNKNOWN')

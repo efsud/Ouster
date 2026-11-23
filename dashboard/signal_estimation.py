@@ -9,6 +9,13 @@ REPORT = ROOT / 'data/signal-estimates.json'
 VEHICLES = {'1','2','3','4','5','6','7','8','9','15'}
 AXES = {'E': (1,0), 'W': (-1,0), 'N': (0,1), 'S': (0,-1)}
 
+def geometry_key(site):
+    return [site.get('preview_rotation_deg',220),bool(site.get('preview_mirror_y',False))]
+
+def current_estimate(estimates,site):
+    item=(estimates or {}).get('sites',{}).get(site['id'],{})
+    return item if item.get('geometry_key')==geometry_key(site) else {}
+
 
 def point(obj, site):
     x, y = float(obj.get('centerX',0)), float(obj.get('centerY',0))
@@ -112,7 +119,7 @@ class Learner:
             out[direction]=dict(accepted=accepted,phase_numbers=[best['phase']] if accepted else [],
                 confidence='provisional' if accepted else 'insufficient',reason=reason,
                 matched_releases=len(events),margin=round(margin,3) if best else None,candidates=candidates[:5])
-        return dict(site=self.site['id'],session=self.session,last_receipt=self.last,updated_at=now,
+        return dict(site=self.site['id'],session=self.session,last_receipt=self.last,updated_at=now,geometry_key=geometry_key(self.site),
                     sample_count=len(self.samples),directions=out,
                     note='Estimated, not controller-verified. Receipt timing and provisional geometry; correlation is not proof. No physical-head mapping.')
 
@@ -127,6 +134,10 @@ def main():
     last_save=0
     while True:
         now=time.time()
+        if now-last_save>=5:
+            for site in sites():
+                old=learners.get(site['id'])
+                if old and geometry_key(old.site)!=geometry_key(site):learners[site['id']]=Learner(site)
         for learner in learners.values():
             db=databases[learner.site['region']]
             # One read transaction pairs the preview with the accumulated phase state.

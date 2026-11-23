@@ -120,7 +120,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send({'sites':entries,'corridors':corridors(),'metrics':METRICS,'credentials_configured':bool(os.getenv('BLUECITY_USERNAME') and os.getenv('BLUECITY_PASSWORD')),'mode':'read-only','toronto_configured':any(s.get('region')=='Toronto' for s in entries)})
             if parsed.path == '/api/directional-signals':
                 mappings=json.loads((ROOT/'config/signal_directions.json').read_text())['sites']
-                from .signal_estimation import REPORT
+                from .signal_estimation import REPORT,current_estimate
                 try: estimates=json.loads(REPORT.read_text())
                 except (OSError,ValueError): estimates={}
                 from .finch_groups import snapshot as group_snapshot,EVIDENCE
@@ -131,7 +131,7 @@ class Handler(BaseHTTPRequestHandler):
                     if site.get('region')!=q.get('region'):continue
                     store=live_store(self.server,site)
                     item=directional_snapshot(store,site,mappings.get(site['id'],{}),estimates=estimates)
-                    item['movement_groups']=group_snapshot(site,item,group_evidence,estimates.get('sites',{}).get(site['id'],{}),store.health(site['id']).get('session'))
+                    item['movement_groups']=group_snapshot(site,item,group_evidence,current_estimate(estimates,site),store.health(site['id']).get('session'))
                     result.append(item)
                 return self.send({'snapshots':result})
             if parsed.path == '/api/network-signals':

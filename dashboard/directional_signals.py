@@ -29,7 +29,8 @@ def directional_snapshot(store,site,mapping,now=None,estimates=None):
         row=db.execute('SELECT payload FROM live_signal_state WHERE site=?',(site['id'],)).fetchone() if exists else None
     state=json.loads(row[0]) if row else {};health=store.health(site['id'])
     fresh=0<=now-state.get('last_receipt',0)<=5 and health.get('session')==state.get('session')
-    estimate=(estimates or {}).get('sites',{}).get(site['id'],{})
+    from .signal_estimation import current_estimate
+    estimate=current_estimate(estimates,site)
     estimate_fresh=(0<=now-(estimates or {}).get('updated_at',0)<=15 and
         estimate.get('session')==state.get('session') and
         0<=now-(estimate.get('last_receipt') or 0)<=5)

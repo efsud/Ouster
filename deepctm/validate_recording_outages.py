@@ -12,7 +12,7 @@ from .reconstruction_layers import generate
 from .reconstruction_study import metrics,summarize
 from .corridor_campaign import atomic
 
-def run(region,output):
+def run(region,output,windows=None):
     from dashboard.server import sites
     root=Path(__file__).resolve().parents[1]
     src=sqlite3.connect(f'file:{root}/data/{region}-rolling/buffer.sqlite3?mode=ro',uri=True,timeout=20)
@@ -24,7 +24,10 @@ def run(region,output):
     axes=json.loads((root/'config/reconstruction/corridor-road-axes.json').read_text())
     full=build(db,entries,end,road_axes=axes,processing_interval_s=.5)
     # Fixed, nonoverlapping windows in the later half; no outcome-based selection.
-    windows=[(2000,2010),(2400,2430),(2800,2860)]
+    windows=windows or [(2000,2010),(2400,2430),(2800,2860)]
+    windows=sorted(windows)
+    if any(not 0<=lo<hi<=3600 for lo,hi in windows) or any(a[1]>=b[0] for a,b in zip(windows,windows[1:])):
+        raise ValueError('Outage masks must be disjoint and inside the one-hour window')
     removed=[]
     for lo,hi in windows:
         n=db.execute('delete from frames where received>? and received<?',(full['start']+lo,full['start']+hi)).rowcount
@@ -41,6 +44,9 @@ def run(region,output):
         ground={};entirely_hidden=set()
         for site in full['sites']:
             for tr in site['tracks']:
+                # The frozen model is calibrated and benchmarked for cars.
+                # Do not count pedestrians/unknown classes as failed car recovery.
+                if tr['class_type']!='2':continue
                 key=(site['id'],*tr.get('source_key',[])[:2]);p=np.asarray(tr['points'],float)
                 if p[0,0]>lo and p[-1,0]<hi:entirely_hidden.add(key)
                 if p[0,0]<=lo and p[-1,0]>=hi and np.all(np.diff(p[:,0])<=1.5):ground.setdefault(key,[]).append(tr)
@@ -72,9 +78,11 @@ def run(region,output):
     result={'region':region,'window':[full['start'],full['end']],'endpoint_context_version':full.get('endpoint_context_version'),
         'ingestion_epochs':full.get('ingestion_epochs',[]),'processing_interval_s':.5,'cases':rows,
         'limitations':['Whole-server outages simulated by deleting all frames and phase samples in fixed intervals.',
+        'Ground-truth denominator is recorded car fragments; unscorable estimates are reported separately.',
         'Only same-site continuity is scored; no ground truth between sensors.',
         'Entirely hidden vehicles have no recoverable endpoint evidence; no lines are fabricated.']}
     atomic(Path(output),result);print(json.dumps(result,indent=2),flush=True)
     return result
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--region',choices=['florida','finch'],required=True);p.add_argument('--output',required=True);a=p.parse_args();run(a.region,a.output)
+    p=argparse.ArgumentParser();p.add_argument('--region',choices=['florida','finch'],required=True);p.add_argument('--output',required=True);p.add_argument('--long-gaps',action='store_true');a=p.parse_args()
+    run(a.region,a.output,[(1900,1910),(2100,2130),(2350,2410),(2650,2740),(3000,3120)] if a.long_gaps else None)

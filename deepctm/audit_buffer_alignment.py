@@ -44,7 +44,7 @@ def plot_comparison(samples,a,b,names,current,candidate,path):
         ax.quiver(pos[:,0],pos[:,1],vel[:,0],vel[:,1],np.arctan2(vel[:,1],vel[:,0]),cmap='twilight',scale=25,width=.002)
         ax.scatter([0],[0],marker='x',color='black');ax.set(xlim=(-170,170),ylim=(-170,170),aspect='equal',xlabel='East (m)',title=label);ax.grid(alpha=.2)
     axs[0].set_ylabel('North (m)');fig.suptitle('Provisional origin; cached OSM centerlines; arrows are recorded moving segments')
-    fig.tight_layout(rect=(0,0,1,.94));fig.savefig(path,dpi=150);plt.close(fig)
+    fig.tight_layout(rect=(0,0,1,.90));fig.savefig(path,dpi=150,bbox_inches='tight',pad_inches=.2);plt.close(fig)
 
 def run(region,output,site_id=None,plot=False):
     root=Path(__file__).resolve().parents[1];name='Toronto' if region=='finch' else 'Florida'

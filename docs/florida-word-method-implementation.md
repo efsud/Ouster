@@ -574,3 +574,24 @@ stationary endpoint may be estimated as zero for the dashed gap; the recorded
 positions remain unchanged. Other Finch sites retain their original exclusions.
 A same-snapshot publication preview increased local estimates 34→41, all seven
 additional estimates at Weston; that count is not new ground-truth validation.
+
+Fresh directed-road comparisons identified unresolved handedness at Driftwood and
+Norfinch. Fixed candidates were selected on earlier segments and checked after a
+30-second embargo on at least five minutes of new observations. Driftwood's later
+median road distance improved 7.31→2.16 m and axis error 15.30→1.27 degrees;
+Norfinch improved 12.28→4.81 m and 4.26→1.22 degrees. The application now reflects
+SDK Y before rotations of 269 and 272 degrees respectively. Origins are unchanged;
+these remain provisional cached-map fits, not surveyed calibration. Florida's
+current transforms remained close to the fresh optima and were preserved.
+
+Signal-direction correlations now carry the transform used to build their evidence.
+Changing a transform invalidates old inferred directions, while received phase
+colors remain available independently. The learner resets affected site evidence
+when the transform changes. This prevents a trajectory-alignment fix from silently
+reusing phase-direction correlations learned under the old coordinate system.
+
+Whole-outage checks now also include fixed 90/120-second masks and restrict the
+scoring denominator to the car class used by the frozen model. In the new long
+outage window, neither corridor had continuously observed cars spanning the
+90/120-second masks; many vehicles were entirely hidden. These are unsupported
+reconstructions, not successful recoveries or zero-error results.

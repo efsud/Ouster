@@ -140,8 +140,12 @@
         "query": "Finch W & Norfinch, Toronto, Ontario, Canada",
         "retrieved": "2026-09-28"
       },
-      "preview_alignment_note": "Alignment unresolved: opposite orientations fit similarly; prior setting retained",
-      "preview_alignment_audit": "2026-11-13"
+      "preview_alignment_note": "Provisional cached OSM directed-road fit; reflected SDK Y then rotation. Fixed transform checked on later recorded segments; origin and surveyed lane geometry unverified.",
+      "preview_alignment_audit": "2026-11-23",
+      "preview_rotation_deg": 272,
+      "preview_mirror_y": true,
+      "preview_alignment_version": "cached-road-future-check-20261123-v1",
+      "preview_alignment_evidence_sha256": "7a00c4ff6995f934b911ee79e2d530d68dcecb772e5d8a7b37cf60c3bc7c239e"
     },
     {
       "id": "OBC-AG-SA-C618861",
@@ -156,10 +160,12 @@
         "source": "user instruction",
         "retrieved": "2026-10-06"
       },
-      "preview_rotation_deg": 140,
-      "preview_alignment_version": "user-2026-10-06-r2",
-      "preview_alignment_note": "Alignment unresolved: opposite orientations fit similarly; prior setting retained",
-      "preview_alignment_audit": "2026-11-13"
+      "preview_rotation_deg": 269,
+      "preview_alignment_version": "cached-road-future-check-20261123-v1",
+      "preview_alignment_note": "Provisional cached OSM directed-road fit; reflected SDK Y then rotation. Fixed transform checked on later recorded segments; origin and surveyed lane geometry unverified.",
+      "preview_alignment_audit": "2026-11-23",
+      "preview_mirror_y": true,
+      "preview_alignment_evidence_sha256": "60bdae088378acb07df520436903d946b1db14bdbeab8a18258022364c06b469"
     },
     {
       "id": "OBC-AG-SA-C251071",
