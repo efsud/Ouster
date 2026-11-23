@@ -13,7 +13,7 @@ def masked(tr,station,width):
     if not len(before) or not len(after):return None
     i=before[-1];j=after[0]
     if i<4 or j+4>=len(p) or j-i<3:return None
-    a=endpoint(p[i-4:i+1],True);b=endpoint(p[j:j+5],False)
+    a=endpoint(p[:i+1],True);b=endpoint(p[j:],False)
     if a is None or b is None:return None
     sizes=tr.get('dimensions',[])
     if len(sizes)==len(p):

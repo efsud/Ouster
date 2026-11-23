@@ -506,3 +506,11 @@ On the first second-half masked window it increased Florida correct matches
 1→2. These are correlated masked scenarios, not verified intersensor identities.
 The Finch false-match increase prevents treating this as a universal improvement.
 Reproduce with `deepctm.validate_kinematic_gate`; production defaults are unchanged.
+
+Recording cadence also changes endpoint sample counts. Estimators now retain at
+least five visible points and expand that context only as needed to cover one
+second. The previous five-point behavior is unchanged at 2 Hz. At 10 Hz the
+context expands rather than incorrectly rejecting a valid endpoint as too short.
+Discontinuous, reversed-time and genuinely short contexts remain unavailable.
+Snapshots identify this context version and the recording-mode transition; gains
+from fuller observations must not be described as model-accuracy gains.

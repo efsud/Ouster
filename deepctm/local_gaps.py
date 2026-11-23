@@ -1,6 +1,7 @@
 """Bounded local Hermite interpolation using motion on both sides of a gap."""
 import math
 from statistics import median
+from .endpoint_context import select
 VEHICLES={str(i) for i in [1,2,3,4,5,6,7,8,9,15]}
 MAX_GAP=30.
 
@@ -13,7 +14,7 @@ def gap_evidence(before,after,road_roi=False):
     except (TypeError,AttributeError):return None
     if not .8<=ratio<=1.2 or abs(b[2]-a[2])>2:return None
     velocities=[]
-    for part in (before[-5:],after[:5]):
+    for part in (select(before,True),select(after,False)):
         dt=[q[0]-p[0] for p,q in zip(part,part[1:])]
         if min(dt)<=0 or max(dt)>1.5 or sum(dt)<1:return None
         along=median((q[1]-p[1])/t for p,q,t in zip(part,part[1:],dt))
@@ -24,7 +25,7 @@ def gap_evidence(before,after,road_roi=False):
     if any(v*sign<-.5 for v in velocities):return None
     if any(abs(p[1])>120 or (not road_roi and abs(p[2])>18) for p in (a,b)):return None
     from .endpoint_speed import evidence
-    return {'a':{'t':a[0],'x':a[1],'v':velocities[0],'velocity_evidence':evidence(before[-5:])},'b':{'t':b[0],'x':b[1],'v':velocities[1],'velocity_evidence':evidence(after[:5])},
+    return {'a':{'t':a[0],'x':a[1],'v':velocities[0],'velocity_evidence':evidence(select(before,True))},'b':{'t':b[0],'x':b[1],'v':velocities[1],'velocity_evidence':evidence(select(after,False))},
             'sensor_receipt_ratio':ratio,'lateral_displacement_m':abs(b[2]-a[2])}
 
 def bridge(before,after):
@@ -43,7 +44,7 @@ def bridge(before,after):
             slopes.append(((q[1]-p[1])/dt,(q[2]-p[2])/dt))
         if points[-1][0]-points[0][0]<1:return None
         return tuple(median(s[i] for s in slopes) for i in [0,1])
-    v0=velocity(before[-5:]);v1=velocity(after[:5])
+    v0=velocity(select(before,True));v1=velocity(select(after,False))
     if v0 is None or v1 is None:return None
     dx=b[1]-a[1];sign=1 if dx>=0 else -1
     if abs(b[2]-a[2])>4 or any(v[0]*sign<-.5 for v in [v0,v1]):return None

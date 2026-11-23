@@ -15,6 +15,7 @@ def connect(path):
     db.execute('CREATE INDEX IF NOT EXISTS received_idx ON frames(received)')
     db.execute('CREATE INDEX IF NOT EXISTS site_received_idx ON frames(site,received)')
     db.execute('CREATE TABLE IF NOT EXISTS phase_samples(site TEXT,session TEXT,received REAL,payload TEXT,PRIMARY KEY(site,session,received))')
+    db.execute('CREATE TABLE IF NOT EXISTS ingestion_epochs(start REAL PRIMARY KEY,mode TEXT)')
     return db
 
 def purge(db,now):
@@ -40,6 +41,8 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
     for s in geometry(sites,road_axes):
         from dashboard.movements import TrackCollector
         movements=TrackCollector() if s.get('region') in ('Florida','Toronto') else None
+        from collections import Counter
+        breaks=Counter()
         active={};tracks=[];chunks={};epochs={};identity_class={};local_estimates=[];receipt_gaps=[];first=None;last=None;frames=0;coverage=[set() for _ in range(60)]
         def flush(key,break_chain=True):
             points=active.pop(key,[])
@@ -51,16 +54,18 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
             chunks.setdefault((key,epoch),[]).append(points)
             if track_observer is not None:track_observer(s,key,points)
             from statistics import median
+            from .endpoint_context import select
+            first_context=select(points,False);last_context=select(points,True)
             tracks.append({'source_key':list(key),'receipt_start':points[0][0],'receipt_end':points[-1][0],
-                'lateral_start_m':median(p[2] for p in points[:5]),'lateral_end_m':median(p[2] for p in points[-5:]),
+                'lateral_start_m':median(p[2] for p in first_context),'lateral_end_m':median(p[2] for p in last_context),
                 'sensor_start':points[0][4].isoformat(),'sensor_end':points[-1][4].isoformat(),
                 'original_receipt_start':points[0][5],'original_receipt_end':points[-1][5],
                 'class_type':key[2],'direction':'eastbound' if net>0 else 'westbound','points':[[round(p[0]-start,2),round(p[1]+s['station_m'],2),round(p[3],2)] for p in points]})
             from .object_shape import summarize as summarize_shape
             sizes=[p[6] for p in points]
             tracks[-1].update(dimensions=sizes,shape_start=summarize_shape(sizes[:5]),shape_end=summarize_shape(sizes[-5:]))
-            tracks[-1].update(lateral_start_context=[[round(p[0]-start,2),p[2]] for p in points[:5]],
-                              lateral_end_context=[[round(p[0]-start,2),p[2]] for p in points[-5:]])
+            tracks[-1].update(lateral_start_context=[[round(p[0]-start,2),p[2]] for p in first_context],
+                              lateral_end_context=[[round(p[0]-start,2),p[2]] for p in last_context])
             if time_basis=='sensor_elapsed':tracks[-1]['original_receipt_offsets_s']=[round(p[5]-start,6) for p in points]
         angle=math.radians(s.get('preview_rotation_deg',220))-s['bearing'];c=math.cos(angle);sn=math.sin(angle)
         source_rows=db.execute('SELECT session,received,payload FROM frames WHERE site=? AND received>=? AND received<=? ORDER BY received',(s['id'],start,end)).fetchall()
@@ -91,6 +96,7 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
                         # A label change is not a new identity. End the old
                         # displayed fragment so class-specific tracks cannot
                         # overlap by silently skipping intervening observations.
+                        breaks['classification_change']+=1
                         flush((*key[:2],previous_class),break_chain=False)
                     identity_class[key[:2]]=key[2]
                 try:x=float(o.get('centerX',0));y=float(o.get('centerY',0))*(-1 if s.get('preview_mirror_y') else 1)
@@ -99,22 +105,26 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
                 if movements is not None and key[2] in {'1','2','3','4','5','6','7','8','9','15'}:movements.feed(key,receipt,along,across)
                 from .road_axes import road_contains
                 in_road=road_contains(along,across,s['trajectory_road_segments']) if s.get('trajectory_road_segments') else abs(across)<=18
-                if not math.isfinite(along+across) or abs(along)>120 or not in_road:flush(key);continue
+                if not math.isfinite(along+across) or abs(along)>120 or not in_road:
+                    if key in active:breaks['outside_display_geometry']+=1
+                    flush(key);continue
                 old=active.get(key);speed=0
                 if old:
                     try:dt=(stamp-old[-1][4]).total_seconds()
                     except TypeError:dt=0
                     dr=receipt-old[-1][0]
                     if not(0<dt<=3 and 0<dr<=3 and .5<=dt/dr<=2):
+                        breaks['long_time_gap' if dt>3 or dr>3 else 'clock_order_or_receipt_jitter']+=1
                         flush(key,break_chain=not(3<dr<=30 and .8<=dt/dr<=1.2))
                     else:
                         speed=math.hypot(along-old[-1][1],across-old[-1][2])/dt
-                        if speed>60:flush(key);speed=0
+                        if speed>60:breaks['speed_outlier']+=1;flush(key);speed=0
                 from .object_shape import dimensions
                 active.setdefault(key,[]).append((receipt,along,across,speed,stamp,original_receipt,dimensions(o)))
             if movements is not None:movements.expire(receipt)
             for key in list(active):
-                if receipt-active[key][-1][0]>3:flush(key,break_chain=False)
+                if receipt-active[key][-1][0]>3:
+                    breaks['object_absent_over_three_seconds']+=1;flush(key,break_chain=False)
         for key in list(active):flush(key)
         from .local_gaps import bridge,gap_evidence,VEHICLES
         local_candidates=[]
@@ -150,9 +160,13 @@ def build(db,sites,end,track_observer=None,road_axes=None,time_basis="receipt"):
                 evidence=mapping.get(tr['movement'].get('movement'),{})
                 tr['movement']['phase_numbers']=evidence.get('phase_numbers',[])
                 tr['movement']['phase_mapping']=evidence.get('phase_mapping','insufficient_or_ambiguous')
-        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'projection_bearing_deg':math.degrees(s['bearing']),'frames':frames,'first_receipt':raw_receipts[0] if raw_receipts else None,'last_receipt':raw_receipts[-1] if raw_receipts else None,'first_observation_time':first,'last_observation_time':last,'raw_frames':len(source_rows),'coverage_basis':time_basis,'receipt_gaps':original_gaps,'observation_gaps':receipt_gaps,'frame_gap_basis':time_basis,'clock_audit':clock_audit,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
+        output.append({'movement_summary':movement_summary,'id':s['id'],'name':s['name'],'station_m':s['station_m'],'projection_bearing_deg':math.degrees(s['bearing']),'frames':frames,'first_receipt':raw_receipts[0] if raw_receipts else None,'last_receipt':raw_receipts[-1] if raw_receipts else None,'first_observation_time':first,'last_observation_time':last,'raw_frames':len(source_rows),'fragment_break_reasons':dict(breaks),'coverage_basis':time_basis,'receipt_gaps':original_gaps,'observation_gaps':receipt_gaps,'frame_gap_basis':time_basis,'clock_audit':clock_audit,'tracks':tracks,'local_estimates':local_estimates,'local_gap_candidates':local_candidates,'coverage':[len(v)/60 for v in coverage]})
+    try:
+        ingestion_epochs=[{'start':r[0],'mode':r[1]} for r in db.execute('SELECT start,mode FROM ingestion_epochs WHERE start<=? ORDER BY start',(end,))]
+        ingestion_epochs=[r for i,r in enumerate(ingestion_epochs) if r['start']>=start or i==len(ingestion_epochs)-1 or ingestion_epochs[i+1]['start']>start]
+    except sqlite3.OperationalError:ingestion_epochs=[]
     timeline_note='receipt time' if time_basis=='receipt' else 'experimental sensor elapsed time; absolute synchronization unverified'
-    result={'time_basis':time_basis,'geometry_version':((road_axes or {}).get('version','inter-sensor-chord-v1') if any(s['id'] in (road_axes or {}).get('sites',{}) for s in sites) else 'inter-sensor-chord-v1'),'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':.5,'sites':output,'note':f'Sampled local trajectory fragments; provisional alignment and {timeline_note}. No cross-sensor identity matching.'}
+    result={'time_basis':time_basis,'geometry_version':((road_axes or {}).get('version','inter-sensor-chord-v1') if any(s['id'] in (road_axes or {}).get('sites',{}) for s in sites) else 'inter-sensor-chord-v1'),'generated_at':end,'start':start,'end':end,'next_update':end+REFRESH,'retention_seconds':RETENTION,'sample_interval_s':None,'ingestion_epochs':ingestion_epochs,'endpoint_context_version':'visible-minimum-one-second-v1','sites':output,'note':f'Sampled local trajectory fragments; provisional alignment and {timeline_note}. No cross-sensor identity matching.'}
     from .rolling_estimates import gap_validation
     result['estimates']={'method':'Local within-track interpolation only','links':[]};result['gap_validation']=gap_validation(result)
     if sites and sites[0].get('region')=='Florida':
@@ -199,6 +213,10 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
     phase_saved={}
     journal_path=ROOT/'config/reconstruction/frame-journal.json'
     journal_enabled=journal_path.exists() and region.lower() in json.loads(journal_path.read_text()).get('enabled_regions',[])
+    mode='frame_journal' if journal_enabled else 'latest_preview_poll'
+    prior_mode=db.execute('SELECT mode FROM ingestion_epochs ORDER BY start DESC LIMIT 1').fetchone()
+    if prior_mode is None or prior_mode[0]!=mode:
+        db.execute('INSERT INTO ingestion_epochs VALUES(?,?)',(begin,mode));db.commit()
     journal_cursor=0;journal_lease=0;journal_rows=0
     while True:
         now=time.time()

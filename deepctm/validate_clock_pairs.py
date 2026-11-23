@@ -26,7 +26,7 @@ def run(region,report,limit=5):
         p=np.asarray(tr['points'],float);sign=1 if tr['direction']=='eastbound' else -1;p[:,1]*=sign
         i=int(np.where(p[:,0]==a['t'])[0][0]);j=int(np.where(p[:,0]==b['t'])[0][0])
         receipt=p.copy();receipt[:,0]=[point[5]-s['start'] for point in raw]
-        aa=endpoint(receipt[i-4:i+1],True);bb=endpoint(receipt[j:j+5],False)
+        aa=endpoint(receipt[:i+1],True);bb=endpoint(receipt[j:],False)
         row={'rank':rank,'site':site['id'],'gap_s':gap,'states':{},'metrics':{},'receipt_gap_s':float(receipt[j,0]-receipt[i,0])}
         for method,left,right,target in [('receipt',aa,bb,receipt[i+1:j]),('sensor_elapsed',a,b,truth)]:
             if left is None or right is None:

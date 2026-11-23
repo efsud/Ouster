@@ -52,8 +52,8 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
                 for i in range(1,len(points)):
                     gap=points[i][0]-points[i-1][0]
                     if not 1.5<gap<=3:continue
-                    a=endpoint(points[max(0,i-5):i],True)
-                    b=endpoint(points[i:i+5],False)
+                    a=endpoint(points[:i],True)
+                    b=endpoint(points[i:],False)
                     if a is None or b is None:
                         rejected['short_local_insufficient_context']+=1;continue
                     p=local_prediction(a,b)

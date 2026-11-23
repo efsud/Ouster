@@ -8,7 +8,8 @@ from statistics import median
 from .local_gaps import VEHICLES
 
 def endpoint(points,exit_side):
-    p=points[-5:] if exit_side else points[:5]
+    from .endpoint_context import select
+    p=select(points,exit_side)
     if len(p)<5 or p[-1][0]-p[0][0]<1:return None
     slopes=[]
     for a,b in zip(p,p[1:]):

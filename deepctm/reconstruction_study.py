@@ -29,7 +29,7 @@ def masked_case(track,seconds):
     if i>=len(p):return None
     j=np.searchsorted(p[:,0],p[i,0]+seconds,side='right')-1
     if i<4 or j+4>=len(p) or j-i<3:return None
-    a=endpoint(p[i-4:i+1],True);b=endpoint(p[j:j+5],False)
+    a=endpoint(p[:i+1],True);b=endpoint(p[j:],False)
     if a is None or b is None or min(a['v'],b['v'])<-.5 or b['x']<a['x']:return None
     return a,b,p[i+1:j]
 
