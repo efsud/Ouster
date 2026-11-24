@@ -1,6 +1,6 @@
 {
   "version": "local_regime_learned_peer_v1",
-  "enabled": true,
+  "enabled": false,
   "enabled_sites": [
     "OBC-AG-SA-C251068"
   ],
@@ -210,7 +210,7 @@
   "validation_state": "complete",
   "evidence": "docs/validation/florida-regime-groups-20261124.json",
   "snapshot_sha256": "e8f9111f895039c9c774d63c0fd6e735277ffb6a6aa5b583d7e33cb017d0ee8f",
-  "display_mode": "optional_experimental_preview",
+  "display_mode": "inactive_user_restored_previous_analysis",
   "default_visible": false,
   "limitations": [
     "Only existing class2 same-ID local estimates; no new identity associations",

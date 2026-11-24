@@ -1,5 +1,10 @@
 # Florida: learning missing paths from local groups
 
+> Status: inactive in the live dashboard at the user’s request on November 24.
+> The previous analysis and figure controls have been restored. This document,
+> the experimental model and its validation artifacts are retained for reference;
+> they do not change the displayed trajectories.
+
 ## What your drawing changes
 
 Your November 24 drawing distinguishes two things: blue outlines identify similar

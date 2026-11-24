@@ -7,22 +7,6 @@ from pathlib import Path
 
 @unittest.skipUnless(shutil.which('node'), 'Node needed for shared canvas helpers')
 class RegimeCanvasTests(unittest.TestCase):
-    def test_example_switch_clears_conflicting_group_filters(self):
-        js = Path(__file__).parent/'static/florida-rolling.js'
-        script = r'''
-const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync(process.argv[1],'utf8');
-const helper=source.slice(source.indexOf('function clearGroupFilters('),source.indexOf('function groupModeUI('));
-const elements={'trajectory-group':{value:'old'},'group-mode':{checked:true},'regime-select':{value:'selected-local-group'},'regime-mode':{checked:true}};
-const ctx={el:id=>elements[id],groupModeUI:()=>{}};vm.createContext(ctx);vm.runInContext(helper,ctx);
-ctx.clearGroupFilters(true);
-assert.equal(elements['regime-mode'].checked,false);assert.equal(elements['regime-select'].value,'all');
-assert.equal(elements['group-mode'].checked,false);assert.equal(elements['trajectory-group'].value,'all');
-// The shared Finch page lacks all these optional controls.
-ctx.el=()=>null;ctx.clearGroupFilters(true);
-'''
-        subprocess.run(['node','-e',script,str(js.resolve())], check=True)
-
     def test_empty_time_bins_are_not_joined_and_membership_is_segment_local(self):
         js = Path(__file__).parent/'static/regime-groups.js'
         script = r'''
