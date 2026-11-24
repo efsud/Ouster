@@ -1,6 +1,12 @@
 'use strict';
 const el=id=>document.getElementById(id),vehicle=new Set(['1','2','3','4','5','6','7','8','9','15']);
 const corridor=document.body.dataset.corridor||'florida',regionName=corridor==='finch'?'Toronto':'Florida';
+const frozenId=corridor==='florida'?new URLSearchParams(location.search).get('frozen'):null;
+if(frozenId){
+ document.title='Florida · Frozen study hour';
+ document.querySelector('h1').textContent='Florida corridor · frozen study hour';
+ if(el('snapshot-description'))el('snapshot-description').textContent='Fixed recorded hour retained for model development. This view does not refresh or expire with the rolling buffer. Original missing observations remain visible; optional dashed layers are saved estimates.';
+}
 if(new URLSearchParams(location.search).get('review')==='1')el('reconstruction-comparison')?.closest('details')?.setAttribute('open','');
 let data=null,view=null,points=[],version=0,reconstruction=null,colorExample=null,overlapExample=null,refreshRunning=false,rollingToken=0;
 const isGrouped=()=>Boolean(el('group-mode')?.checked);
@@ -109,9 +115,9 @@ function zoom(f,fraction=.5){
  const anchor=view[0]+fraction*oldSpan,start=Math.max(data.start,Math.min(data.end-span,anchor-fraction*span));
  view=[start,start+span];draw();
 }
-async function refresh(){if(refreshRunning)return;refreshRunning=true;try{if(data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(`/api/${corridor}-rolling?since=${data?rollingToken:0}`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state==='unchanged')return;if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
+async function refresh(){if(refreshRunning)return;refreshRunning=true;try{if(!frozenId&&data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(frozenId?`/api/florida-frozen?capture=${encodeURIComponent(frozenId)}`:`/api/${corridor}-rolling?since=${data?rollingToken:0}`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state==='unchanged')return;if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
  rollingToken=next.version??next.generated_at;
- el('message').textContent=`Figure updated ${clock(next.generated_at)} · Next update ${clock(next.next_update)} ${regionName} time. Shows ${clock(next.start)}–${clock(next.end)}; early collection may cover less than one hour.`;
+ el('message').textContent=frozenId?`Frozen study hour · ${new Date(next.start*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'})} · ${clock(next.start)}–${clock(next.end)} Florida time. Automatic refresh is off.`:`Figure updated ${clock(next.generated_at)} · Next update ${clock(next.next_update)} ${regionName} time. Shows ${clock(next.start)}–${clock(next.end)}; early collection may cover less than one hour.`;
  if(!next.sites.some(s=>s.tracks?.length))el('message').textContent+=' No trajectory segments in this published window yet. Collection may have just restarted; a fresh figure is being prepared.';
  if(next.time_basis==='receipt_debursted'){
   const audits=next.sites.flatMap(s=>s.clock_audit||[]),events=audits.flatMap(a=>a.events||[]);
@@ -152,7 +158,7 @@ el('time').oninput=()=>{if(data){const span=view[1]-view[0],start=data.start+(da
 el('plot').addEventListener('wheel',e=>{e.preventDefault();if(!e.deltaY)return;const canvas=el('plot'),rect=canvas.getBoundingClientRect();if(rect.width<=0||canvas.clientWidth<=110)return;const pointerX=(e.clientX-rect.left)*canvas.clientWidth/rect.width;zoom(e.deltaY>0?1.25:.8,(pointerX-90)/(canvas.clientWidth-110));},{passive:false});el('plot').ondblclick=()=>el('reset').click();
 el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
  if(!data){el('hover').textContent='Waiting for recorded observations.';return;}
- let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`+(best.receiptTime!=null&&Math.abs(best.receiptTime-best.time)>.05?` · adjusted time; received ${clock(best.receiptTime)} (${(best.receiptTime-best.time).toFixed(2)} s later)`:''):'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();setInterval(refresh,15000);
+ let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`+(best.receiptTime!=null&&Math.abs(best.receiptTime-best.time)>.05?` · adjusted time; received ${clock(best.receiptTime)} (${(best.receiptTime-best.time).toFixed(2)} s later)`:''):'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();if(!frozenId)setInterval(refresh,15000);
 
 if(el("additional-matches"))el("additional-matches").onchange=draw;
 function showColorExample(kind){
@@ -225,7 +231,7 @@ function paintReconstruction(c,x,y,selected){
 async function refreshReconstruction(){
  if(!el('reconstruction-status'))return;
  try{
-  const response=await fetch(`/api/${corridor}-reconstruction`);if(!response.ok)throw Error('Reconstruction study unavailable');reconstruction=await response.json();
+  const response=await fetch(frozenId?`/api/florida-frozen-reconstruction?capture=${encodeURIComponent(frozenId)}`:`/api/${corridor}-reconstruction`);if(!response.ok)throw Error('Reconstruction study unavailable');reconstruction=await response.json();
   const aligned=reconstruction.state==='ready'&&data&&reconstruction.snapshot_generated_at===data.generated_at;
   updateGroupControls();
   for(const id of ['group-gap-layer','group-gap-example'])if(el(id))el(id).disabled=!aligned||!reconstruction.trajectory_groups?.between_intersections?.length;
@@ -369,4 +375,4 @@ async function refreshReconstruction(){
  }catch(e){reconstruction=null;updateGroupControls();el('reconstruction-status').textContent=e.message;for(const id of ['within-layer','between-layer'])el(id).disabled=true;draw();}
 }
 for(const id of ['within-layer','between-layer','color-layer'])if(el(id))el(id).onchange=draw;
-refreshReconstruction();setInterval(refreshReconstruction,15000);
+if(!frozenId){refreshReconstruction();setInterval(refreshReconstruction,15000);}

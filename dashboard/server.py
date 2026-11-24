@@ -96,6 +96,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             parsed = urlparse(self.path)
             q = {k:v[0] for k,v in parse_qs(parsed.query).items()}
+            if parsed.path in {'/api/florida-frozen','/api/florida-frozen-reconstruction'}:
+                from .frozen_trajectories import read as read_frozen
+                return self.send(read_frozen(q.get('capture'),reconstruction=parsed.path.endswith('-reconstruction')))
             if parsed.path in {'/api/florida-reconstruction','/api/finch-reconstruction'}:
                 from .reconstruction_view import read
                 return self.send(read(folder=Path(__file__).resolve().parents[1]/'data/reconstruction/finch') if parsed.path == '/api/finch-reconstruction' else read())

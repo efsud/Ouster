@@ -258,3 +258,11 @@ candidate made more correct **and** more wrong connections on untouched data, so
 it remains disabled. The report distinguishes candidate-wide results from the
 smaller enabled scope and explains the timing and identity limits that prevent
 claiming every missing trajectory has been recovered.
+
+## Frozen Florida model-development hour
+
+The [fixed-hour guide](florida-frozen-study-hour.md) identifies the archived raw
+frames, plotted observations, saved estimates and exact source metadata. The
+archive has its own viewer and is kept outside rolling retention. It preserves
+the previously displayed hour for repeatable model comparisons while collection
+continues. Existing estimates are never substituted for training truth.
