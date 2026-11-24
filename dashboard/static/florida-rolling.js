@@ -111,6 +111,7 @@ function zoom(f,fraction=.5){
 async function refresh(){if(refreshRunning)return;refreshRunning=true;try{if(data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(`/api/${corridor}-rolling?since=${data?rollingToken:0}`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state==='unchanged')return;if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
  rollingToken=next.version??next.generated_at;
  el('message').textContent=`Figure updated ${clock(next.generated_at)} · Next update ${clock(next.next_update)} ${regionName} time. Shows ${clock(next.start)}–${clock(next.end)}; early collection may cover less than one hour.`;
+ if(!next.sites.some(s=>s.tracks?.length))el('message').textContent+=' No trajectory segments in this published window yet. Collection may have just restarted; a fresh figure is being prepared.';
  if(next.time_basis==='receipt_debursted'){
   const audits=next.sites.flatMap(s=>s.clock_audit||[]),events=audits.flatMap(a=>a.events||[]);
   el('message').textContent+=` Timing: ${events.length} bounded delivery bursts corrected using continuous sensor elapsed time between receipt anchors. Positions are measured; adjusted times are estimates. Hover to compare receipt time. Cross-sensor clock offsets remain unverified.`;
@@ -139,6 +140,13 @@ if(el('group-all'))el('group-all').onclick=()=>{el('trajectory-group').value='al
 if(el('group-color'))el('group-color').onchange=()=>{groupModeUI();draw();};
 groupModeUI();
 el('direction').onchange=()=>{updateGroupControls();draw();};el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
+if(el('fit-recorded'))el('fit-recorded').onclick=()=>{
+ if(!data)return;const ids=new Set([...el('sites').querySelectorAll('input:checked')].map(b=>b.value));
+ const ranges=data.sites.filter(s=>ids.has(s.id)).flatMap(s=>s.tracks.filter(t=>!t.method&&t.direction===el('direction').value&&t.points.length).map(t=>[t.points[0][0],t.points.at(-1)[0]]));
+ if(!ranges.length){el('hover').textContent='No recorded trajectory segments in this selection yet.';return;}
+ const first=Math.min(...ranges.map(r=>r[0])),last=Math.max(...ranges.map(r=>r[1]));
+ view=[Math.max(data.start,data.start+first-5),Math.min(data.end,data.start+last+5)];draw();
+};
 el('time').oninput=()=>{if(data){const span=view[1]-view[0],start=data.start+(data.end-data.start-span)*Number(el('time').value)/1000;view=[start,start+span];draw();}};
 el('plot').addEventListener('wheel',e=>{e.preventDefault();if(!e.deltaY)return;const canvas=el('plot'),rect=canvas.getBoundingClientRect();if(rect.width<=0||canvas.clientWidth<=110)return;const pointerX=(e.clientX-rect.left)*canvas.clientWidth/rect.width;zoom(e.deltaY>0?1.25:.8,(pointerX-90)/(canvas.clientWidth-110));},{passive:false});el('plot').ondblclick=()=>el('reset').click();
 el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;

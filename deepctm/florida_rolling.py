@@ -10,12 +10,19 @@ REFRESH=1800
 
 def connect(path):
     db=sqlite3.connect(path,timeout=20)
-    db.execute('PRAGMA secure_delete=ON')
-    db.execute('CREATE TABLE IF NOT EXISTS frames(site TEXT,session TEXT,event_key TEXT,received REAL,payload TEXT,PRIMARY KEY(site,session,event_key))')
-    db.execute('CREATE INDEX IF NOT EXISTS received_idx ON frames(received)')
-    db.execute('CREATE INDEX IF NOT EXISTS site_received_idx ON frames(site,received)')
-    db.execute('CREATE TABLE IF NOT EXISTS phase_samples(site TEXT,session TEXT,received REAL,payload TEXT,PRIMARY KEY(site,session,received))')
-    db.execute('CREATE TABLE IF NOT EXISTS ingestion_epochs(start REAL PRIMARY KEY,mode TEXT)')
+    try:
+        # A figure reads a large retained hour while ingestion continues. WAL keeps
+        # those readers from blocking commits (and commits from starving readers).
+        db.execute('PRAGMA journal_mode=WAL')
+        db.execute('PRAGMA busy_timeout=20000')
+        db.execute('PRAGMA secure_delete=ON')
+        db.execute('CREATE TABLE IF NOT EXISTS frames(site TEXT,session TEXT,event_key TEXT,received REAL,payload TEXT,PRIMARY KEY(site,session,event_key))')
+        db.execute('CREATE INDEX IF NOT EXISTS received_idx ON frames(received)')
+        db.execute('CREATE INDEX IF NOT EXISTS site_received_idx ON frames(site,received)')
+        db.execute('CREATE TABLE IF NOT EXISTS phase_samples(site TEXT,session TEXT,received REAL,payload TEXT,PRIMARY KEY(site,session,received))')
+        db.execute('CREATE TABLE IF NOT EXISTS ingestion_epochs(start REAL PRIMARY KEY,mode TEXT)')
+    except Exception:
+        db.close();raise
     return db
 
 def purge(db,now):
@@ -214,6 +221,52 @@ def read_snapshot(now=None,folder=None):
         p['state']='ready';return p
     except (OSError,ValueError):return {'state':'warming','message':'Collecting the first samples. Initial figure appears after about 30 seconds.'}
 
+def database_busy(exc):
+    """Only retry SQLite contention, never conceal malformed SQL/storage errors."""
+    code=getattr(exc,'sqlite_errorcode',None)
+    return (isinstance(exc,sqlite3.OperationalError) and
+            ((code is not None and code & 255 in (sqlite3.SQLITE_BUSY,sqlite3.SQLITE_LOCKED))
+             or str(exc).lower() in ('database is locked','database table is locked','database schema is locked')))
+
+
+def write_health(folder,value):
+    temp=folder/'status.tmp';temp.write_text(json.dumps(value,allow_nan=False));temp.replace(folder/'status.json')
+
+
+def figure_due(now,warmup_start,last_attempt,requested,pending,retry_at,buffer_start,buffer_end):
+    """Warm up AFTER startup purge, including explicit refresh requests.
+
+    Receipt evidence, rather than process uptime, proves there is a useful partial
+    recording. A stale sensor/database never triggers an empty hourly overwrite.
+    """
+    if pending is not None or now-warmup_start<30:return False
+    if buffer_start is None or buffer_end is None or buffer_end-buffer_start<30:return False
+    if not 0<=now-buffer_end<=10:return False
+    if retry_at and now<retry_at:return False
+    return bool(requested or retry_at or not last_attempt or now>=last_attempt+REFRESH)
+
+
+def finish_figure(pending,folder,now,failures=0):
+    """A failed background figure must not terminate the receiving loop.
+
+    Keep the last complete snapshot. Retry three times with bounded exponential
+    delay; recurring failure then waits one normal refresh interval. Only safe
+    exception type/category is written to health, never payloads or credentials.
+    """
+    try:
+        result=pending.result()
+        encoded=json.dumps(result,allow_nan=False)
+        temp=folder/'snapshot.tmp';temp.write_text(encoded);temp.replace(folder/'snapshot.json')
+        return dict(figure_state='ready',figure_error=None,figure_failures=0,
+                    figure_retry_at=0,last_figure_completed_at=now)
+    except Exception as exc:
+        failures+=1
+        category='database_busy' if database_busy(exc) else type(exc).__name__
+        delay=min(60,5*2**(failures-1)) if failures<=3 else REFRESH
+        return dict(figure_state='retrying' if failures<=3 else 'failed_waiting_retry',
+                    figure_error=category,figure_failures=failures,figure_retry_at=now+delay)
+
+
 def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
     folder=FOLDER if folder is None else folder
     from dashboard.server import sites
@@ -222,19 +275,42 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
     # One writer prevents competing retention and snapshot schedules.
     import fcntl
     lock=open(folder/'writer.lock','w');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-    db=connect(folder/'buffer.sqlite3');source=sqlite3.connect(f'file:{ROOT}/data/{source_name}?mode=ro',uri=True)
+    db=None
+    for attempt in range(4):
+        try:
+            db=connect(folder/'buffer.sqlite3');break
+        except sqlite3.OperationalError as exc:
+            if not database_busy(exc):raise
+            write_health(folder,{'updated_at':time.time(),'ingestion_state':'starting_database_busy','startup_attempt':attempt+1})
+            if attempt==3:raise
+            time.sleep(min(5,attempt+1))
+    source=sqlite3.connect(f'file:{ROOT}/data/{source_name}?mode=ro',uri=True,timeout=20)
     entries=[s for s in sites() if s['region']==region];ids={s['id'] for s in entries};begin=time.time();last_publish=0
     try:
         previous=json.loads((folder/'snapshot.json').read_text())
         last_publish=previous.get('next_update',previous['generated_at']+REFRESH)-REFRESH if 'estimates' in previous else 0
     except (OSError,ValueError,KeyError):pass
+    # Publish startup progress before a potentially large expired-data purge.
+    write_health(folder,{'updated_at':time.time(),'ingestion_state':'purging_expired_buffer','figure_state':'warming'})
     # Expired snapshots need a fresh warm-up, not an immediate near-empty publication.
     if last_publish and begin-last_publish>REFRESH:last_publish=0
-    purge(db,begin)
+    for attempt in range(4):
+        try:
+            purge(db,time.time());break
+        except sqlite3.OperationalError as exc:
+            db.rollback()
+            if not database_busy(exc):raise
+            write_health(folder,{'updated_at':time.time(),'ingestion_state':'purge_database_busy','startup_attempt':attempt+1,'figure_state':'warming'})
+            if attempt==3:raise
+            time.sleep(min(5,attempt+1))
     pool=ThreadPoolExecutor(max_workers=1);pending=None
     def compute(end):
         reader=sqlite3.connect(f'file:{folder}/buffer.sqlite3?mode=ro',uri=True,timeout=20)
         try:
+            reader.execute('PRAGMA query_only=ON')
+            # One committed WAL view for all sites/phases in this figure. The
+            # read transaction ends on close; ingestion commits remain possible.
+            reader.execute('BEGIN')
             axis_path=ROOT/'config/reconstruction/corridor-road-axes.json'
             axes=json.loads(axis_path.read_text()) if axis_path.exists() else None
             journal_config=ROOT/'config/reconstruction/frame-journal.json'
@@ -251,41 +327,58 @@ def main(region="Florida",folder=None,source_name="florida-live.sqlite3"):
     prior_mode=db.execute('SELECT mode FROM ingestion_epochs ORDER BY start DESC LIMIT 1').fetchone()
     if prior_mode is None or prior_mode[0]!=mode:
         db.execute('INSERT INTO ingestion_epochs VALUES(?,?)',(begin,mode));db.commit()
-    journal_cursor=0;journal_lease=0;journal_rows=0
+    # Startup purge can take minutes. None of that time counts as collection.
+    warmup_start=time.time();journal_cursor=0;journal_lease=0;journal_rows=0
+    bounds=(None,None);build_health={'figure_state':'warming','figure_error':None,'figure_failures':0,'figure_retry_at':0}
     while True:
+        now=time.time();ingestion_error=None
+        try:
+            if journal_enabled:
+                from .frame_journal import install,copy_batch
+                if now>=journal_lease:
+                    writer=sqlite3.connect(ROOT/'data'/source_name,timeout=20)
+                    try:install(writer,now+90)
+                    finally:writer.close()
+                    journal_lease=now+30
+                journal_cursor,count=copy_batch(source,db,ids,journal_cursor,now)
+                journal_rows+=count
+            # Bootstrap/fallback only: journal replay is idempotent against preview.
+            for site,session,key,receipt,payload in source.execute('SELECT site,session,event_key,received_at,payload FROM preview_frames').fetchall():
+                if site in ids and 0<=now-receipt<=3:
+                    db.execute('INSERT OR IGNORE INTO frames VALUES(?,?,?,?,?)',(site,session,key,receipt,payload))
+            if region=='Florida':
+                for phase_site,payload in source.execute('SELECT site,payload FROM live_signal_state').fetchall():
+                    if phase_site not in ids:continue
+                    try:
+                        raw=json.loads(payload);session=raw.get('session','');phases={n:{'status':p.get('status'),'received_at':p.get('received_at')} for n,p in raw.get('phases',{}).items() if p.get('status') in ('GREEN','RED','YELLOW')}
+                        compact=json.dumps({'initialized':raw.get('initialized',False),'phases':phases},sort_keys=True)
+                        prior=phase_saved.get(phase_site)
+                        if prior is None or prior[0]!=compact or now-prior[1]>=5:
+                            db.execute('INSERT OR IGNORE INTO phase_samples VALUES(?,?,?,?)',(phase_site,session,now,compact));phase_saved[phase_site]=(compact,now)
+                    except (ValueError,TypeError):continue
+            purge(db,now)
+            bounds=(db.execute('SELECT min(received) FROM frames').fetchone()[0],db.execute('SELECT max(received) FROM frames').fetchone()[0])
+        except sqlite3.OperationalError as exc:
+            db.rollback()
+            if not database_busy(exc):raise
+            ingestion_error='database_busy';phase_saved.clear()
+            # copy_batch advances its cursor only after its own committed transaction.
+            # A rolled-back preview/phase transaction is safe to retry next loop.
         now=time.time()
-        if journal_enabled:
-            from .frame_journal import install,copy_batch
-            if now>=journal_lease:
-                writer=sqlite3.connect(ROOT/'data'/source_name,timeout=20)
-                try:install(writer,now+90)
-                finally:writer.close()
-                journal_lease=now+30
-            journal_cursor,count=copy_batch(source,db,ids,journal_cursor,now)
-            journal_rows+=count
-        # Bootstrap/fallback only: journal replay is idempotent against preview.
-        for site,session,key,receipt,payload in source.execute('SELECT site,session,event_key,received_at,payload FROM preview_frames'):
-            if site in ids and 0<=now-receipt<=3:
-                db.execute('INSERT OR IGNORE INTO frames VALUES(?,?,?,?,?)',(site,session,key,receipt,payload))
-        if region=='Florida':
-            for phase_site,payload in source.execute('SELECT site,payload FROM live_signal_state'):
-                if phase_site not in ids:continue
-                try:
-                    raw=json.loads(payload);session=raw.get('session','');phases={n:{'status':p.get('status'),'received_at':p.get('received_at')} for n,p in raw.get('phases',{}).items() if p.get('status') in ('GREEN','RED','YELLOW')}
-                    compact=json.dumps({'initialized':raw.get('initialized',False),'phases':phases},sort_keys=True)
-                    prior=phase_saved.get(phase_site)
-                    if prior is None or prior[0]!=compact or now-prior[1]>=5:
-                        db.execute('INSERT OR IGNORE INTO phase_samples VALUES(?,?,?,?)',(phase_site,session,now,compact));phase_saved[phase_site]=(compact,now)
-                except (ValueError,TypeError):continue
-        purge(db,now)
         if pending is not None and pending.done():
-            result=pending.result();temp=folder/'snapshot.tmp';temp.write_text(json.dumps(result,allow_nan=False));temp.replace(folder/'snapshot.json');pending=None
+            build_health.update(finish_figure(pending,folder,now,build_health['figure_failures']));pending=None
         requested=(folder/'refresh.request').exists()
-        if pending is None and (requested or (not last_publish and now-begin>=30) or (last_publish and now>=last_publish+REFRESH)):
+        if not ingestion_error and figure_due(now,warmup_start,last_publish,requested,pending,build_health['figure_retry_at'],*bounds):
             if requested:(folder/'refresh.request').unlink(missing_ok=True)
+            if build_health['figure_failures']>3:build_health['figure_failures']=0
             pending=pool.submit(compute,now);last_publish=now
-        health={'ingestion':'frame_journal' if journal_enabled else 'latest_preview_poll','journal_rows_copied':journal_rows,'journal_cursor':journal_cursor,'updated_at':time.time(),'buffer_start':db.execute('SELECT min(received) FROM frames').fetchone()[0],'buffer_end':db.execute('SELECT max(received) FROM frames').fetchone()[0],'next_update':last_publish+REFRESH if last_publish else begin+30}
-        temp=folder/'status.tmp';temp.write_text(json.dumps(health));temp.replace(folder/'status.json')
+            build_health.update(figure_state='building',figure_retry_at=0,figure_started_at=now)
+        next_update=build_health['figure_retry_at'] or (last_publish+REFRESH if last_publish else warmup_start+30)
+        health={'ingestion':mode,'ingestion_state':'retrying_database_busy' if ingestion_error else 'receiving' if bounds[1] is not None and now-bounds[1]<=10 else 'waiting_for_fresh_frames',
+                'ingestion_error':ingestion_error,'journal_rows_copied':journal_rows,'journal_cursor':journal_cursor,
+                'updated_at':now,'buffer_start':bounds[0],'buffer_end':bounds[1],
+                'warmup_started_at':warmup_start,'next_update':next_update,**build_health}
+        write_health(folder,health)
         time.sleep(.5)
 
 if __name__=='__main__':main()
