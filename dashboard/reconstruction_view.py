@@ -74,6 +74,14 @@ def read(now=None,folder=FOLDER):
     if folder.name!='finch' and layers.get('local_lateral'):
         try:layers['local_lateral_recheck']=json.loads((folder.parent/'all-sites-local-review/deployment.json').read_text())
         except (OSError,ValueError):pass
+    if folder.name!='finch':
+        # A completed candidate review is separate from evidence for the active
+        # estimator. In particular, a failed candidate must not look deployed.
+        try:
+            review=json.loads((folder.parent/'two-phase-review-20261124/summary.json').read_text())
+            if review.get('state')=='complete':
+                layers['two_phase_review']={k:review[k] for k in ('title','window','lines','figure') if k in review}
+        except (OSError,ValueError):pass
     for link in layers.get('association_diagnostics',[]):
         displayed=sum(p['sites']==link['sites'] and p['direction']==link['direction'] for p in layers.get('between_intersections',[]))
         pair_diagnostics.append({**link,'displayed_matches':displayed,'final_rejections':link['proposed_matches']-displayed})

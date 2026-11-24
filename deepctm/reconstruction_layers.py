@@ -54,7 +54,7 @@ def prediction(a,b,report,exact_join=False,endpoint_policy=None,metadata=None,st
     if abs(p[0,2]-aa['v'])>1.00001 or abs(p[-1,2]-bb['v'])>1.00001:return None
     p[:,1]*=sign;return p.tolist()
 
-def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None,association_distance_limit=350,same_class_recovery=False,stationary_plateau=False,adaptive_grid=False,local_lateral=False,local_lateral_sites=(),terminal_chains=False,stationary_admission=False):
+def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None,endpoint_excluded_sites=(),association_policy=None,association_distance_limit=350,same_class_recovery=False,stationary_plateau=False,adaptive_grid=False,local_lateral=False,local_lateral_sites=(),terminal_chains=False,stationary_admission=False,instantaneous_boundary_policy=None):
     if report.get('state')!='evaluated_ablation':raise ValueError('Completed held-out study required')
     local=[];between=[];rejected=defaultdict(int);endpoint_metadata={}
     def local_prediction(a,b,allow_correction=True):
@@ -137,6 +137,13 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             for p in paths:
                 duplicate=any(q.get('site')==p['site'] and q.get('identity_key')==p['identity_key'] and abs(q['points'][0][0]-p['points'][0][0])<.02 and abs(q['points'][-1][0]-p['points'][-1][0])<.02 for q in local)
                 if not duplicate:local.append(p)
+    boundary_review=None
+    if instantaneous_boundary_policy:
+        from .instantaneous_boundary_layer import apply as apply_boundary_retry
+        extra=apply_boundary_retry(snapshot,{'within_intersection':local},report,instantaneous_boundary_policy)
+        local=extra['within_intersection'];boundary_review=extra['instantaneous_boundary_review']
+    # The additional local links participate in terminal reservation below, so
+    # their internal endpoints cannot also become between-sensor connections.
     # Existing movement-aware associations; do not create global vehicle identities.
     association_snapshot={**snapshot,'sites':[{**s,'tracks':[t for t in s['tracks'] if t['class_type']=='2']} for s in snapshot['sites']]}
     if terminal_chains:
@@ -168,7 +175,7 @@ def generate(snapshot,report,experimental_changed_ids=False,endpoint_policy=None
             between.append(dict(sites=link['sites'],direction=link['direction'],class_type='2',points=p,source='inferred',method=report['selected_method'],identity='unverified_cross_sensor_association',association_cost=path['association_cost'],ambiguity_margin=path['ambiguity_margin'],shape_evidence=path.get('shape_evidence'),endpoint_provenance=link_references(link['sites'][0],link['sites'][1],by_id[link['sites'][0]]['tracks'][path['upstream_fragment']],by_id[link['sites'][1]]['tracks'][path['downstream_fragment']],source_index)))
     return dict(state='ready',moderate_timing_sites=snapshot.get('moderate_timing_sites',[]),transform_manifest=snapshot.get('transform_manifest'),time_basis=snapshot.get('time_basis','receipt'),generated_at=time.time(),snapshot_generated_at=snapshot['generated_at'],start=snapshot['start'],end=snapshot['end'],expires_at=snapshot['start']+5400,
       stationary_admission=stationary_admission,terminal_chains=terminal_chains,local_lateral=local_lateral,local_lateral_sites=list(local_lateral_sites),same_class_recovery=same_class_recovery,stationary_plateau=stationary_plateau,adaptive_grid=adaptive_grid,endpoint_policy=endpoint_policy,endpoint_excluded_sites=list(endpoint_excluded_sites),endpoint_corrected_gaps=sum(bool(p.get('endpoint_corrections')) for p in local),
-      method=report['selected_method'],association_method=association_policy or 'feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),
+      method=report['selected_method'],association_method=association_policy or 'feasible_mutual_best',within_intersection=local,between_intersections=between,rejected=dict(rejected),instantaneous_boundary_review=boundary_review,
       association_diagnostics=[{k:v for k,v in link.items() if k!='paths'} | {'proposed_matches':len(link['paths'])} for link in associations['links']],
       comparison=report['test'],uncertainty=report['uncertainty'],
       limitations=['Selected local reconstruction ablation; not full Newell+CTM+signal model','Between-intersection accuracy and identities are unverified; applying local method across sensors is domain transfer','No inferred signal permissions or invented same-lane leaders','Validation uncertainty applies to prior local masked gaps only, not corrected endpoints or between sensors'])
@@ -212,6 +219,8 @@ def main(watch,region='florida',deadline=None):
                     local_lateral_enabled=region=='florida' and local_lateral_config.get('enabled',False) and local_lateral_config.get('max_gap_s')==10
                     gap_path=ROOT/'config/reconstruction/florida-gap-integrity.json'
                     gap_policy=json.loads(gap_path.read_text()) if gap_path.exists() and region=='florida' else {}
+                    boundary_path=ROOT/'config/reconstruction/florida-instantaneous-boundary.json'
+                    boundary_policy=json.loads(boundary_path.read_text()) if region=='florida' and boundary_path.exists() else None
                     simple_path=ROOT/'config/reconstruction/florida-color-slope.json'
                     simple=json.loads(simple_path.read_text()) if simple_path.exists() else {}
                     if region=='florida' and simple.get('enabled'):
@@ -222,7 +231,7 @@ def main(watch,region='florida',deadline=None):
                             validation=json.loads(validation_path.read_text())
                             result['color_validation']={k:validation[k] for k in ('summary','association','limitations','snapshot_sha256')}
                     else:
-                        result=generate(snapshot,report,terminal_chains=gap_policy.get('terminal_chains',False),stationary_admission=gap_policy.get('stationary_admission',False),local_lateral=local_lateral_enabled,local_lateral_sites=local_lateral_config.get('enabled_sites',[]),adaptive_grid=grid_enabled,stationary_plateau=plateau_enabled,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy)
+                        result=generate(snapshot,report,terminal_chains=gap_policy.get('terminal_chains',False),stationary_admission=gap_policy.get('stationary_admission',False),local_lateral=local_lateral_enabled,local_lateral_sites=local_lateral_config.get('enabled_sites',[]),adaptive_grid=grid_enabled,stationary_plateau=plateau_enabled,same_class_recovery=region in recovery.get('enabled_regions',[]),association_distance_limit=350 if region=='florida' else report['calibration']['parameters']['vmax']*120,endpoint_policy=policy_config.get('parameters'),endpoint_excluded_sites=policy_config.get('excluded_sites',[]),association_policy=association_policy,instantaneous_boundary_policy=boundary_policy)
                     residual_path=ROOT/'config/reconstruction/florida-residual-color.json'
                     if region=='florida' and residual_path.exists() and json.loads(residual_path.read_text()).get('enabled'):
                         from .residual_color_slope import generate as residual_generate

@@ -248,3 +248,13 @@ requirements, current data limitations and validation evidence.
 ## DeepCTM forecasting experiment (November 2026)
 
 See [deepctm.md](deepctm.md) for the complete paper review, equations, ambiguities, data contract and worked flow/density/speed example. `deepctm/capture.py` saves a bounded compressed recording from Weston and Signet; `features.py` derives provisional direction-specific q/k/v; `model.py` implements CTM plus directional neural propagation; `experiment.py` trains only on chronological training windows and saves held-out comparisons. `dashboard/deepctm_status.py` and `deepctm.html` show capture health and results without importing PyTorch into the live-map server. These are forecasts, not new observed intersection KPIs.
+
+## Florida reconstruction: two-phase hidden-data review (24 November 2026)
+
+The [worked example and validation report](florida-two-phase-validation.md) explain
+the visible-boundary-speed retry, unchanged observed trajectories, and why only
+a narrow Plaza Entrance scope qualifies for deployment. The separate matching
+candidate made more correct **and** more wrong connections on untouched data, so
+it remains disabled. The report distinguishes candidate-wide results from the
+smaller enabled scope and explains the timing and identity limits that prevent
+claiming every missing trajectory has been recovered.

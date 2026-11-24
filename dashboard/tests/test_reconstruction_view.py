@@ -3,6 +3,23 @@ from pathlib import Path
 from dashboard.reconstruction_view import read
 
 class ReconstructionViewTests(unittest.TestCase):
+    def test_completed_candidate_review_is_separate_and_sanitized(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);p=root/'collection';p.mkdir();e=root/'two-phase-review-20261124';e.mkdir()
+            (p/'status.json').write_text(json.dumps({'state':'evaluated_ablation'}))
+            (p/'layers.json').write_text(json.dumps({'state':'ready','expires_at':200,'association_method':'bidirectional_shape_v1'}))
+            report={'state':'complete','title':'Candidate withheld','window':[1,2],'lines':['Wrong matches increased; current method retained.'],'raw_cases':['private']}
+            (e/'summary.json').write_text(json.dumps(report))
+            result=read(100,p)
+            self.assertEqual(result['association_method'],'bidirectional_shape_v1')
+            self.assertEqual(result['two_phase_review']['title'],'Candidate withheld')
+            self.assertNotIn('raw_cases',result['two_phase_review'])
+            report['state']='running';(e/'summary.json').write_text(json.dumps(report))
+            self.assertNotIn('two_phase_review',read(100,p))
+            finch=root/'finch';finch.mkdir()
+            for name in ('status.json','layers.json'):(finch/name).write_text((p/name).read_text())
+            report['state']='complete';(e/'summary.json').write_text(json.dumps(report))
+            self.assertNotIn('two_phase_review',read(100,finch))
     def test_association_summary_excludes_internal_groups(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)

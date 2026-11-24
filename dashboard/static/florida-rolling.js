@@ -1,6 +1,7 @@
 'use strict';
 const el=id=>document.getElementById(id),vehicle=new Set(['1','2','3','4','5','6','7','8','9','15']);
 const corridor=document.body.dataset.corridor||'florida',regionName=corridor==='finch'?'Toronto':'Florida';
+if(new URLSearchParams(location.search).get('review')==='1')el('reconstruction-comparison')?.closest('details')?.setAttribute('open','');
 let data=null,view=null,points=[],version=0,reconstruction=null,colorExample=null,overlapExample=null,refreshRunning=false,rollingToken=0;
 const isGrouped=()=>Boolean(el('group-mode')?.checked);
 if(el('group-mode'))el('group-mode').checked=['groups','aggregate'].some(k=>new URLSearchParams(location.search).get(k)==='1');
@@ -241,6 +242,15 @@ async function refreshReconstruction(){
   const fallbackNote=(fallbackCounts.plateau||fallbackCounts.grid)?` Local fallbacks: ${fallbackCounts.grid} exact-endpoint grid retries; ${fallbackCounts.plateau} stationary estimates with up to 5 cm endpoint residual. Observations are unchanged.`:'';
   el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method==='color_slope_chronological_v1'?'Speed-color + constant-slope chronological matching (experimental; 1 m/s color bands; original slope for 80%, bounded correction at the end)':reconstruction.method}${reconstruction.endpoint_corrected_gaps?' + bounded stationary endpoint correction on '+reconstruction.endpoint_corrected_gaps+' gaps':''}.${fallbackNote}${lateralNote}${reconstruction.association_method==='bidirectional_shape_v1'?' Matching uses forward/backward motion evidence (experimental).':''} Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
   const host=el('reconstruction-comparison');host.replaceChildren();
+  if(reconstruction.two_phase_review){
+   const review=reconstruction.two_phase_review,h=document.createElement('h4');
+   h.textContent=review.title||'Two-phase reconstruction review';host.append(h);
+   for(const line of review.lines||[]){const p=document.createElement('p');p.textContent=line;host.append(p);}
+   if(review.figure==='/florida-two-phase-validation.png'){
+    const a=document.createElement('a');a.href=review.figure;a.target='_blank';a.rel='noopener';
+    a.textContent='View held-out reconstruction and matching comparison';host.append(a);
+   }
+  }
   if(reconstruction.moderate_timing_validation){
    const v=reconstruction.moderate_timing_validation,q=v.pooled.test.methods,m=v.matching.test,p=document.createElement('p');
    p.textContent=`Smaller bounded delivery delays corrected at ${v.sites.length} qualified sites. Later hidden gaps: ${q.baseline.accepted} → ${q.moderate.accepted} reconstructed; common-case position MAE ${q.baseline.common.mae_m.toFixed(2)} → ${q.moderate.common.mae_m.toFixed(2)} m. Matching proxy: ${m.baseline.correct} → ${m.moderate.correct} correct, ${m.baseline.wrong} → ${m.moderate.wrong} wrong. Renaissance and Boston retain previous timing. These are car-trajectory interpolation checks, not verified sensor synchronization or KPI accuracy.`;host.append(p);
