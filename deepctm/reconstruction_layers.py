@@ -236,6 +236,16 @@ def main(watch,region='florida',deadline=None):
                         result=apply_group_prior(snapshot,result,group_policy,report['calibration']['parameters'])
                         from .trajectory_group_layer import build as build_groups
                         result['trajectory_groups']=build_groups(snapshot,result,report)
+                        from .regime_group_learning import apply as apply_regime_learning
+                        regime_policy_path=ROOT/'config/reconstruction/florida-regime-learning.json'
+                        regime_policy=json.loads(regime_policy_path.read_text()) if regime_policy_path.exists() else None
+                        original_local=result['within_intersection']
+                        result=apply_regime_learning(snapshot,result,regime_policy,report['calibration']['parameters'])
+                        result['regime_estimates']=[p for p in result['within_intersection'] if p.get('method')=='local_regime_learned_peer_v1']
+                        result['within_intersection']=original_local
+                        result['regime_learning_review']['display']='optional_experimental_layer_not_default_replacement'
+                        from .trajectory_regime_layer import build as build_regimes
+                        result['regime_groups']=build_regimes(snapshot)
                         from .coverage_audit import audit as audit_coverage
                         result['coverage_audit']=audit_coverage(snapshot,result)
                         from .between_coverage_audit import audit as audit_overlap
