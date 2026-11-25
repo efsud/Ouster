@@ -65,29 +65,38 @@
   const dt=b.t-a.t,dx=(b.x-a.x)*sign;
   if(!(dt>0&&dt<=180&&dx>2&&dx<=maxDistance&&dx/dt<=35))return null;
   const va=a.v*sign,vb=b.v*sign,mean=(va+vb)/2;
-  let cost=Math.abs(dx-mean*dt)/Math.max(30,.75*dx)+Math.abs(va-vb)/12+dt/360;
+  // A 30 m tolerance overwhelmed the evidence in 3–10 m gaps. Scale the
+  // position residual to the actual gap, so a later platoon is not a cheap fit.
+  let cost=Math.abs(dx-mean*dt)/Math.max(5,.35*dx)+Math.abs(va-vb)/8+dt/360;
   if(a.unknown||b.unknown)cost+=.4;
   if(a.class_type!==b.class_type)cost+=.2;
   if(a.shape&&b.shape)cost+=Math.min(1,Math.abs(a.shape.length_m-b.shape.length_m)/4);
   return Number.isFinite(cost)&&cost<=4?cost:null;
  }
- function curve(a,b,sign){
+ function motion(a,b,sign){
   const dt=b.t-a.t,dx=(b.x-a.x)*sign,mean=dx/dt;
-  let v0=Math.max(0,a.v*sign),v1=Math.max(0,b.v*sign);
-  const norm=Math.hypot(v0/mean,v1/mean);if(norm>3){v0*=3/norm;v1*=3/norm;}
+  const v0=Math.max(0,a.v*sign),v1=Math.max(0,b.v*sign);
+  // Preserve measured endpoint slopes. Never slow both endpoints to make an
+  // incompatible association fit. Check the entire polynomial, not only samples.
+  const c2=3*mean-2*v0-v1,c3=v0+v1-2*mean;
+  const speeds=[v0,v1],turn=Math.abs(c3)>1e-12?-c2/(3*c3):-1;
+  if(turn>0&&turn<1)speeds.push(v0+2*c2*turn+3*c3*turn*turn);
+  if(speeds.some(v=>!Number.isFinite(v)||v< -1e-8||v>35)||
+     Math.max(Math.abs(2*c2/dt),Math.abs((2*c2+6*c3)/dt))>6)return null;
+  return {dt,dx,v0,v1,c2,c3};
+ }
+ function curve(a,b,sign,m){
+  const {dt,v0,c2,c3}=m;
   const out=[],n=Math.max(12,Math.ceil(dt));
   for(let i=0;i<=n;i++){
    const u=i/n,u2=u*u,u3=u2*u;
-   const distance=(u3-2*u2+u)*v0*dt+(-2*u3+3*u2)*dx+(u3-u2)*v1*dt;
-   const v=(3*u2-4*u+1)*v0+(-6*u2+6*u)*mean+(3*u2-2*u)*v1;
-   const acc=((6*u-4)*v0+(-12*u+6)*mean+(6*u-2)*v1)/dt;
-   if(v<-.01||v>35||Math.abs(acc)>6)return null;
+   const distance=dt*(v0*u+c2*u2+c3*u3),v=v0+2*c2*u+3*c3*u2;
    out.push([a.t+dt*u,a.x+sign*distance,Math.max(0,v)]);
   }
   out[0][1]=a.x;out[n][1]=b.x;return out;
  }
  function build(snapshot,layers){
-  const result={paths:[],links:[],method:'uncertain_endpoint_assignment_v1',kpi_eligible:false};
+  const result={paths:[],links:[],method:'uncertain_endpoint_assignment_v2',kpi_eligible:false};
   if(!snapshot?.sites||layers?.state!=='ready'||snapshot.generated_at!==layers.snapshot_generated_at)return result;
   const used=reservations(snapshot,layers),sites=snapshot.sites.slice().sort((a,b)=>a.station_m-b.station_m);
   for(let k=0;k<sites.length-1;k++)for(const direction of ['eastbound','westbound']){
@@ -99,7 +108,8 @@
     while(start<bb.length&&bb[start].t<=a.t)start++;
     const options=[];
     for(let j=start;j<bb.length&&bb[j].t<=a.t+180;j++){
-     const b=bb[j],cost=score(a,b,sign,maxDistance);if(cost!==null)options.push({a,b,cost});
+     const b=bb[j],cost=score(a,b,sign,maxDistance);if(cost===null)continue;
+     const m=motion(a,b,sign);if(m)options.push({a,b,cost,m});
     }
     options.sort((a,b)=>a.cost-b.cost||a.b.t-b.b.t||a.b.index-b.b.index);
     edges.push(...options.slice(0,10));
@@ -107,10 +117,10 @@
    // No uniqueness-margin requirement: ties are deliberate best guesses here.
    edges.sort((a,b)=>a.cost-b.cost||a.a.t-b.a.t||a.a.index-b.a.index||a.b.index-b.b.index);
    let count=0;
-   for(const {a,b,cost} of edges){
+   for(const {a,b,cost,m} of edges){
     const ak=key(a.site,a.index),bk=key(b.site,b.index);
     if(used.departure.has(ak)||used.arrival.has(bk))continue;
-    const points=curve(a,b,sign);if(!points)continue;
+    const points=curve(a,b,sign,m);
     used.departure.add(ak);used.arrival.add(bk);count++;
     result.paths.push({sites:[up.id,down.id],direction,class_type:a.class_type,points,
      layer:'uncertain_between',method:result.method,identity:'unverified_best_guess',kpi_eligible:false,

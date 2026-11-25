@@ -60,3 +60,27 @@ test('vehicle class changes and stopped endpoints can be proposed; pedestrian li
  s.sites[1].tracks=[track(25,150,false,{class_type:'4'})];assert.equal(build(s,layers()).paths.length,1);
  s.sites[1].tracks[0].class_type='0';assert.equal(build(s,layers()).paths.length,0);
 });
+test('fast fragments are not joined by flattening their endpoint speeds',()=>{
+ const s=fixture();
+ // Recorded failure pattern at Cranes Roost–Hattaway: 2.72 m in 5.85 s
+ // despite observed endpoint speeds of 13.82 and 17.88 m/s.
+ s.sites[0].tracks=[track(10,112.44,true,{v:13.82})];
+ s.sites[1].tracks=[track(15.85,115.16,false,{v:17.88})];
+ assert.equal(build(s,layers()).paths.length,0);
+});
+test('a short compatible connection preserves both measured endpoint slopes',()=>{
+ const s=fixture();s.sites[0].tracks=[track(10,100,true,{v:14})];
+ s.sites[1].tracks=[track(11,114.5,false,{v:15})];
+ const [p]=build(s,layers()).paths;assert.ok(p);
+ assert.equal(p.points[0][2],14);assert.equal(p.points.at(-1)[2],15);
+ assert.ok(p.points.every(p=>p[2]>=14&&p[2]<=15));
+});
+test('infeasible low-cost pairs do not consume the ten-candidate shortlist',()=>{
+ const s=fixture();s.sites[0].tracks=[track(10,100,true,{v:20})];
+ // Each would need impossible acceleration: only 1 m beyond a straight line,
+ // but over a tenth of a second. A later compatible pair must still be seen.
+ s.sites[1].tracks=Array.from({length:12},(_,i)=>track(10.15,104,false,{id:String(i),v:20}));
+ s.sites[1].tracks.push(track(12,144,false,{id:'compatible',v:24}));
+ const [p]=build(s,layers()).paths;assert.ok(p);
+ assert.equal(p.endpoint_provenance.arrival.source_key[1],'compatible');
+});
