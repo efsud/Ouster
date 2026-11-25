@@ -65,3 +65,7 @@ left toolbar, recovering the previously empty 76 px strip for the figure. The
 map and phase panels keep their positions. Narrow stacked layouts keep the
 shared toolbar above both panels. The filter box grows with its contents so
 wrapping sensor labels cannot hide the fourth reconstruction checkbox.
+
+The live phase heading and cards now start at the left panel's 12 px inset,
+using the full available width. Phase cards stay on one horizontal row at every
+screen width; longer lists can scroll horizontally, including by keyboard.

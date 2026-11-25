@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Ouster · Corridor Observatory</title>
-  <link rel="stylesheet" href="vendor/leaflet.css"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="workspace.css?v=top-panel-1">
+  <link rel="stylesheet" href="vendor/leaflet.css"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="workspace.css?v=phase-row-1">
   <script defer src="vendor/leaflet.js"></script><script defer src="app.js"></script><script defer src="directional_signals.js"></script><script defer src="workspace.js?v=slide-1"></script>
 </head>
 <body class="workspace-layout" data-view="live">
@@ -39,7 +39,7 @@
       <h3 id="live-phase-title">Live API phases</h3>
       <p id="live-phase-health" class="subtle">Select an intersection. Waiting for phase data.</p>
       <p class="subtle">Colors below are received API phase states, not estimated directions or physical light counts. Direction estimates marked EST below are inferred. Unknown/stale states are gray.</p>
-      <div id="live-phase-cards" class="phase-cards"></div>
+      <div id="live-phase-cards" class="phase-cards" tabindex="0" aria-label="Live phase states; scroll horizontally to see more phases"></div>
       <details><summary id="phase-extra-summary">Invalid / unavailable phases</summary><div id="live-phase-extra" class="phase-cards"></div></details>
       <div id="phase-direction-evidence" class="subtle"></div>
     </div>
