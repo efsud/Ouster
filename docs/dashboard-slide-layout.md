@@ -51,3 +51,11 @@ Source: `dashboard/static/workspace.js` and `workspace.css` arrange the main
 workspace; `rolling-workspace.js` and `rolling-workspace.css` supply the compact
 embedded figure. Their styles are scoped so standalone analytical pages retain
 their existing controls and layout. The API and storage contracts are unchanged.
+
+## Visual polish
+
+The follow-up styling pass retains the same layout and words. It adds a shared
+teal control palette, clearer selected-intersection accents, softly bordered
+phase cards, compact sensor-filter chips and consistent hover/focus states.
+Trajectory colors and signal status meanings are unchanged. Both main and
+embedded styles are scoped; standalone figures retain their existing layout.

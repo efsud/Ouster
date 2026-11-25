@@ -25,6 +25,36 @@ body.embedded-figure{margin:0;padding:0;max-width:none;height:100dvh;width:100%;
 .embedded-details fieldset{margin:12px 0;border:1px solid #dce5e8}
 .embedded-details .controls{display:flex;flex-wrap:wrap;gap:8px}
 .embedded-details .controls button{width:auto}
+/* Match the main workspace's teal controls without changing chart data/colors. */
+body.embedded-figure{-webkit-font-smoothing:antialiased;background:#f6f9f8;color:#26434c}
+.embedded-controls{background:#f4f8f7;border-bottom:1px solid #dfeae7}
+.embedded-figure #sites{padding-top:5px;gap:6px 7px}
+.embedded-figure #sites label{padding:2px 5px;border:1px solid #dce8e5;border-radius:5px;background:#fff;color:#576f77;cursor:pointer;transition:background .15s,border-color .15s}
+.embedded-figure #sites label:has(input:checked){background:#edf7f3;border-color:#c5e1d9;color:#31695d}
+.embedded-figure #sites label:hover{border-color:#8ebeb1}
+.embedded-figure input[type=checkbox]{accent-color:#158c7d;cursor:pointer}
+.embedded-choices{height:54px}
+.embedded-choices label{color:#546f78;font-weight:650;letter-spacing:.1px}
+.embedded-figure select{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23556f77' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 7px center;padding-right:24px;border-color:#d6e4e0;border-radius:6px;box-shadow:0 2px 3px #183c4204;color:#2d4f58;cursor:pointer}
+.embedded-choices select:hover,.embedded-actions select:hover{border-color:#8ab9ad}
+.embedded-layers{border-top-color:#e8f0ed}
+.embedded-layers>label{color:#50716e;border-bottom:1px solid #e5eeeb;border-left:2px solid transparent;padding-left:7px;min-height:38px;cursor:pointer;transition:background .15s}
+.embedded-layers>label:has(input:checked){border-left-color:#2e9b87;background:#eef6f3}
+.embedded-layers>label:hover{background:#e6f3ed}
+.embedded-plot{background:#fff;border-color:#dce7e4;border-radius:9px 0 0 0;box-shadow:0 2px 12px #153b3c07}
+.embedded-footer{background:#fcfefd;border-top:1px solid #e6eeeb}
+.embedded-actions button,.embedded-actions select{border-color:#d5e3df;border-radius:5px;color:#41665f;box-shadow:0 1px 2px #17473906;transition:background .15s,border-color .15s}
+.embedded-actions button{cursor:pointer}
+.embedded-actions button:hover{background:#edf6f2;border-color:#a1c9bd;color:#176953}
+.embedded-actions #reset{background:#eaf5ef;border-color:#c5ded3;color:#266e58;font-weight:600}
+.embedded-actions a{color:#267c66;font-weight:600}
+.embedded-actions a:hover{text-decoration:underline}
+.embedded-window{color:#4f7068;font-weight:600;font-variant-numeric:tabular-nums}
+.embedded-note{color:#7a8e89}
+.embedded-details{border-radius:12px;border-color:#d8e6e0;box-shadow:0 24px 80px #11383130}
+.embedded-details::backdrop{background:#143a465c;backdrop-filter:blur(3px)}
+.embedded-controls{scrollbar-color:#b5cac7 transparent}
+.embedded-figure :is(button,a,select,input):focus-visible{outline:2px solid #13958a;outline-offset:2px}
 @media(max-width:430px){
  .embedded-controls{height:260px}.embedded-figure #sites{gap:5px 9px;min-height:83px}
  .embedded-layers>label{font-size:10px;min-height:37px}

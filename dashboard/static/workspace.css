@@ -54,6 +54,57 @@ body.workspace-layout{height:100dvh;overflow:hidden;background:#fff;font-size:14
 .workspace-layout dialog #phase-direction-evidence{background:#fff;padding:12px;margin:12px 0}
 .workspace-layout.public-live .workspace-history{display:none}
 .workspace-layout.public-live #live{grid-template-columns:1fr}
+/* Visual polish only: retain the slide's geometry and existing content. */
+body.workspace-layout{--ink:#203741;--muted:#6b8089;--line:#dfe9e9;--teal:#16847d;background:#f5f8f8;-webkit-font-smoothing:antialiased}
+.workspace-layout .workspace-topbar{border-color:#dae6e6;background:#fff;box-shadow:0 3px 12px #153b4205}
+.workspace-layout .brand{background:linear-gradient(120deg,#12383f,#174a50);box-shadow:0 2px 8px #12383f16;text-shadow:0 1px 1px #0002}
+.workspace-layout .brand-icon{color:#7bddcc}
+.workspace-layout .workspace-brand-box>label{color:#536f77}
+.workspace-layout input[type=checkbox]{accent-color:#138a81;cursor:pointer}
+.workspace-layout .workspace-rotation,.workspace-layout .workspace-network label{color:#58727a;font-weight:600;letter-spacing:.12px}
+.workspace-layout .workspace-network{background:#f1f7f6;border-radius:0 0 10px 10px}
+.workspace-layout select{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23556f77' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;border-color:#d8e4e4;border-radius:8px;box-shadow:0 2px 3px #183c4204;cursor:pointer;padding-right:29px!important;transition:border-color .15s,box-shadow .15s}
+.workspace-layout select:hover{border-color:#8fb9b4;box-shadow:0 2px 6px #17443d0c}
+.workspace-left{background:#f0f5f5}
+.workspace-layout .map-panel,.workspace-layout .inventory{border-color:#dce7e7;box-shadow:0 3px 12px #1b454008}
+.workspace-layout .panel-head{background:linear-gradient(180deg,#fff,#fbfdfd);border-bottom:1px solid #e7eeee}
+.workspace-layout .panel-head h3{color:#213e47;letter-spacing:-.2px}
+.workspace-layout .count{background:#e8f3f0;color:#276e64;border-radius:6px;font-weight:700}
+.workspace-layout .site{border-bottom-color:#edf2f2;transition:background .15s,box-shadow .15s}
+.workspace-layout .site strong{color:#28434c;line-height:1.4}
+.workspace-layout .site small{color:#789098;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+.workspace-layout .site .status{color:#95702f}
+.workspace-layout .site:hover{background:#f2f8f7;box-shadow:inset 3px 0 #a4cdc5}
+.workspace-layout .site.selected{background:#e9f5f1;box-shadow:inset 3px 0 #1a9688}
+.workspace-layout .site.selected strong{color:#11594f}
+.workspace-layout .object-legend{background:#fbfdfd;border-top-color:#dce8e7;color:#415c65}
+.workspace-layout .object-legend>strong{color:#243f49}
+.workspace-layout .leaflet-bar{border:1px solid #cbdad8;border-radius:9px;overflow:hidden;box-shadow:0 3px 12px #153c4725}
+.workspace-layout .leaflet-bar a{color:#28534f;background:#fffffff5;border-bottom-color:#e0e9e8}
+.workspace-layout .leaflet-bar a:hover{background:#eaf6f2;color:#0d6e60}
+.workspace-layout #live-phase-panel{border-top-color:#dce8e6;background:#fcfefe}
+.workspace-phase-head{background:#fcfefe}
+.workspace-layout #live-phase-title{color:#24434b;letter-spacing:-.1px}
+.workspace-details-button{color:#38756d;border-radius:5px;padding:4px 8px;transition:background .15s}
+.workspace-details-button:hover{background:#e7f3ef;color:#125c50}
+.workspace-layout #live-phase-health{color:#6a8189}
+.workspace-layout .phase-card{background:#fff;border-color:#e0e9e9;border-radius:9px;box-shadow:0 2px 6px #20474007}
+.workspace-layout .phase-card>span{font-weight:650;color:#34505a}
+.workspace-layout .phase-card strong{border-radius:5px;font-weight:750;letter-spacing:.25px;background:#edf1f3;color:#62757d}
+.workspace-layout .phase-card [data-status=GREEN]{background:#def4e7;color:#177447}
+.workspace-layout .phase-card [data-status=RED]{background:#ffeaeb;color:#bd3846}
+.workspace-layout .phase-card [data-status=YELLOW]{background:#fff2cf;color:#8b6511}
+.workspace-layout .phase-card:has([data-status=GREEN]){border-top-color:#7bc8a2}
+.workspace-layout .phase-card:has([data-status=RED]){border-top-color:#e8a1aa}
+.workspace-layout .phase-card:has([data-status=YELLOW]){border-top-color:#e7c574}
+.workspace-layout .phase-card small{color:#6c8189;font-variant-numeric:tabular-nums}
+.workspace-history{background:#f0f5f5}
+.workspace-layout .sidebar{background:#163d43;border:1px solid #ffffff18;box-shadow:0 12px 40px #143b4328;border-radius:10px}
+.workspace-layout .sidebar .nav.active{background:#2a5b60}
+.workspace-layout dialog{background:#f7faf9;border-color:#dce8e5;border-radius:14px;box-shadow:0 24px 90px #11383135}
+.workspace-layout dialog::backdrop{background:#143a465c;backdrop-filter:blur(3px)}
+.workspace-layout #sites-list,.workspace-layout #live-phase-panel{scrollbar-color:#b5cac7 transparent}
+.workspace-layout :is(button,a,select,input):focus-visible{outline:2px solid #13958a;outline-offset:3px}
 @media(max-width:1200px){
  .workspace-layout .workspace-rotation{margin-left:20px;width:180px}
  .workspace-layout .workspace-network{margin-right:8px;width:155px}
