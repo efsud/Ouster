@@ -69,3 +69,8 @@ wrapping sensor labels cannot hide the fourth reconstruction checkbox.
 The live phase heading and cards now start at the left panel's 12 px inset,
 using the full available width. Phase cards stay on one horizontal row at every
 screen width; longer lists can scroll horizontally, including by keyboard.
+
+Intersection entries use compact name/UDID rows distributed through the available
+list height. The redundant `unknown_timezone` status is omitted from these rows;
+collection errors remain visible and detailed timing information is unchanged.
+Full names and IDs remain available in each row's hover title.

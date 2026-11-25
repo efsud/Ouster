@@ -160,7 +160,7 @@ function renderNetwork(){
   $('sites-list').replaceChildren();
   if(!list.length)$('sites-list').innerHTML='<div class="empty"><strong>No sites configured.</strong>Use the Python launcher to enter API credentials, then add verified Toronto site IDs and sensor origins. No sites have been inferred.</div>';
   for(const site of list){
-    const button=document.createElement('button');button.className='site';button.dataset.siteId=site.id;
+    const button=document.createElement('button');button.className='site';button.dataset.siteId=site.id;button.title=site.name+' · '+site.id;
     button.innerHTML=`<strong>${escapeHTML(site.name)}</strong><small>${escapeHTML(site.id)}</small><span class="status">${site.calibration_status?.valid?'Location verified':'Location / access pending'}</span>`;
     button.onclick=event=>{selectSite(site,button);if(event.isTrusted&&!state.publicLive&&!document.body.classList.contains('workspace-layout'))$('site-kpi-panel').scrollIntoView({behavior:'smooth',block:'start'});};$('sites-list').append(button);
     if((site.calibration_status?.valid||site.reference_location)&&map){
@@ -207,7 +207,11 @@ async function refreshLive(){
   for(const data of result.snapshots){
     sensorMarkers.get(data.site)?.setStyle({fillColor:data.active_anomalies?'#bf643c':data.state==='live'?'#197d79':'#87949b'});
     const button=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===data.site);
-    if(button)button.querySelector('.status').textContent=data.health?.error||data.state;
+    if(button){
+      const status=button.querySelector('.status'),message=data.health?.error||data.state;
+      status.hidden=message==='unknown_timezone';
+      status.textContent=status.hidden?'':message;
+    }
     if(state.site?.id===data.site){
       $('site-state').textContent=data.state;
       $('selected-detail').textContent=(data.reason||`${data.site} · ${data.objects.length} objects · ${data.rejected_objects||0} invalid objects excluded`)+(data.rotation_deg!==undefined?` · Rotation ${data.rotation_deg}°${state.site?.preview_mirror_y?' · SDK Y inverted':''} · ${state.site?.preview_alignment_note||'unverified'}`:'');
