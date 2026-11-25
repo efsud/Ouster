@@ -59,3 +59,9 @@ teal control palette, clearer selected-intersection accents, softly bordered
 phase cards, compact sensor-filter chips and consistent hover/focus states.
 Trajectory colors and signal status meanings are unchanged. Both main and
 embedded styles are scoped; standalone figures retain their existing layout.
+
+The trajectory column now starts at the top of the desktop viewport, beside the
+left toolbar, recovering the previously empty 76 px strip for the figure. The
+map and phase panels keep their positions. Narrow stacked layouts keep the
+shared toolbar above both panels. The filter box grows with its contents so
+wrapping sensor labels cannot hide the fourth reconstruction checkbox.

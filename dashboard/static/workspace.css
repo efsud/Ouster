@@ -105,6 +105,12 @@ body.workspace-layout{--ink:#203741;--muted:#6b8089;--line:#dfe9e9;--teal:#16847
 .workspace-layout dialog::backdrop{background:#143a465c;backdrop-filter:blur(3px)}
 .workspace-layout #sites-list,.workspace-layout #live-phase-panel{scrollbar-color:#b5cac7 transparent}
 .workspace-layout :is(button,a,select,input):focus-visible{outline:2px solid #13958a;outline-offset:3px}
+@media(min-width:851px){
+ /* The trajectory column uses the full page height beside the left toolbar. */
+ .workspace-layout[data-view=live] .workspace-topbar{position:absolute;top:0;left:0}
+ .workspace-layout[data-view=live]>main{height:100dvh}
+ .workspace-layout[data-view=live] .workspace-left{margin-top:76px}
+}
 @media(max-width:1200px){
  .workspace-layout .workspace-rotation{margin-left:20px;width:180px}
  .workspace-layout .workspace-network{margin-right:8px;width:155px}
