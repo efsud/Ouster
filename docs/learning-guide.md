@@ -285,3 +285,8 @@ trajectory figure together. The Network selector switches both sides. The
 OUSTER mark opens the existing workspace menu; Details retains access to sensor
 health and model evidence. Read [the layout and validation notes](dashboard-slide-layout.md)
 for panel dimensions, responsive behavior and the files that changed.
+# Gray dashed uncertain Florida connections
+
+The optional display-only matching layer is described in
+[Florida uncertain connections](florida-uncertain-connections.md), including its
+worked example, assignment rules, recorded-data checks and KPI exclusion.

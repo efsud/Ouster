@@ -55,6 +55,9 @@ body.embedded-figure{-webkit-font-smoothing:antialiased;background:#f6f9f8;color
 .embedded-details::backdrop{background:#143a465c;backdrop-filter:blur(3px)}
 .embedded-controls{scrollbar-color:#b5cac7 transparent}
 .embedded-figure :is(button,a,select,input):focus-visible{outline:2px solid #13958a;outline-offset:2px}
+.embedded-layers:has(#uncertain-layer)>label{min-height:29px;padding-block:4px;font-size:10px}
+.embedded-layers>label:has(#uncertain-layer:checked){border-left-color:#89949c;background:#f0f3f4;color:#5b6973}
+.embedded-figure #uncertain-layer{accent-color:#74818c}
 @media(max-width:430px){
  .embedded-controls{height:260px}.embedded-figure #sites{gap:5px 9px;min-height:83px}
  .embedded-layers>label{font-size:10px;min-height:37px}

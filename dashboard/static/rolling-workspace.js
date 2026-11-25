@@ -5,7 +5,7 @@ if(new URLSearchParams(location.search).get('embed')==='workspace'){
  const figureSites=document.getElementById('sites'),figureChoices=document.createElement('div');figureChoices.className='embedded-choices';
  figureChoices.append(document.getElementById('direction').closest('label'),document.getElementById('objects').closest('label'));
  const figureLayers=document.createElement('div');figureLayers.className='embedded-layers';
- for(const id of ['within-layer','between-layer','color-layer']){const input=document.getElementById(id);if(input)figureLayers.append(input.closest('label'));}
+ for(const id of ['within-layer','between-layer','color-layer','uncertain-layer']){const input=document.getElementById(id);if(input)figureLayers.append(input.closest('label'));}
  figureControls.append(figureSites,figureChoices,figureLayers);
  const figurePlot=document.createElement('div');figurePlot.className='embedded-plot';figurePlot.append(document.getElementById('plot'));
  const figureFooter=document.createElement('div');figureFooter.className='embedded-footer';
@@ -19,7 +19,7 @@ if(new URLSearchParams(location.search).get('embed')==='workspace'){
  const fullURL=new URL(location.href);fullURL.searchParams.delete('embed');figureOpen.href=fullURL.href;
  const figureInfoButton=document.createElement('button');figureInfoButton.type='button';figureInfoButton.textContent='Details';
  figureActions.append(figureSource,figureOpen,figureInfoButton);
- const figureNote=document.createElement('p');figureNote.className='embedded-note';figureNote.textContent='Solid: observed · Dashed: estimated · Gray: timing uncertain. Scroll over the chart to zoom at the pointer.';
+ const figureNote=document.createElement('p');figureNote.className='embedded-note';figureNote.textContent='Solid: observed · Dashed: estimated · Gray: uncertain. Scroll over the chart to zoom at the pointer.';
  const figureWindow=document.createElement('p');figureWindow.className='embedded-window';figureWindow.setAttribute('role','status');
  function reportFigureWindow(){
   figureWindow.textContent=data&&view?`${regionName} · ${clock(view[0])}–${clock(view[1])} · ${frozenId?'Frozen recording':'Rolling hour'}`:document.getElementById('message').textContent;
