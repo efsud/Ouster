@@ -278,3 +278,10 @@ The frozen-hour audit connects 779 of the 794 previously unresolved vehicle gaps
 15 direction conflicts remain. Short/class-change gaps expand the new scan's
 denominator. Read [the method and hidden-data results](florida-same-id-continuity.md)
 for counts, examples, error by gap duration and reproducible commands.
+## Full-page workspace from the supplied slide
+
+The dashboard now places the live map, intersection list, API phase cards and
+trajectory figure together. The Network selector switches both sides. The
+OUSTER mark opens the existing workspace menu; Details retains access to sensor
+health and model evidence. Read [the layout and validation notes](dashboard-slide-layout.md)
+for panel dimensions, responsive behavior and the files that changed.

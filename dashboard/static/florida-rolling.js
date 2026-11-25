@@ -64,11 +64,11 @@ function color(v){const t=Math.max(0,Math.min(1,v/20));return `hsl(${t*120},75%,
 function draw(){
  if(!data)return;const panRange=data.end-data.start-(view[1]-view[0]);el('time').value=panRange>0?1000*(view[0]-data.start)/panRange:0;const selected=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value)),sites=data.sites.filter(s=>selected.has(s.id));
  renderMovements(sites);
- const canvas=el('plot'),w=canvas.clientWidth,h=650,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);points=[];
+ const canvas=el('plot'),w=canvas.clientWidth,h=document.body.classList.contains('embedded-figure')?Math.max(180,canvas.clientHeight):650,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);points=[];
  if(!sites.length){c.fillText('Select an intersection.',30,40);return;}
  const lo=Math.min(...sites.map(s=>s.station_m))-130,hi=Math.max(...sites.map(s=>s.station_m))+130;
  const x=t=>90+(t-view[0])/(view[1]-view[0])*(w-110),y=s=>h-50-(s-lo)/(hi-lo)*(h-80);
- c.font='12px sans-serif';c.fillStyle='#52636d';c.strokeStyle='#dbe3e8';
+ c.font=document.body.classList.contains('embedded-figure')?'9px sans-serif':'12px sans-serif';c.fillStyle='#52636d';c.strokeStyle='#dbe3e8';
  const ticks=Math.max(2,Math.min(6,Math.floor((w-110)/100)));
  for(let i=0;i<=ticks;i++){const t=view[0]+i*(view[1]-view[0])/ticks;c.beginPath();c.moveTo(x(t),20);c.lineTo(x(t),h-50);c.stroke();c.textAlign=i===0?'left':i===ticks?'right':'center';c.fillText(clock(t),x(t),h-25);}c.textAlign='left';
  for(const s of sites){c.fillStyle='#263b46';c.fillText(s.name,95,y(s.station_m)-8);c.fillText(Math.round(s.station_m)+' m',4,y(s.station_m));c.strokeStyle='#c3cdd3';c.beginPath();c.moveTo(90,y(s.station_m));c.lineTo(w-20,y(s.station_m));c.stroke();}

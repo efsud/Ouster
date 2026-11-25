@@ -162,7 +162,7 @@ function renderNetwork(){
   for(const site of list){
     const button=document.createElement('button');button.className='site';button.dataset.siteId=site.id;
     button.innerHTML=`<strong>${escapeHTML(site.name)}</strong><small>${escapeHTML(site.id)}</small><span class="status">${site.calibration_status?.valid?'Location verified':'Location / access pending'}</span>`;
-    button.onclick=event=>{selectSite(site,button);if(event.isTrusted&&!state.publicLive)$('site-kpi-panel').scrollIntoView({behavior:'smooth',block:'start'});};$('sites-list').append(button);
+    button.onclick=event=>{selectSite(site,button);if(event.isTrusted&&!state.publicLive&&!document.body.classList.contains('workspace-layout'))$('site-kpi-panel').scrollIntoView({behavior:'smooth',block:'start'});};$('sites-list').append(button);
     if((site.calibration_status?.valid||site.reference_location)&&map){
       const location=site.calibration_status?.valid?site.origin:site.reference_location;
       const point=lidarMarkerPoint(site,location);
@@ -181,13 +181,15 @@ function renderNetwork(){
   $('map-note').textContent=region==='Toronto'?'LiDAR and objects share each site’s reference; per-intersection alignment is not field-calibrated':paths.length?paths.length+' verified corridor paths':referencePoints.length+' user-confirmed SDK origins; orientation unverified. Zoom to an intersection for live objects.';
   $('map-note').textContent+=' · Vehicle icon headings may follow a nearby road axis; this is a provisional display correction.';
   document.querySelector('.map-footer .legend-dot').parentElement.lastChild.textContent=region==='Toronto'?' Approximate LiDAR location':' SDK origin (orientation unverified)';
+  document.dispatchEvent(new Event('dashboard:networkchange'));
   action(refreshLive);
 }
-function selectSite(site,button){
+function selectSite(site,button,focusMap=true){
   state.site=site;document.querySelectorAll('.site').forEach(b=>b.classList.toggle('selected',b===button));
+  if(typeof renderPhasePanel==='function')renderPhasePanel(null);
   $('selected-name').textContent=site.name;$('selected-detail').textContent=`${site.id} · ${site.corridor||site.region} · ${site.timezone||'Timezone pending'}`;
   const location=site.calibration_status?.valid?site.origin:site.reference_location;
-  if(location)map?.setView([location.lat,location.lng],18);
+  if(location&&focusMap)map?.setView([location.lat,location.lng],18);
   action(refreshLive);action(()=>loadSiteKPIs());
 }
 async function refreshLive(){
@@ -333,7 +335,7 @@ $('region').onchange=()=>{
   const id=$('region').value==='Florida'?'OBC-AG-SA-C257222':'OBC-AG-SA-C257220';
   const site=state.sites.find(s=>s.id===id);
   const button=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===id);
-  if(site&&button)selectSite(site,button);
+  if(site&&button)selectSite(site,button,!document.body.classList.contains('workspace-layout'));
   const url=new URL(location.href);url.searchParams.set('region',$('region').value);url.searchParams.set('site',id);history.replaceState(null,'',url);
 };
 for(const id of ['approximate-objects','preview-rotation'])$(id).onchange=()=>{liveRequest++;clearObjects();action(refreshLive);};
@@ -372,7 +374,11 @@ action(async()=>{
   initMap();renderNetwork();renderCards();renderChart();
   const requestedSite=new URLSearchParams(location.search).get('site');
   const requestedButton=Array.from(document.querySelectorAll('.site')).find(b=>b.dataset.siteId===requestedSite);
-  requestedButton?.click();
+  if(document.body.classList.contains('workspace-layout')){
+    const button=requestedButton||document.querySelector('.site');
+    const site=state.sites.find(s=>s.id===button?.dataset.siteId);
+    if(site&&button)selectSite(site,button,false);
+  }else requestedButton?.click();
   state.sites.sort((a,b)=>(a.region==='Toronto'?0:1)-(b.region==='Toronto'?0:1));
   state.sites.forEach(s=>{$('history-site').add(new Option(s.name,s.id));$('anomaly-site').add(new Option(s.name,s.id));});
   $('history-site').add(new Option('Learning dataset · SYNTHETIC','DEMO-001'));
