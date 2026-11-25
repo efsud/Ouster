@@ -266,3 +266,15 @@ frames, plotted observations, saved estimates and exact source metadata. The
 archive has its own viewer and is kept outside rolling retention. It preserves
 the previously displayed hour for repeatable model comparisons while collection
 continues. Existing estimates are never substituted for training truth.
+## Same-ID continuity within Florida intersections
+
+Local gaps now prioritize the intersection, collector session and object ID,
+independent of classification. The previous constrained estimates stay in place;
+a bounded cubic fallback connects additional fragments. Timing conflicts are
+shown as gray identity connections without a speed claim. Solid observations
+remain unchanged and all added lines are excluded from measured KPIs.
+
+The frozen-hour audit connects 779 of the 794 previously unresolved vehicle gaps;
+15 direction conflicts remain. Short/class-change gaps expand the new scan's
+denominator. Read [the method and hidden-data results](florida-same-id-continuity.md)
+for counts, examples, error by gap duration and reproducible commands.

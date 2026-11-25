@@ -158,7 +158,7 @@ el('time').oninput=()=>{if(data){const span=view[1]-view[0],start=data.start+(da
 el('plot').addEventListener('wheel',e=>{e.preventDefault();if(!e.deltaY)return;const canvas=el('plot'),rect=canvas.getBoundingClientRect();if(rect.width<=0||canvas.clientWidth<=110)return;const pointerX=(e.clientX-rect.left)*canvas.clientWidth/rect.width;zoom(e.deltaY>0?1.25:.8,(pointerX-90)/(canvas.clientWidth-110));},{passive:false});el('plot').ondblclick=()=>el('reset').click();
 el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
  if(!data){el('hover').textContent='Waiting for recorded observations.';return;}
- let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speed.toFixed(1)} m/s`+(best.receiptTime!=null&&Math.abs(best.receiptTime-best.time)>.05?` · adjusted time; received ${clock(best.receiptTime)} (${(best.receiptTime-best.time).toFixed(2)} s later)`:''):'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();if(!frozenId)setInterval(refresh,15000);
+ let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speedAvailable===false?'speed unavailable':best.speed.toFixed(1)+' m/s'}`+(best.receiptTime!=null&&Math.abs(best.receiptTime-best.time)>.05?` · adjusted time; received ${clock(best.receiptTime)} (${(best.receiptTime-best.time).toFixed(2)} s later)`:''):'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();if(!frozenId)setInterval(refresh,15000);
 
 if(el("additional-matches"))el("additional-matches").onchange=draw;
 function showColorExample(kind){
@@ -200,7 +200,7 @@ function renderGapAudit(audit){
 
 function paintReconstruction(c,x,y,selected){
  if(!reconstruction||reconstruction.state!=='ready'||reconstruction.snapshot_generated_at!==data.generated_at)return;
- const counts=[0,0],extraCounts=[0,0];let groupCount=0;const allowed=['all','vehicles'].includes(el('objects').value);
+ const counts=[0,0],extraCounts=[0,0];let groupCount=0,grayCount=0;const allowed=['all','vehicles'].includes(el('objects').value);
  const groups=[['within-layer',reconstruction.within_intersection||[],0],['between-layer',reconstruction.between_intersections||[],1]];
  if(el('color-layer')?.checked&&reconstruction.residual_color){
   groups.push(['within-layer',reconstruction.residual_color.within_intersection||[],0],['between-layer',reconstruction.residual_color.between_intersections||[],1]);
@@ -220,19 +220,25 @@ function paintReconstruction(c,x,y,selected){
    let seen=false,distance=0;
    for(let i=1;i<path.points.length;i++){
     const a=path.points[i-1],b=path.points[i],ta=data.start+a[0],tb=data.start+b[0],length=Math.hypot(x(tb)-x(ta),y(b[1])-y(a[1]));
-    if(tb>=view[0]&&ta<=view[1]){seen=true;c.strokeStyle=color(b[2]);c.lineWidth=path.layer==='residual_color_slope'&&colorExample===path.points[0][0]+':'+path.points.at(-1)[0]?3:1.8;c.setLineDash(path.layer==='residual_color_slope'?[10,4,2,4]:group?[8,5]:[3,4]);c.lineDashOffset=-distance;c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],name:'EST '+(group?'between intersections · identity unverified':'within intersection'+((path.identity||'').startsWith('unverified')?' · identity unverified':''))+' · '+({'bounded_stationary_latent_position':'stationary position estimate','endpoint_envelope_grid_retry_v1':'refined endpoint time grid'}[path.estimation_model]||({'kinematic_same_id_lateral_v1':'same-ID lateral-motion estimate','color_slope_chronological_v1':'same-color constant-slope proposal'}[path.method]||path.method))+(path.exact_endpoint_interpolation===false?' · stationary estimate; endpoint residual ≤'+(100*Math.max(...(path.endpoint_position_residual_m||[0]).map(Math.abs))).toFixed(1)+' cm':'')+(path.object_id?' · object ID '+path.object_id:'')});}distance+=length;
-   }if(seen){counts[group]++;if(path.layer==='residual_color_slope')extraCounts[group]++;if(path.method==='trajectory_group_anchor_v1')groupCount++;}
+    if(tb>=view[0]&&ta<=view[1]){seen=true;c.strokeStyle=path.speed_available===false?'#64748b':color(b[2]);c.lineWidth=path.layer==='residual_color_slope'&&colorExample===path.points[0][0]+':'+path.points.at(-1)[0]?3:1.8;c.setLineDash(path.layer==='residual_color_slope'?[10,4,2,4]:group?[8,5]:[3,4]);c.lineDashOffset=-distance;c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],speedAvailable:path.speed_available!==false,name:'EST '+(group?'between intersections · identity unverified':'within intersection'+((path.identity||'').startsWith('unverified')?' · identity unverified':''))+' · '+({'bounded_stationary_latent_position':'stationary position estimate','endpoint_envelope_grid_retry_v1':'refined endpoint time grid'}[path.estimation_model]||({'same_id_monotone_continuity_v1':'same-ID connection','kinematic_same_id_lateral_v1':'same-ID lateral-motion estimate','color_slope_chronological_v1':'same-color constant-slope proposal'}[path.method]||path.method))+(path.exact_endpoint_interpolation===false?' · stationary estimate; endpoint residual ≤'+(100*Math.max(...(path.endpoint_position_residual_m||[0]).map(Math.abs))).toFixed(1)+' cm':'')+(path.object_id?' · object ID '+path.object_id:'')+(path.speed_available===false?' · timing uncertain; speed unavailable':'')+(path.warnings?.includes('long_gap_motion_unobserved')?' · long gap; intervening motion unobserved':'')});}distance+=length;
+   }if(seen){counts[group]++;if(path.speed_available===false)grayCount++;if(path.layer==='residual_color_slope')extraCounts[group]++;if(path.method==='trajectory_group_anchor_v1')groupCount++;}
   }
  }
  c.setLineDash([]);c.lineDashOffset=0;
  if(el('group-gap-status'))el('group-gap-status').textContent=`${groupCount} group-assisted individual connection hypotheses visible. These are separate from group membership and do not verify vehicle identity.`;
- if(el('layer-counts'))el('layer-counts').textContent=`Visible estimates: ${counts[0]} within intersections; ${counts[1]} between intersections. Colors indicate speed, not confidence.`+(el('color-layer')?.checked?` Requested color-slope additions: ${extraCounts[0]} within; ${extraCounts[1]} between.`:'')+(el('within-layer')?.checked&&counts[0]===0?' No supported local estimates in this selection; checking the box cannot join unidentified fragments.':'');
+ if(el('layer-counts'))el('layer-counts').textContent=`Visible estimates: ${counts[0]} within intersections; ${counts[1]} between intersections. Speed colors are estimates, not confidence. ${grayCount} gray same-ID connectors have uncertain timing and no speed estimate.`+(el('color-layer')?.checked?` Requested color-slope additions: ${extraCounts[0]} within; ${extraCounts[1]} between.`:'')+(el('within-layer')?.checked&&counts[0]===0?' No supported local estimates in this selection; checking the box cannot join unidentified fragments.':'');
 }
 async function refreshReconstruction(){
  if(!el('reconstruction-status'))return;
  try{
   const response=await fetch(frozenId?`/api/florida-frozen-reconstruction?capture=${encodeURIComponent(frozenId)}`:`/api/${corridor}-reconstruction`);if(!response.ok)throw Error('Reconstruction study unavailable');reconstruction=await response.json();
   const aligned=reconstruction.state==='ready'&&data&&reconstruction.snapshot_generated_at===data.generated_at;
+  if(el('same-id-status')){
+   const review=aligned&&reconstruction.same_id_continuity;
+   el('same-id-status').textContent=review?`Same-ID continuity: ${review.added} additional connections across this hour; ${review.timing_uncertain} have uncertain timing (gray). ${review.unresolved} conflicting gaps remain unconnected. Matches use intersection + tracking session + object ID, including classification changes. Dashed paths are excluded from measured KPIs.`:'';
+   if(review?.validation){const v=review.validation.by_duration;el('same-id-status').textContent+=` Hidden-data check on this development hour: 10-second gaps averaged ${v['10'].position_mae_m.toFixed(2)} m position error; 60-second gaps ${v['60'].position_mae_m.toFixed(2)} m. Gray timing connectors are not covered by that test.`;}
+   el('same-id-example').disabled=!review?.added;
+  }
   updateGroupControls();
   for(const id of ['group-gap-layer','group-gap-example'])if(el(id))el(id).disabled=!aligned||!reconstruction.trajectory_groups?.between_intersections?.length;
   renderGapAudit(aligned?reconstruction.coverage_audit:null);
@@ -376,3 +382,14 @@ async function refreshReconstruction(){
 }
 for(const id of ['within-layer','between-layer','color-layer'])if(el(id))el(id).onchange=draw;
 if(!frozenId){refreshReconstruction();setInterval(refreshReconstruction,15000);}
+
+if(el('same-id-example'))el('same-id-example').onclick=()=>{
+ const paths=(reconstruction?.within_intersection||[]).filter(p=>p.method==='same_id_monotone_continuity_v1');
+ const path=paths.find(p=>p.direction===el('direction').value&&!p.timing_uncertain&&p.gap_s>=5&&p.gap_s<=30)||paths[0];
+ if(!path||!data)return;
+ el('direction').value=path.direction;el('objects').value='vehicles';el('within-layer').checked=true;
+ if(el('group-mode'))el('group-mode').checked=false;
+ for(const box of el('sites').querySelectorAll('input'))box.checked=box.value===path.site;
+ view=[Math.max(data.start,data.start+path.points[0][0]-5),Math.min(data.end,data.start+path.points.at(-1)[0]+5)];
+ updateGroupControls();draw();el('plot').scrollIntoView({block:'center'});
+};
