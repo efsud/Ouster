@@ -10,7 +10,7 @@ if(new URLSearchParams(location.search).get('embed')==='workspace'){
  const figurePlot=document.createElement('div');figurePlot.className='embedded-plot';figurePlot.append(document.getElementById('plot'));
  const figureFooter=document.createElement('div');figureFooter.className='embedded-footer';
  const figureActions=document.createElement('div');figureActions.className='embedded-actions';
- for(const id of ['zoom-in','zoom-out','reset'])figureActions.append(document.getElementById(id));
+ for(const id of ['zoom-in','zoom-out','reset','fit-recorded'])figureActions.append(document.getElementById(id));
  const figureSource=document.createElement('select');figureSource.setAttribute('aria-label','Trajectory recording');
  if(corridor==='florida')figureSource.add(new Option('Frozen hour · Nov 24','frozen'));
  figureSource.add(new Option('Latest rolling hour','rolling'));figureSource.value=frozenId?'frozen':'rolling';
