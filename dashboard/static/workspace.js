@@ -66,7 +66,7 @@ const originalHeader=workspaceMain.querySelector(':scope > header');originalHead
 function syncWorkspaceFigures(){
  if(state.publicLive){workspaceFrame.removeAttribute('src');return;}
  const region=document.getElementById('region').value;
- const url=region==='Florida'?'/florida_rolling.html?embed=workspace&frozen=20261124T194525Z&between=1':'/finch_rolling.html?embed=workspace&between=1';
+ const url=region==='Florida'?'/florida_rolling.html?embed=workspace&between=1':'/finch_rolling.html?embed=workspace&between=1';
  if(workspaceFrame.getAttribute('src')!==url)workspaceFrame.src=url;
  workspaceFrame.title=region==='Florida'?'Florida corridor trajectories':'Toronto Finch corridor trajectories';
 }
