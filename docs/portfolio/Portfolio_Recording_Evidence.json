@@ -1,0 +1,198 @@
+{
+  "capture_id": "20261124T194525Z",
+  "generated_at": 1795547799.120136,
+  "start": 1795544199.120136,
+  "end": 1795547799.120136,
+  "within": {
+    "site": "OBC-AG-SA-C257222",
+    "direction": "eastbound",
+    "class_type": "2",
+    "points": [
+      [
+        637.01,
+        18.16,
+        10.68337912087874
+      ],
+      [
+        637.47,
+        23.047169225912953,
+        10.56518273091503
+      ],
+      [
+        637.9300000000001,
+        27.88768824330765,
+        10.480552127321111
+      ],
+      [
+        638.39,
+        32.70246162456887,
+        10.45324518251382
+      ],
+      [
+        638.85,
+        37.521149255495025,
+        10.497570604119964
+      ],
+      [
+        639.3100000000001,
+        42.37781857021644,
+        10.61838293814539
+      ],
+      [
+        639.77,
+        47.30653648942099,
+        10.810825406225813
+      ],
+      [
+        640.23,
+        52.336962186034285,
+        11.0605906660042
+      ],
+      [
+        640.69,
+        57.489999999999995,
+        11.343921568627556
+      ]
+    ],
+    "source": "inferred",
+    "method": "kinematic_same_id_lateral_v1",
+    "identity": "same_sensor_session_id",
+    "identity_key": [
+      "2b64201291c5483cb52c13d8abd6462b",
+      "945741984"
+    ],
+    "object_id": "945741984",
+    "gap_kind": "supported_lateral_motion",
+    "gap_s": 3.6800000000000637,
+    "lateral_evidence": {
+      "reason": "supported_candidate",
+      "lateral_displacement_m": -4.2262716494198775,
+      "identity_scope": "same_sensor_session_object_only",
+      "lane_change": "estimated_not_verified"
+    },
+    "uncertainty": "masked_local_validation_not_verified_lane_assignment"
+  },
+  "between": {
+    "sites": [
+      "OBC-AG-SA-C257225",
+      "OBC-AG-SA-C257206"
+    ],
+    "direction": "eastbound",
+    "class_type": "2",
+    "points": [
+      [
+        2714.59,
+        1138.57,
+        15.48529411764406
+      ],
+      [
+        2715.049090909091,
+        1145.8162991268578,
+        16.08274168254204
+      ],
+      [
+        2715.508181818182,
+        1153.318080163423,
+        16.59828461534724
+      ],
+      [
+        2715.9672727272728,
+        1161.0227694608875,
+        16.96669846272925
+      ],
+      [
+        2716.4263636363635,
+        1168.8516604313095,
+        17.139361210410545
+      ],
+      [
+        2716.8854545454546,
+        1176.707471129381,
+        17.083972523742666
+      ],
+      [
+        2717.3445454545454,
+        1184.4817467219339,
+        16.78415877056088
+      ],
+      [
+        2717.8036363636365,
+        1192.0622751573976,
+        16.23992550272757
+      ],
+      [
+        2718.2627272727273,
+        1199.340603143838,
+        15.467641962966743
+      ],
+      [
+        2718.721818181818,
+        1206.2194488731282,
+        14.499606758705154
+      ],
+      [
+        2719.180909090909,
+        1212.620105676502,
+        13.38444268171913
+      ],
+      [
+        2719.64,
+        1218.49,
+        12.187374173134828
+      ]
+    ],
+    "source": "inferred",
+    "method": "kinematic_0.01",
+    "identity": "unverified_cross_sensor_association",
+    "association_cost": 0.6195481721238802,
+    "ambiguity_margin": 0.3681340233331172,
+    "shape_evidence": null,
+    "endpoint_provenance": {
+      "departure": {
+        "site": "OBC-AG-SA-C257225",
+        "fragment_id": "45f2c7f75d3fd9506ba519b6",
+        "source_fragment_indices": [
+          2505
+        ],
+        "source_key": [
+          "57947537b1a046b098db29984e07e55c",
+          "847480155",
+          "2"
+        ],
+        "identity_scope": "sensor_session_object_only",
+        "class_type": "2",
+        "direction": "eastbound",
+        "observed_endpoint": [
+          2714.59,
+          1138.57,
+          15.83
+        ],
+        "fragment_start": 2648.27,
+        "fragment_end": 2714.59
+      },
+      "arrival": {
+        "site": "OBC-AG-SA-C257206",
+        "fragment_id": "3a99d64564da527603a7d5da",
+        "source_fragment_indices": [
+          2787
+        ],
+        "source_key": [
+          "02e5e2fd5c864eefb3877ac872b44198",
+          "716138556",
+          "2"
+        ],
+        "identity_scope": "sensor_session_object_only",
+        "class_type": "2",
+        "direction": "eastbound",
+        "observed_endpoint": [
+          2719.64,
+          1218.49,
+          0
+        ],
+        "fragment_start": 2719.64,
+        "fragment_end": 2742.0
+      },
+      "cross_sensor_identity_verified": false
+    }
+  }
+}

@@ -1,0 +1,7 @@
+Ouster Corridor Observatory | Live LiDAR & Trajectory Analytics
+
+I developed a corridor-scale traffic analytics platform that turns Ouster BlueCity LiDAR data into live road-user maps, interactive time–space diagrams, and transparent trajectory reconstruction. The platform supports Florida’s SR-436 and Toronto’s Finch corridors, with intersection, direction, object-type, and time-window controls. Separate estimation layers reconstruct gaps within intersections and propose connections between adjacent sites, while preserving the original observations and visibly distinguishing uncertain matches. An educational Cell Transmission Model explorer adds traffic-flow scenario analysis. Built with Python, SQLite, JavaScript, and Leaflet, this research prototype connects data collection, visualization, and model development to support better understanding of corridor traffic performance.
+
+#IntelligentTransportation #TrafficAnalytics #LiDAR #DigitalTwin #TransportationResearch
+
+Video note: The live demonstration uses Florida’s active feed. Detailed reconstruction examples use the retained November 24, 2026 recording. Map alignment and cross-intersection vehicle identities are unverified; the CTM scenario is educational.
