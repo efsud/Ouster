@@ -1,0 +1,405 @@
+'use strict';
+const el=id=>document.getElementById(id),vehicle=new Set(['1','2','3','4','5','6','7','8','9','15']);
+const corridor=document.body.dataset.corridor||'florida',regionName=corridor==='finch'?'Toronto':'Florida';
+const frozenId=corridor==='florida'?new URLSearchParams(location.search).get('frozen'):null;
+if(frozenId){
+ document.title='Florida · Frozen study hour';
+ document.querySelector('h1').textContent='Florida corridor · frozen study hour';
+ if(el('snapshot-description'))el('snapshot-description').textContent='Fixed recorded hour retained for model development. This view does not refresh or expire with the rolling buffer. Original missing observations remain visible; optional dashed layers are saved estimates.';
+}
+if(new URLSearchParams(location.search).get('review')==='1')el('reconstruction-comparison')?.closest('details')?.setAttribute('open','');
+let data=null,view=null,points=[],version=0,reconstruction=null,colorExample=null,overlapExample=null,refreshRunning=false,rollingToken=0;
+let uncertainConnections={paths:[]},uncertainVersion=null;
+const isGrouped=()=>Boolean(el('group-mode')?.checked);
+if(el('group-mode'))el('group-mode').checked=['groups','aggregate'].some(k=>new URLSearchParams(location.search).get(k)==='1');
+function groupData(){return data&&reconstruction?.snapshot_generated_at===data.generated_at?reconstruction.trajectory_groups:null;}
+function groupSite(id){return groupData()?.sites.find(s=>s.id===id);}
+function groupKey(site,id){return site+'|'+id;}
+function groupColor(id){let n=0;for(const ch of id)n=(n*31+ch.charCodeAt(0))>>>0;return `hsl(${n%360},68%,38%)`;}
+function selectedGroup(){return isGrouped()&&groupData()?(el('trajectory-group')?.value||'all'):'all';}
+function groupModeUI(){
+ const active=isGrouped();if(el('group-options'))el('group-options').hidden=!active;
+ if(el('group-detail'))el('group-detail').hidden=!active;
+ const chosen=selectedGroup();let label='';
+ if(active&&chosen!=='all')for(const site of groupData()?.sites||[]){const index=site.groups.findIndex(g=>groupKey(site.id,g.group_id)===chosen);if(index>=0)label=`${site.name} · Group ${index+1} · ${site.groups[index].identity_count} individual object IDs. `;}
+ if(el('plot-caption'))el('plot-caption').textContent=active?label+'Each solid line remains an individual observed trajectory. Groups identify similar paths, times and speeds; dashed lines remain individual estimates.':'Solid lines show recorded positions; any timing corrections are noted above. Dashed layers estimate missing positions. Missing evidence stays blank.';
+ if(el('plot-explanation'))el('plot-explanation').textContent=(active&&el('group-color')?.value==='group'?'Distinct colors identify trajectory groups; gray identifies ungrouped trajectories. Dashed estimates retain speed colors. ':'Red = slow, yellow = about 10 m/s, green = 20+ m/s. ')+ 'Groups are local to one intersection and direction. They do not establish vehicle identity across intersections. Recorded positions are unchanged.';
+ el('plot').setAttribute('aria-label',active?'Individual time-distance trajectories with similar-path groups':'Time-distance trajectories colored by speed');
+}
+function updateGroupControls(){
+ if(!el('group-controls'))return;
+ const study=groupData(),select=el('trajectory-group'),previous=select.value;
+ select.replaceChildren(new Option('All groups and ungrouped trajectories','all'));
+ if(!study){el('group-status').textContent='Waiting for trajectory groups aligned with this recorded hour.';el('group-example').disabled=true;el('group-detail').textContent='';el('group-gap-layer').disabled=true;el('group-gap-example').disabled=true;el('group-gap-status').textContent='Waiting for estimates aligned with this hour.';return;}
+ const selectedSites=new Set([...el('sites').querySelectorAll('input:checked')].map(b=>b.value));let total=0,assigned=0;
+ for(const site of study.sites){
+  for(const g of site.groups){if(g.direction!==el('direction').value||!selectedSites.has(site.id))continue;
+   select.add(new Option(`${site.name} · Group ${site.groups.indexOf(g)+1} · ${g.identity_count} local IDs`,groupKey(site.id,g.group_id)));total++;
+  }
+  assigned+=site.assignments.filter(g=>g!==null).length;
+ }
+ if([...select.options].some(o=>o.value===previous))select.value=previous;
+ el('group-example').disabled=!total;
+ el('group-status').textContent=`${total} groups in the selected direction and intersections. Across the hour: ${assigned.toLocaleString()} observed fragments assigned to groups. Groups require at least three distinct local object IDs; unsupported fragments remain ungrouped.`;
+ const validation=el('group-validation');validation.replaceChildren();
+ for(const line of study.validation_notes||[]){const p=document.createElement('p');p.textContent=line;validation.append(p);}
+ if(!study.validation_notes?.length)validation.textContent='Group-guided gap reconstruction is under evaluation; existing reconstruction methods are retained until hidden-data tests support a change.';
+ groupModeUI();
+}
+function showGroup(key){
+ const study=groupData();if(!study||!data)return;
+ let pair;for(const s of study.sites)for(const g of s.groups){if(groupKey(s.id,g.group_id)===key)pair=[s,g];}
+ if(!pair)return;const [s,g]=pair;el('group-mode').checked=true;el('direction').value=g.direction;el('objects').value='vehicles';
+ for(const box of el('sites').querySelectorAll('input'))box.checked=box.value===s.id;
+ updateGroupControls();el('trajectory-group').value=key;
+ const members=g.member_indices.map(i=>data.sites.find(v=>v.id===s.id).tracks[i]).filter(Boolean);
+ el('objects').value=members.every(t=>vehicle.has(t.class_type))?'vehicles':'all';
+ const start=Math.min(...members.map(t=>t.points[0][0])),end=Math.max(...members.map(t=>t.points.at(-1)[0]));
+ view=[Math.max(data.start,data.start+start-5),Math.min(data.end,data.start+end+5)];
+ el('group-detail').textContent=`${s.name} · Group ${s.groups.indexOf(g)+1} · ${g.identity_count} distinct local IDs · ${members.length} individual observed fragments. Similarity uses spatial path, local passage time and speed profile. Select “Group membership” colors to highlight membership; speed colors remain available.`;
+ groupModeUI();draw();el('plot').scrollIntoView({block:'center'});
+}
+if(new URLSearchParams(location.search).get('between')==='1'&&el('between-layer'))el('between-layer').checked=true;
+const clock=t=>new Date(t*1000).toLocaleTimeString('en-CA',{timeZone:corridor==='finch'?'America/Toronto':'America/New_York',hour12:false});
+function color(v){const t=Math.max(0,Math.min(1,v/20));return `hsl(${t*120},75%,40%)`;}
+function draw(){
+ if(!data)return;const panRange=data.end-data.start-(view[1]-view[0]);el('time').value=panRange>0?1000*(view[0]-data.start)/panRange:0;const selected=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value)),sites=data.sites.filter(s=>selected.has(s.id));
+ renderMovements(sites);
+ const canvas=el('plot'),w=canvas.clientWidth,h=document.body.classList.contains('embedded-figure')?Math.max(180,canvas.clientHeight):650,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;const c=canvas.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);points=[];
+ if(!sites.length){c.fillText('Select an intersection.',30,40);return;}
+ const lo=Math.min(...sites.map(s=>s.station_m))-130,hi=Math.max(...sites.map(s=>s.station_m))+130;
+ const x=t=>90+(t-view[0])/(view[1]-view[0])*(w-110),y=s=>h-50-(s-lo)/(hi-lo)*(h-80);
+ c.font=document.body.classList.contains('embedded-figure')?'9px sans-serif':'12px sans-serif';c.fillStyle='#52636d';c.strokeStyle='#dbe3e8';
+ const ticks=Math.max(2,Math.min(6,Math.floor((w-110)/100)));
+ for(let i=0;i<=ticks;i++){const t=view[0]+i*(view[1]-view[0])/ticks;c.beginPath();c.moveTo(x(t),20);c.lineTo(x(t),h-50);c.stroke();c.textAlign=i===0?'left':i===ticks?'right':'center';c.fillText(clock(t),x(t),h-25);}c.textAlign='left';
+ for(const s of sites){c.fillStyle='#263b46';c.fillText(s.name,95,y(s.station_m)-8);c.fillText(Math.round(s.station_m)+' m',4,y(s.station_m));c.strokeStyle='#c3cdd3';c.beginPath();c.moveTo(90,y(s.station_m));c.lineTo(w-20,y(s.station_m));c.stroke();}
+ c.save();c.beginPath();c.rect(90,20,w-110,h-70);c.clip();let count=0;
+ for(const site of sites)for(const [trackIndex,tr] of site.tracks.entries()){
+  const filter=el('objects').value,code=tr.class_type;if(tr.direction!==el('direction').value)continue;
+  if(filter==='vehicles'&&!vehicle.has(code)||filter==='pedestrians'&&!['0','10','11','14','16'].includes(code)||filter==='cyclists'&&!['12','13','17'].includes(code))continue;
+  if(tr.method)continue;
+  const gs=groupSite(site.id),gid=gs?.assignments[trackIndex]??null,key=gid?groupKey(site.id,gid):null;
+  const groupLabel=gid?'Group '+(gs.groups.findIndex(g=>g.group_id===gid)+1):'ungrouped';
+  if(isGrouped()&&selectedGroup()!=='all'&&key!==selectedGroup())continue;
+  let seen=false;const overlapSelected=overlapExample?.sites.includes(site.id)&&overlapExample.source_keys.some(k=>JSON.stringify(k)===JSON.stringify(tr.source_key));
+  for(let i=1;i<tr.points.length;i++){
+   const a=tr.points[i-1],b=tr.points[i],ta=data.start+a[0],tb=data.start+b[0],dt=b[0]-a[0];
+   if(dt<=0||dt>1.5||tb<view[0]||ta>view[1])continue;
+   seen=true;c.strokeStyle=isGrouped()&&el('group-color')?.value==='group'?(gid?groupColor(key):'#a5adb2'):color(b[2]);c.lineWidth=overlapSelected?3:isGrouped()&&selectedGroup()!=='all'?1.5:1;c.setLineDash([]);
+   c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();
+   const receiptTime=data.start+(tr.original_receipt_offsets_s?.[i]??b[0]);
+   points.push({x:x(tb),y:y(b[1]),time:tb,receiptTime,speed:b[2],name:'Observed position · '+site.name+(isGrouped()?' · '+groupLabel:'')+(overlapSelected?' · overlap correspondence hypothesis; identity unverified':'')});
+  }
+  if(seen)count++;
+ }
+ paintReconstruction(c,x,y,selected);
+ c.restore();el('coverage').textContent=`${count} visible recorded fragments · Window ${clock(view[0])}–${clock(view[1])} ${regionName} time. `+sites.map(s=>`${s.name}: ${s.frames} plotted frames / ${s.raw_frames??s.frames} received frames`).join(' · ');
+}
+
+function renderMovements(sites){
+ const host=el('movement-summary');if(!host)return;host.replaceChildren();
+ for(const site of sites){
+  const title=document.createElement('h3');title.textContent=site.name;host.append(title);
+  const summary=site.movement_summary;if(!summary){host.append(document.createTextNode('Collecting movement evidence.'));continue;}
+  const note=document.createElement('p');note.textContent=`${summary.unknown_tracks} incomplete/ambiguous tracks excluded from spatial matching; ${summary.phase_samples} recorded phase snapshots. Geometry and phase assignments are estimates.`;host.append(note);
+  const table=document.createElement('table'),head=document.createElement('tr');
+  for(const label of ['From → To','Turn','Classified fragments','Corridor role','Phase mapping']){const th=document.createElement('th');th.textContent=label;head.append(th);}table.append(head);
+  for(const m of summary.movements){const row=document.createElement('tr');for(const value of [m.from+' → '+m.to,m.turn,m.observed_tracks,(['E','W'].includes(m.from)?(['E','W'].includes(m.to)?'Through · both links':'Exiting · previous link only'):(['E','W'].includes(m.to)?'Entering · next link only':'Cross street · no corridor link')),m.phase_numbers.length?'EST phase '+m.phase_numbers.join(', '):'Not decoded · '+m.qualifying_releases+' releases']){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}table.append(row);}host.append(table);
+ }
+}
+function zoom(f,fraction=.5){
+ if(!data||!view)return;
+ fraction=Math.max(0,Math.min(1,fraction));
+ const total=data.end-data.start;if(total<=0)return;
+ const oldSpan=view[1]-view[0],span=Math.min(total,Math.max(Math.min(20,total),oldSpan*f));
+ // Keep the time underneath the pointer at the same horizontal position.
+ const anchor=view[0]+fraction*oldSpan,start=Math.max(data.start,Math.min(data.end-span,anchor-fraction*span));
+ view=[start,start+span];draw();
+}
+async function refresh(){if(refreshRunning)return;refreshRunning=true;try{if(!frozenId&&data&&Date.now()/1000-data.start>5400){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}try{const r=await fetch(frozenId?`/api/florida-frozen?capture=${encodeURIComponent(frozenId)}`:`/api/${corridor}-rolling?since=${data?rollingToken:0}`);if(!r.ok)throw Error('Viewer unavailable');const next=await r.json();if(next.state==='unchanged')return;if(next.state!=='ready'){el('message').textContent=next.message;if(next.state==='expired'){data=null;points=[];el('plot').getContext('2d').clearRect(0,0,el('plot').width,el('plot').height);el('coverage').textContent='Expired snapshot hidden.';}return;}
+ rollingToken=next.version??next.generated_at;
+ el('message').textContent=frozenId?`Frozen study hour · ${new Date(next.start*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'})} · ${clock(next.start)}–${clock(next.end)} Florida time. Automatic refresh is off.`:`Figure updated ${clock(next.generated_at)} · Next update ${clock(next.next_update)} ${regionName} time. Shows ${clock(next.start)}–${clock(next.end)}; early collection may cover less than one hour.`;
+ if(!next.sites.some(s=>s.tracks?.length))el('message').textContent+=' No trajectory segments in this published window yet. Collection may have just restarted; a fresh figure is being prepared.';
+ if(next.time_basis==='receipt_debursted'){
+  const audits=next.sites.flatMap(s=>s.clock_audit||[]),events=audits.flatMap(a=>a.events||[]);
+  el('message').textContent+=` Timing: ${events.length} bounded delivery bursts corrected using continuous sensor elapsed time between receipt anchors. Positions are measured; adjusted times are estimates. Hover to compare receipt time. Cross-sensor clock offsets remain unverified.`;
+ }
+ if(next.generated_at===version)return;version=next.generated_at;const chosen=new Set([...el('sites').querySelectorAll('input:checked')].map(n=>n.value));data=next;overlapExample=null;view=[data.start,data.end];el('sites').replaceChildren();for(const s of data.sites){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.value=s.id;box.checked=!chosen.size||chosen.has(s.id);box.onchange=()=>{updateGroupControls();draw();};label.append(box,document.createTextNode(' '+s.name));el('sites').append(label);}draw();refreshReconstruction();
+ }catch(e){el('message').textContent=e.message;}}finally{refreshRunning=false;}}
+if(el('spatial-estimates'))el('spatial-estimates').onchange=draw;
+function showGroupConnection(){
+ const paths=groupData()?.between_intersections||[];
+ const path=paths.find(p=>p.direction===el('direction').value)||paths[0];if(!path||!data)return;
+ el('group-mode').checked=true;el('group-gap-layer').checked=true;el('direction').value=path.direction;el('objects').value='vehicles';
+ for(const box of el('sites').querySelectorAll('input'))box.checked=path.sites.includes(box.value);
+ updateGroupControls();el('trajectory-group').value='all';
+ view=[Math.max(data.start,data.start+path.points[0][0]-10),Math.min(data.end,data.start+path.points.at(-1)[0]+10)];
+ el('group-detail').textContent=`Individual connection supported by ${path.group_evidence.anchor_count} other group-pair matches. All are hypotheses; vehicle identity between intersections is unverified. Dashed lines use speed colors.`;
+ draw();el('plot').scrollIntoView({block:'center'});
+}
+if(el('group-gap-example'))el('group-gap-example').onclick=showGroupConnection;
+if(el('group-gap-layer'))el('group-gap-layer').onchange=()=>{if(el('group-gap-layer').checked&&selectedGroup()!=='all')showGroupConnection();else draw();};
+if(el('group-mode'))el('group-mode').onchange=()=>{
+ updateGroupControls();const url=new URL(location.href);url.searchParams.delete('aggregate');if(isGrouped())url.searchParams.set('groups','1');else url.searchParams.delete('groups');history.replaceState(null,'',url);draw();
+};
+if(el('trajectory-group'))el('trajectory-group').onchange=()=>{if(selectedGroup()==='all'){el('group-detail').textContent='All individual groups are shown; ungrouped observations remain available.';draw();}else showGroup(selectedGroup());};
+if(el('group-example'))el('group-example').onclick=()=>{const options=[...el('trajectory-group').options].filter(o=>o.value!=='all');if(options.length)showGroup(options[0].value);};
+if(el('group-all'))el('group-all').onclick=()=>{el('trajectory-group').value='all';for(const box of el('sites').querySelectorAll('input'))box.checked=true;view=[data.start,data.end];updateGroupControls();el('group-detail').textContent='All groups and ungrouped observed trajectories.';draw();};
+if(el('group-color'))el('group-color').onchange=()=>{groupModeUI();draw();};
+groupModeUI();
+el('direction').onchange=()=>{updateGroupControls();draw();};el('objects').onchange=draw;el('zoom-in').onclick=()=>zoom(.5);el('zoom-out').onclick=()=>zoom(2);el('reset').onclick=()=>{if(data){view=[data.start,data.end];draw();}};
+if(el('fit-recorded'))el('fit-recorded').onclick=()=>{
+ if(!data)return;const ids=new Set([...el('sites').querySelectorAll('input:checked')].map(b=>b.value));
+ const ranges=data.sites.filter(s=>ids.has(s.id)).flatMap(s=>s.tracks.filter(t=>!t.method&&t.direction===el('direction').value&&t.points.length).map(t=>[t.points[0][0],t.points.at(-1)[0]]));
+ if(!ranges.length){el('hover').textContent='No recorded trajectory segments in this selection yet.';return;}
+ const first=Math.min(...ranges.map(r=>r[0])),last=Math.max(...ranges.map(r=>r[1]));
+ view=[Math.max(data.start,data.start+first-5),Math.min(data.end,data.start+last+5)];draw();
+};
+el('time').oninput=()=>{if(data){const span=view[1]-view[0],start=data.start+(data.end-data.start-span)*Number(el('time').value)/1000;view=[start,start+span];draw();}};
+el('plot').addEventListener('wheel',e=>{e.preventDefault();if(!e.deltaY)return;const canvas=el('plot'),rect=canvas.getBoundingClientRect();if(rect.width<=0||canvas.clientWidth<=110)return;const pointerX=(e.clientX-rect.left)*canvas.clientWidth/rect.width;zoom(e.deltaY>0?1.25:.8,(pointerX-90)/(canvas.clientWidth-110));},{passive:false});el('plot').ondblclick=()=>el('reset').click();
+el('plot').onmousemove=e=>{const rect=el('plot').getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+ if(!data){el('hover').textContent='Waiting for recorded observations.';return;}
+ let best=null,dist=64;for(const p of points){const d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;best=p;}}el('hover').textContent=best?`${best.name} · ${clock(best.time)} · ${best.speedAvailable===false?'speed unavailable':best.speed.toFixed(1)+' m/s'}`+(best.receiptTime!=null&&Math.abs(best.receiptTime-best.time)>.05?` · adjusted time; received ${clock(best.receiptTime)} (${(best.receiptTime-best.time).toFixed(2)} s later)`:''):'Hover over a trajectory for its time and speed.';};window.addEventListener('resize',draw);refresh();if(!frozenId)setInterval(refresh,15000);
+
+if(el("additional-matches"))el("additional-matches").onchange=draw;
+function showColorExample(kind){
+ const paths=reconstruction?.residual_color?.[kind]||[];
+ const candidates=paths.filter(p=>p.direction===el('direction').value);
+ const p=candidates.sort((a,b)=>(b.points.at(-1)[0]-b.points[0][0])-(a.points.at(-1)[0]-a.points[0][0]))[0]||paths[0];
+ if(!p||!data)return;
+ overlapExample=null;
+ el('direction').value=p.direction;el('objects').value='vehicles';el('color-layer').checked=true;
+ el(kind==='within_intersection'?'within-layer':'between-layer').checked=true;
+ const sites=new Set(p.sites||[p.site]);for(const box of el('sites').querySelectorAll('input'))box.checked=sites.has(box.value);
+ const start=data.start+p.points[0][0],end=data.start+p.points.at(-1)[0],padding=Math.max(10,(end-start)*.2);
+ view=[Math.max(data.start,start-padding),Math.min(data.end,end+padding)];colorExample=p.points[0][0]+':'+p.points.at(-1)[0];draw();
+}
+if(el('color-local-example'))el('color-local-example').onclick=()=>showColorExample('within_intersection');
+if(el('color-between-example'))el('color-between-example').onclick=()=>showColorExample('between_intersections');
+if(el('overlap-example'))el('overlap-example').onclick=()=>{
+ const link=reconstruction?.coverage_audit?.overlap_links?.find(l=>l.example&&l.direction===el('direction').value);if(!link||!data)return;
+ overlapExample={...link.example,sites:link.sites};el('objects').value='vehicles';
+ for(const box of el('sites').querySelectorAll('input'))box.checked=link.sites.includes(box.value);
+ view=[Math.max(data.start,data.start+link.example.overlap_time[0]-8),Math.min(data.end,data.start+link.example.overlap_time[1]+8)];
+ draw();el('plot').scrollIntoView({block:'center'});
+};
+
+function renderGapAudit(audit){
+ const host=el('coverage-audit');if(!host)return;host.replaceChildren();
+ if(!audit){host.textContent='Waiting for an audit aligned with this figure window.';return;}
+ const note=document.createElement('p');note.textContent='Whole-window audit, both directions. Local counts cover vehicle classes with observed same-session/object endpoints; the baseline corridor matcher currently covers cars. Entirely unseen vehicles and changed IDs are not counted. Estimated paths are excluded from measured KPI inputs. Cross-sensor travel times remain experimental.';host.append(note);
+ function table(headers,rows){const t=document.createElement('table'),h=document.createElement('tr');for(const label of headers){const cell=document.createElement('th');cell.textContent=label;h.append(cell);}t.append(h);for(const values of rows){const r=document.createElement('tr');for(const value of values){const cell=document.createElement('td');cell.textContent=value;r.append(cell);}t.append(r);}host.append(t);}
+ table(['Intersection','Observable same-ID gaps','Baseline filled','Experimental filled','Unresolved'],audit.sites.map(s=>[s.name,s.observable_same_id_gaps,s.baseline_estimated,s.experimental_estimated,s.unresolved]));
+ for(const s of audit.sites){const p=document.createElement('p');p.textContent=s.name+': '+Object.entries(s.unresolved_reasons).map(([k,v])=>`${k.replaceAll('_',' ')}: ${v}`).join('; ')+`. Classified exit fragments: ${s.movement_roles.corridor_exit||0}; unknown movement fragments: ${s.movement_roles.unknown||0}. Exit classifications are provisional; unknowns are not treated as exits.`;host.append(p);}
+ table(['Link','Direction','Eligible departures','Baseline estimated','Still unmatched departures','Additional experimental proposals'],audit.links.map(l=>[l.names.join(' → '),l.direction,l.eligible_departures,l.baseline_estimated,l.baseline_unmatched_departures,l.experimental_estimated]));
+ if(audit.overlap_links){
+  const label=document.createElement('p');label.textContent='Observed coverage overlap: negative median end-to-start distance means the views overlap, so a forward dashed gap would be inappropriate. Concurrent motion/size matches are identity hypotheses, not recovered missing samples.';host.append(label);
+  table(['Adjacent views','Direction','Median end-to-start distance','Overlap association hypotheses'],audit.overlap_links.map(l=>[l.names.join(' → '),l.direction,l.median_signed_end_to_start_m==null?'Unavailable':l.median_signed_end_to_start_m.toFixed(1)+' m',l.overlap_hypotheses]));
+ }
+ const caveat=document.createElement('p');caveat.textContent='Link counts are fragment endpoints, not unique vehicles. The experimental layer can use a different class pool and does not reduce the baseline unmatched count. Unknown movements, clock conflicts and ambiguous identities remain unresolved; a fully connected drawing would not prove accurate KPIs.';host.append(caveat);
+}
+
+function paintReconstruction(c,x,y,selected){
+ if(!reconstruction||reconstruction.state!=='ready'||reconstruction.snapshot_generated_at!==data.generated_at)return;
+ const counts=[0,0,0],extraCounts=[0,0];let groupCount=0,grayCount=0;const allowed=['all','vehicles'].includes(el('objects').value);
+ const groups=[['within-layer',reconstruction.within_intersection||[],0],['between-layer',reconstruction.between_intersections||[],1]];
+ if(el('uncertain-layer')?.checked)groups.unshift(['uncertain-layer',uncertainConnections.paths,2]);
+ if(el('color-layer')?.checked&&reconstruction.residual_color){
+  groups.push(['within-layer',reconstruction.residual_color.within_intersection||[],0],['between-layer',reconstruction.residual_color.between_intersections||[],1]);
+ }
+ if(el('group-gap-layer')?.checked)groups.push(['group-gap-layer',reconstruction.trajectory_groups?.between_intersections||[],1]);
+ for(const [control,paths,group] of groups){if(!allowed||!el(control)?.checked)continue;
+  for(const path of paths){
+   if(path.direction!==el('direction').value||!(path.sites||[path.site]).every(id=>selected.has(id)))continue;
+   if(isGrouped()&&selectedGroup()!=='all'){
+    const [sid,gid]=selectedGroup().split('|'),gs=groupSite(sid),g=gs?.groups.find(g=>g.group_id===gid),site=data.sites.find(s=>s.id===sid);
+    const members=new Set((g?.member_indices||[]).map(i=>JSON.stringify(site.tracks[i].source_key?.slice(0,2).map(String))));
+    const identity=path.identity_key||path.source_key?.slice(0,2);
+    const matches=path.site===sid&&identity&&members.has(JSON.stringify(identity.map(String)));
+    // Unknown provenance cannot silently attach an estimate to a selected group.
+    if(!matches)continue;
+   }
+   const uncertain=path.layer==='uncertain_between';
+   let seen=false,distance=0;
+   for(let i=1;i<path.points.length;i++){
+    const a=path.points[i-1],b=path.points[i],ta=data.start+a[0],tb=data.start+b[0],length=Math.hypot(x(tb)-x(ta),y(b[1])-y(a[1]));
+    if(tb>=view[0]&&ta<=view[1]){seen=true;c.strokeStyle=uncertain?'#858e96':path.speed_available===false?'#64748b':color(b[2]);c.lineWidth=uncertain?1.3:path.layer==='residual_color_slope'&&colorExample===path.points[0][0]+':'+path.points.at(-1)[0]?3:1.8;c.globalAlpha=uncertain?.7:1;c.setLineDash(uncertain?[6,5]:path.layer==='residual_color_slope'?[10,4,2,4]:group?[8,5]:[3,4]);c.lineDashOffset=-distance;c.beginPath();c.moveTo(x(ta),y(a[1]));c.lineTo(x(tb),y(b[1]));c.stroke();points.push({x:x(tb),y:y(b[1]),time:tb,speed:b[2],speedAvailable:path.speed_available!==false,name:uncertain?'UNCERTAIN cross-intersection match · may be a different vehicle · visual only, excluded from KPIs':'EST '+(group?'between intersections · identity unverified':'within intersection'+((path.identity||'').startsWith('unverified')?' · identity unverified':''))+' · '+({'bounded_stationary_latent_position':'stationary position estimate','endpoint_envelope_grid_retry_v1':'refined endpoint time grid'}[path.estimation_model]||({'same_id_monotone_continuity_v1':'same-ID connection','kinematic_same_id_lateral_v1':'same-ID lateral-motion estimate','color_slope_chronological_v1':'same-color constant-slope proposal'}[path.method]||path.method))+(path.exact_endpoint_interpolation===false?' · stationary estimate; endpoint residual ≤'+(100*Math.max(...(path.endpoint_position_residual_m||[0]).map(Math.abs))).toFixed(1)+' cm':'')+(path.object_id?' · object ID '+path.object_id:'')+(path.speed_available===false?' · timing uncertain; speed unavailable':'')+(path.warnings?.includes('long_gap_motion_unobserved')?' · long gap; intervening motion unobserved':'')});}distance+=length;
+   }if(seen){counts[group]++;if(path.speed_available===false&&!uncertain)grayCount++;if(path.layer==='residual_color_slope')extraCounts[group]++;if(path.method==='trajectory_group_anchor_v1')groupCount++;}
+  }
+ }
+ c.setLineDash([]);c.lineDashOffset=0;c.globalAlpha=1;
+ if(el('uncertain-layer'))el('uncertain-layer').closest('label').title=`${counts[2]} uncertain connections visible. Best guesses may join different vehicles; excluded from KPIs.`;
+ if(el('group-gap-status'))el('group-gap-status').textContent=`${groupCount} group-assisted individual connection hypotheses visible. These are separate from group membership and do not verify vehicle identity.`;
+ if(el('layer-counts'))el('layer-counts').textContent=`Visible estimates: ${counts[0]} within intersections; ${counts[1]} between intersections. Speed colors are estimates, not confidence. ${grayCount} gray same-ID connectors have uncertain timing and no speed estimate.`+(el('uncertain-layer')?` ${counts[2]} additional gray uncertain matches; visual only, excluded from KPIs.`:'')+(el('color-layer')?.checked?` Requested color-slope additions: ${extraCounts[0]} within; ${extraCounts[1]} between.`:'')+(el('within-layer')?.checked&&counts[0]===0?' No supported local estimates in this selection; checking the box cannot join unidentified fragments.':'');
+}
+async function refreshReconstruction(){
+ if(!el('reconstruction-status'))return;
+ try{
+  const response=await fetch(frozenId?`/api/florida-frozen-reconstruction?capture=${encodeURIComponent(frozenId)}`:`/api/${corridor}-reconstruction`);if(!response.ok)throw Error('Reconstruction study unavailable');reconstruction=await response.json();
+  const aligned=reconstruction.state==='ready'&&data&&reconstruction.snapshot_generated_at===data.generated_at;
+  if(el('uncertain-layer')){
+   const key=aligned?JSON.stringify([data.generated_at,reconstruction.generated_at,reconstruction.within_intersection?.length,reconstruction.between_intersections?.length,reconstruction.residual_color?.between_intersections?.length]):null;
+   if(!aligned){uncertainConnections={paths:[]};uncertainVersion=null;}
+   else if(key!==uncertainVersion){uncertainConnections=UncertainConnections.build(data,reconstruction);uncertainVersion=key;}
+   el('uncertain-layer').disabled=!aligned;
+  }
+  if(el('same-id-status')){
+   const review=aligned&&reconstruction.same_id_continuity;
+   el('same-id-status').textContent=review?`Same-ID continuity: ${review.added} additional connections across this hour; ${review.timing_uncertain} have uncertain timing (gray). ${review.unresolved} conflicting gaps remain unconnected. Matches use intersection + tracking session + object ID, including classification changes. Dashed paths are excluded from measured KPIs.`:'';
+   if(review?.validation){const v=review.validation.by_duration;el('same-id-status').textContent+=` Hidden-data check on this development hour: 10-second gaps averaged ${v['10'].position_mae_m.toFixed(2)} m position error; 60-second gaps ${v['60'].position_mae_m.toFixed(2)} m. Gray timing connectors are not covered by that test.`;}
+   el('same-id-example').disabled=!review?.added;
+  }
+  updateGroupControls();
+  for(const id of ['group-gap-layer','group-gap-example'])if(el(id))el(id).disabled=!aligned||!reconstruction.trajectory_groups?.between_intersections?.length;
+  renderGapAudit(aligned?reconstruction.coverage_audit:null);
+  if(el('overlap-example'))el('overlap-example').disabled=!aligned||!reconstruction.coverage_audit?.overlap_links?.some(l=>l.example);
+  for(const id of ['within-layer','between-layer'])el(id).disabled=!aligned;
+  if(el('color-layer'))el('color-layer').disabled=!aligned||!reconstruction.residual_color;
+  if(el('color-local-example'))el('color-local-example').disabled=!aligned||!reconstruction.residual_color?.within_intersection?.length;
+  if(el('color-between-example'))el('color-between-example').disabled=!aligned||!reconstruction.residual_color?.between_intersections?.length;
+  const study=reconstruction.study||{},parts=study.readiness?.partitions;
+  const fallbackCounts={plateau:0,grid:0};for(const p of reconstruction.within_intersection||[]){if(p.estimation_model==='bounded_stationary_latent_position')fallbackCounts.plateau++;if(p.estimation_model==='endpoint_envelope_grid_retry_v1')fallbackCounts.grid++;}
+  const lateralCount=(reconstruction.within_intersection||[]).filter(p=>p.method==='kinematic_same_id_lateral_v1').length;
+  const lateralNote=lateralCount?` ${lateralCount} additional short same-ID lateral-motion estimates at sites passing masked-data checks; lane changes are unverified.`:'';
+  const fallbackNote=(fallbackCounts.plateau||fallbackCounts.grid)?` Local fallbacks: ${fallbackCounts.grid} exact-endpoint grid retries; ${fallbackCounts.plateau} stationary estimates with up to 5 cm endpoint residual. Observations are unchanged.`:'';
+  el('reconstruction-status').textContent=aligned?`Selected local method: ${reconstruction.method==='color_slope_chronological_v1'?'Speed-color + constant-slope chronological matching (experimental; 1 m/s color bands; original slope for 80%, bounded correction at the end)':reconstruction.method}${reconstruction.endpoint_corrected_gaps?' + bounded stationary endpoint correction on '+reconstruction.endpoint_corrected_gaps+' gaps':''}.${fallbackNote}${lateralNote}${reconstruction.association_method==='bidirectional_shape_v1'?' Matching uses forward/backward motion evidence (experimental).':''} Between-intersection transfer is experimental; identities are unverified.`:(reconstruction.message||'Waiting for layers for this figure window.')+(parts?' '+Object.entries(parts).map(([name,p])=>`${name}: ${p.tracks} usable fragments`).join(' · '):'');
+  const host=el('reconstruction-comparison');host.replaceChildren();
+  if(reconstruction.two_phase_review){
+   const review=reconstruction.two_phase_review,h=document.createElement('h4');
+   h.textContent=review.title||'Two-phase reconstruction review';host.append(h);
+   for(const line of review.lines||[]){const p=document.createElement('p');p.textContent=line;host.append(p);}
+   if(review.figure==='/florida-two-phase-validation.png'){
+    const a=document.createElement('a');a.href=review.figure;a.target='_blank';a.rel='noopener';
+    a.textContent='View held-out reconstruction and matching comparison';host.append(a);
+   }
+  }
+  if(reconstruction.moderate_timing_validation){
+   const v=reconstruction.moderate_timing_validation,q=v.pooled.test.methods,m=v.matching.test,p=document.createElement('p');
+   p.textContent=`Smaller bounded delivery delays corrected at ${v.sites.length} qualified sites. Later hidden gaps: ${q.baseline.accepted} → ${q.moderate.accepted} reconstructed; common-case position MAE ${q.baseline.common.mae_m.toFixed(2)} → ${q.moderate.common.mae_m.toFixed(2)} m. Matching proxy: ${m.baseline.correct} → ${m.moderate.correct} correct, ${m.baseline.wrong} → ${m.moderate.wrong} wrong. Renaissance and Boston retain previous timing. These are car-trajectory interpolation checks, not verified sensor synchronization or KPI accuracy.`;host.append(p);
+  }
+  if(reconstruction.local_lateral_recheck){const r=reconstruction.local_lateral_recheck,p=document.createElement('p');p.textContent=`Later all-site recheck: Plaza Entrance now enabled under the unchanged short same-ID policy. Plaza later test: ${r.test.ids} distinct IDs; position MAE ${r.test.quality.mae_m.toFixed(2)} m, speed MAE ${r.test.quality.speed_mae_mps.toFixed(2)} m/s. Its earlier failed test remains recorded; Boston and Palm remain withheld for insufficient examples. This does not validate KPI values inside missing intervals.`;host.append(p);}
+  if(reconstruction.residual_color){
+   const v=reconstruction.residual_color,p=document.createElement('p');p.textContent=`Requested color-slope method · ${v.within_intersection.length} additional local and ${v.between_intersections.length} additional adjacent-intersection proposals across this hour. Existing estimates and observations are preserved. Departures are processed earliest first; candidates share a 1 m/s speed-color band and the closest eligible extrapolated position is selected. Ties remain unresolved.`;host.append(p);
+   const limits=document.createElement('p');limits.textContent='Original slope is retained for 80% of each extension. Only the final 20% closes the endpoint discrepancy, with speed adjustment ≤0.5 m/s. Maximum gaps: 90 s locally / 120 s between sites; maximum residual: 10 m / 20 m. Local clock, session, movement and lateral checks remain active. This hypothesis layer can make wrong identity matches.';host.append(limits);
+   if(v.validation){const q=v.validation.test.temporal,r=v.validation.test.spatial,line=document.createElement('p');line.textContent=`Later hidden endpoint-association test: local proposals ${q.added_correct} correct / ${q.added_wrong} wrong; spatial proposals ${r.added_correct} correct / ${r.added_wrong} wrong. The endpoint benchmark omits production local lateral/clock gates. It does not validate real cross-sensor identities.`;host.append(line);}
+  }
+  if(reconstruction.delivery_timing_validation){
+   const v=reconstruction.delivery_timing_validation,q=v.local.test.True.methods,m=v.matching.test;
+   const p=document.createElement('p');p.textContent=`Bounded delivery timing · later hidden affected gaps: ${q.receipt.accepted} → ${q.corrected.accepted} accepted. Common-gap position error ${q.receipt.common.mae_m.toFixed(2)} → ${q.corrected.common.mae_m.toFixed(2)} m. Spatial matching proxy: ${m.receipt.correct} → ${m.corrected.correct} correct, ${m.receipt.wrong} → ${m.corrected.wrong} wrong. Raw observations and receipt timestamps remain stored; clock resets, absent frames and unanchored delays remain unresolved.`;host.append(p);
+  }
+  if(reconstruction.gap_integrity_validation){
+   const v=reconstruction.gap_integrity_validation,quiet=(reconstruction.within_intersection||[]).filter(p=>p.stationary_noise_admission).length;
+   const p=document.createElement('p');p.textContent=`Gap review · ${quiet} additional quiet same-ID gaps use the stationary estimator, with at most 5 cm endpoint residual. Internal endpoints of accepted same-ID chains are excluded from between-intersection matching. Original observations stay unchanged.`;host.append(p);
+   const q=v.stationary.test, t=v.terminals.test, score=document.createElement('p');score.textContent=`Later hidden-data tests: ${q.accepted} quiet-gap masks from ${q.distinct_ids} IDs, ${(q.quality.mae_m*100).toFixed(1)} cm mean position error. Fragmented matching proxy: ${t.baseline.correct} → ${t.terminals.correct} correct, ${t.baseline.wrong_identity} → ${t.terminals.wrong_identity} wrong. These conditional tests do not verify cross-sensor identities.`;host.append(score);
+   const timing=document.createElement('p');timing.textContent='November 23 timing audit: the apparent interruption around 12:08 included 4–8 second receipt delays while sensor timestamps advanced only 0.1 second. '+(data?.time_basis==='receipt_debursted'?'Supported bounded delivery bursts are now corrected in newer windows; the original 12:08 raw window has expired. Unanchored delays remain unresolved.':'Receipt-time distortions remain unresolved; curves are not fabricated to hide them.');host.append(timing);
+  }
+  if(reconstruction.local_lateral_validation){
+   const v=reconstruction.local_lateral_validation,p=document.createElement('p');
+   p.textContent=`Short same-ID lateral recovery · ${v.test.accepted} additional hidden gaps, ${v.test.distinct_ids} distinct identities across ${v.enabled_sites.length} enabled intersections. Mean longitudinal error ${v.test.quality.mae_m.toFixed(2)} m; mean lateral error ${v.test.lateral_mae_m.toFixed(2)} m. Maximum gap 10 s. Other sites retain the previous method. These are masked-data checks, not verified lane changes or recovered ground truth.`;host.append(p);
+  }
+  if(reconstruction.bidirectional_validation){
+   const v=reconstruction.bidirectional_validation,p=document.createElement('p');
+   p.textContent='Bidirectional matching · later held-out interval. '+Object.entries(v.test['0.5']).map(([kind,row])=>{const old=v.test['0'][kind];return `${kind==='spatial'?'Hidden roadway sections':'Hidden time gaps'}: ${old.correct} → ${row.correct} correct; ${old.false} → ${row.false} wrong matches`;}).join('. ')+'. Same-sensor proxy tests; real cross-sensor identities are unverified. Only between-intersection matching uses this score.'+(reconstruction.local_lateral?' Local same-ID lateral recovery is evaluated separately above.':' Same-ID local reconstruction is unchanged.');host.append(p);
+  }
+  if(reconstruction.color_validation){
+   const v=reconstruction.color_validation,p=document.createElement('p');p.textContent='Current simple method · hidden recorded gaps: '+v.summary.color_slope.accepted+'/'+v.summary.color_slope.eligible+' accepted; position MAE '+(v.summary.color_slope.mae_m?.toFixed(2)??'unavailable')+' m. Masked association: '+v.association.correct+' correct / '+v.association.matched+' matched. Real between-sensor identities remain unverified.';host.append(p);
+  }
+  if(reconstruction.campaign && !reconstruction.color_validation){
+   const c=reconstruction.campaign,p=document.createElement('p');
+   p.textContent=`Bounded validation run: ${c.state}; scheduled end ${new Date(c.deadline*1000).toLocaleString('en-CA',{timeZone:'America/Toronto'})} Toronto. This compares fixed estimators on later recorded windows; it does not force unresolved matches.`;
+   host.append(p);
+   for(const [method,r] of Object.entries(c.cumulative?.methods||{})){
+    const row=document.createElement('p');row.textContent=`Run total · ${method}: ${r.accepted}/${r.eligible} hidden gaps reconstructed. Added-case position MAE ${r.new?.mae_m?.toFixed(2)??'unavailable'} m. Candidate comparison, not automatic deployment.`;host.append(row);
+   }
+   const shapes=c.cumulative?.shape_prospective;
+   if(shapes?.windows){
+    for(const [method,r] of Object.entries(shapes.totals)){const row=document.createElement('p');row.textContent=`Prospective masked matching · ${method==='current'?'frozen reference matcher':method==='0'?'global assignment':'size-assisted assignment'}: ${r.correct}/${r.eligible} correct matches; ${r.false} wrong. These are same-sensor masks, not verified identities between intersections.`;host.append(row);}
+   }
+   const gates=c.cumulative?.kinematic_gate_prospective;
+   if(gates?.windows){
+    for(const [method,r] of Object.entries(gates.totals)){const row=document.createElement('p');row.textContent=`Endpoint-feasibility comparison · ${method==='legacy'?'previous gate':'previous feasible-gate benchmark'}: ${r.correct}/${r.eligible} correct; ${r.false} wrong matches across ${gates.windows} future windows. Correlated same-sensor masks; actual between-sensor identities remain unverified.`;host.append(row);}
+   }
+   const lateral=c.cumulative?.lateral_prospective;
+   if(lateral?.windows){const row=document.createElement('p');row.textContent=`Prospective lateral-motion candidate: ${lateral.accepted}/${lateral.eligible} hidden gaps reconstructed; longitudinal MAE ${lateral.quality?.mae_m?.toFixed(2)??'unavailable'} m; lateral MAE ${lateral.lateral_mae_m?.toFixed(2)??'unavailable'} m. Evaluation does not automatically enable this candidate.`;host.append(row);}
+  }
+  if(reconstruction.comparison){
+   const note=document.createElement('p');note.textContent='Candidate comparisons below may include corrections withheld from deployment at individual sites.';host.append(note);
+   for(const [method,result] of Object.entries(reconstruction.comparison)){
+    const p=document.createElement('p'),m=result.common||{};p.textContent=`${method}: ${m.n||0} common held-out gaps; position MAE ${m.mae_m?.toFixed(2)??'unavailable'} m; speed MAE ${m.speed_mae_mps?.toFixed(2)??'unavailable'} m/s. Accepted ${result.accepted}/${result.eligible}.`;host.append(p);
+   }
+   const later=reconstruction.later_validation;
+   if(later){
+    const heading=document.createElement('h4');heading.textContent='Later recording · frozen model, no retraining';host.append(heading);
+    for(const [method,result] of Object.entries(later.methods||{})){const p=document.createElement('p'),m=result.common||{};p.textContent=`${method}: ${m.n||0} common gaps; position MAE ${m.mae_m?.toFixed(2)??'unavailable'} m; speed MAE ${m.speed_mae_mps?.toFixed(2)??'unavailable'} m/s. Accepted ${result.accepted}/${later.sampled}.`;host.append(p);}
+    const p=document.createElement('p'),coverage=later.frozen_uncertainty?.full_gap_coverage;p.textContent=`The earlier nominal 90% local error band covered ${coverage==null?'an unavailable fraction':(coverage*100).toFixed(1)+'%'} of later gaps. It is not a guaranteed confidence band and does not apply between intersections.`;host.append(p);
+   }
+   const integration=reconstruction.integration_validation;
+   if(integration){
+    const h=document.createElement('h4');h.textContent='CTM–Newell–signal experiment · hidden recorded trajectories';host.append(h);
+    const labels={test_local:'Local object gap',test_outage:'All-object recording outage',test_spatial:'Spatial blind band (proxy, not between-sensor truth)'};
+    for(const [key,label] of Object.entries(labels)){
+     const rows=integration.results?.[key],base=rows?.current?.common,model=rows?.integrated?.common;if(!base||!model)continue;
+     const p=document.createElement('p');p.textContent=`${label}: ${model.n} common accepted masks; current position MAE ${base.mae_m?.toFixed(3)??'unavailable'} m → integrated ${model.mae_m?.toFixed(3)??'unavailable'} m. Cases with all three priors: ${rows.integrated.common_all_priors??0}.`;host.append(p);
+     const gain=integration.paired_gain?.[key];if(gain){const p=document.createElement('p');p.textContent=`Exploratory 95% range for mean improvement: ${gain.bootstrap95_m.map(x=>x.toFixed(3)).join(' to ')} m; positive means improvement.`;host.append(p);}
+    }
+    const p=document.createElement('p');p.textContent='Experimental soft priors, provisional lane/stop-line geometry. This integrated-prior experiment did not demonstrate reliable improvement and was not deployed. Endpoint correction is assessed separately below. Spatial masking does not verify vehicle matching between sensors.';host.append(p);
+   }
+   if(reconstruction.pair_diagnostics?.length){
+    const h=document.createElement('h4');h.textContent=`Every ${corridor==='finch'?'Finch':'Florida'} pair · current recorded hour`;host.append(h);
+    const table=document.createElement('table'),head=document.createElement('tr');
+    for(const label of ['From → To','Direction','Departures','Arrivals','Displayed estimates','Final motion rejection']){const th=document.createElement('th');th.textContent=label;head.append(th);}table.append(head);
+    for(const link of reconstruction.pair_diagnostics){const row=document.createElement('tr');for(const value of [link.names.join(' → '),link.direction,link.departure_candidates,link.arrival_candidates,link.displayed_matches,link.final_rejections]){const td=document.createElement('td');td.textContent=value;row.append(td);}table.append(row);}host.append(table);
+    const note=document.createElement('p');note.textContent='Enable “Estimate between intersections” to show the supported dashed connections. These counts cover all sites and both directions for this hour; the plot follows your filters. Unmatched endpoints are fragments, not counts of missing unique vehicles. Turning exits, incomplete movements, ambiguous identity and motion conflicts remain unconnected.';host.append(note);
+   }
+   if(reconstruction.all_site_validation?.length){
+    const h=document.createElement('h4');h.textContent='Local endpoint correction · site-by-site validation';host.append(h);
+    for(const site of reconstruction.all_site_validation){const p=document.createElement('p');p.textContent=`${site.name}: ${site.methods.strict.accepted} → ${site.methods['noise_0.1'].accepted} of ${site.methods.strict.eligible} masked gaps accepted; new-case error ${site.new_cases.mae_m?.toFixed(2)??'unavailable'} m. ${site.correction_enabled?'Bounded correction enabled.':'Correction withheld: site error exceeds the quality threshold; strict estimator remains.'}`;host.append(p);}
+   }
+   const endpointStudy=reconstruction.endpoint_validation;
+   if(endpointStudy){
+    const h=document.createElement('h4');h.textContent='Endpoint-speed correction · untouched Florida hour';host.append(h);
+    const intro=document.createElement('p');intro.textContent=`Test: November 13, 17:00–18:00 Florida time, excluding IDs seen in the earlier hour. Selected policy: ${endpointStudy.selected}.`;host.append(intro);
+    for(const [name,row] of Object.entries(endpointStudy.test||{})){
+     const p=document.createElement('p');p.textContent=`${name}: ${row.accepted}/${row.eligible} gaps accepted (${(100*row.coverage).toFixed(1)}%). Newly accepted: ${row.newly_accepted.n}, position error ${row.newly_accepted.mae_m?.toFixed(3)??'unavailable'} m. Previously accepted gaps lost: ${row.lost_strict_cases}.`;host.append(p);
+     for(const [gap,g] of Object.entries(row.by_gap||{})){const t=document.createElement('p');t.textContent=`${gap}s: ${g.accepted}/${g.eligible} accepted; ${g.newly_accepted.n} additional gaps, new-case error ${g.newly_accepted.mae_m?.toFixed(3)??'unavailable'} m.`;host.append(t);}
+    }
+    const p=document.createElement('p');p.textContent=`Current displayed gaps with corrected endpoint speeds: ${reconstruction.endpoint_corrected_gaps??0}. Corrections apply only to inferred within-intersection curves with quiet visible samples. Recorded data and positions remain unchanged. Existing error bands do not cover these new cases. This does not validate identity matching between sensors.`;host.append(p);
+   }
+   const archive=reconstruction.archive_validation;
+   if(archive){
+    const h=document.createElement('h4');h.textContent='Additional Florida archives · longer gaps and blind matching';host.append(h);
+    const info=document.createElement('p');info.textContent=`November 13: morning training/selection, afternoon held out. Selected shape: ${archive.selected_shape}; selected association: ${archive.selected_association}. These shape/association candidates were not deployed.`;host.append(info);
+    for(const [method,row] of Object.entries(archive.results?.test||{})){
+     const p=document.createElement('p');p.textContent=`${method}: ${row.accepted}/${row.eligible} accepted; ${row.common.n} common masks; mean position error ${row.common.mae_m?.toFixed(3)??'unavailable'} m.`;host.append(p);
+     for(const [gap,m] of Object.entries(row.by_gap||{})){const line=document.createElement('p');line.textContent=`${gap}-second hidden interval: ${m.n} common masks, position error ${m.mae_m?.toFixed(3)??'unavailable'} m, speed error ${m.speed_mae_mps?.toFixed(3)??'unavailable'} m/s.`;host.append(line);}
+    }
+    for(const [scenario,methods] of Object.entries(archive.association_test||{}))for(const [method,m] of Object.entries(methods)){const p=document.createElement('p');p.textContent=`Identity-blind ${scenario} · ${method}: ${m.correct}/${m.eligible} correct matches; ${m.false} wrong matches; precision ${m.precision==null?'unavailable':(m.precision*100).toFixed(1)+'%'}.`;host.append(p);}
+    const p=document.createElement('p');p.textContent='Same-sensor spatial masks are a proxy, not proof of identity or path accuracy between intersections. Archived signal state is unavailable for this comparison. These remain retrospective estimates.';host.append(p);
+   }
+   const association=reconstruction.association_validation;
+   if(association){
+    const heading=document.createElement('h4');heading.textContent='Tracklet matching · held-out spatial masks';host.append(heading);
+    for(const [scenario,methods] of Object.entries(association.test||{}))for(const [method,m] of Object.entries(methods)){
+     const p=document.createElement('p');p.textContent=`${scenario==='complete'?'All endpoints available':'Missing departures and arrivals'} · ${method}: ${m.correct}/${m.eligible} correct recovered matches (${m.recall==null?'unavailable':(100*m.recall).toFixed(1)+'%'}); ${m.false} wrong matches; precision ${m.precision==null?'unavailable':(100*m.precision).toFixed(1)+'%'}.`;host.append(p);
+    }
+    const p=document.createElement('p');p.textContent='This earlier global-method experiment recovered more matches but made more errors. Current displayed association policy: '+(reconstruction.association_method||'conservative matcher')+'. Same-sensor masks do not verify identities between intersections.';host.append(p);
+   }
+   for(const text of reconstruction.limitations||[]){const p=document.createElement('p');p.textContent=text;host.append(p);}
+  }else host.textContent='No method has completed the required held-out comparison yet.';
+  if(!aligned)el('layer-counts').textContent='Estimated layers unavailable for this window.';
+  draw();
+ }catch(e){reconstruction=null;uncertainConnections={paths:[]};uncertainVersion=null;updateGroupControls();el('reconstruction-status').textContent=e.message;for(const id of ['within-layer','between-layer','uncertain-layer'])if(el(id))el(id).disabled=true;draw();}
+}
+for(const id of ['within-layer','between-layer','color-layer','uncertain-layer'])if(el(id))el(id).onchange=draw;
+if(!frozenId){refreshReconstruction();setInterval(refreshReconstruction,15000);}
+
+if(el('same-id-example'))el('same-id-example').onclick=()=>{
+ const paths=(reconstruction?.within_intersection||[]).filter(p=>p.method==='same_id_monotone_continuity_v1');
+ const path=paths.find(p=>p.direction===el('direction').value&&!p.timing_uncertain&&p.gap_s>=5&&p.gap_s<=30)||paths[0];
+ if(!path||!data)return;
+ el('direction').value=path.direction;el('objects').value='vehicles';el('within-layer').checked=true;
+ if(el('group-mode'))el('group-mode').checked=false;
+ for(const box of el('sites').querySelectorAll('input'))box.checked=box.value===path.site;
+ view=[Math.max(data.start,data.start+path.points[0][0]-5),Math.min(data.end,data.start+path.points.at(-1)[0]+5)];
+ updateGroupControls();draw();el('plot').scrollIntoView({block:'center'});
+};

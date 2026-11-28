@@ -1,0 +1,71 @@
+1
+00:00:00,000 --> 00:00:03,480
+From LiDAR observations to corridor insight.
+
+2
+00:00:03,480 --> 00:00:10,000
+Choose Florida or Toronto. This demonstration uses Florida’s active data feed.
+
+3
+00:00:10,000 --> 00:00:14,960
+Select an intersection, then zoom in to see moving road users.
+
+4
+00:00:14,960 --> 00:00:23,960
+Road users update from the BlueCity stream. Map positions and alignment are approximate.
+
+5
+00:00:23,960 --> 00:00:30,880
+Read received phase colors. A phase ID does not establish a verified movement direction.
+
+6
+00:00:30,880 --> 00:00:36,960
+Explore a saved one-hour recording. The rolling view also refreshes every 30 minutes.
+
+7
+00:00:36,960 --> 00:00:40,880
+Filter trajectories by travel direction and object type.
+
+8
+00:00:40,880 --> 00:00:46,880
+Choose intersections, then zoom around the pointer to inspect a specific time window.
+
+9
+00:00:46,880 --> 00:00:53,240
+Within one intersection, interrupted observations leave gaps.
+
+10
+00:00:53,240 --> 00:01:00,560
+Enable local estimates: compatible same-session object IDs are connected with constrained curves.
+
+11
+00:01:00,560 --> 00:01:05,960
+Between intersections, sections of roadway are not observed by LiDAR.
+
+12
+00:01:05,960 --> 00:01:13,480
+Timing and motion help match candidate tracks. Dashed connections remain estimates.
+
+13
+00:01:13,480 --> 00:01:21,720
+Gray dashed lines show weaker hypotheses. Uncertain matches are excluded from measured KPIs.
+
+14
+00:01:21,720 --> 00:01:29,880
+Compare corridor traffic patterns: solid lines are observations; speed colors run from red to green.
+
+15
+00:01:29,880 --> 00:01:37,640
+The CTM explorer shows how demand and signal timing affect traffic queues.
+
+16
+00:01:37,640 --> 00:01:44,400
+Change the green duration and rerun the scenario to compute traffic propagation.
+
+17
+00:01:44,400 --> 00:01:51,840
+The CTM simulation is educational and has not been calibrated for field decisions.
+
+18
+00:01:51,840 --> 00:01:59,200
+Ouster Corridor Observatory—a traffic analytics research project by me.

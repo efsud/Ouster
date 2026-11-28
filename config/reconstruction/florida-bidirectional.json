@@ -1,0 +1,108 @@
+{
+  "enabled": true,
+  "method": "bidirectional_shape_v1",
+  "blend": 0.5,
+  "scope": "Florida adjacent-intersection association only; same-ID local reconstruction unchanged",
+  "report_sha256": "e5a06e3e09449872f78defe2743760e9677793d544809a4fe52c41c74c880099",
+  "source_sha256": "19b4fc6249eb6e4b6a933b90d76569689f27fd2ca5a4e5eb23ada9554dcdfbdf",
+  "validation": {
+    "0": {
+      "temporal": {
+        "eligible": 1399,
+        "correct": 246,
+        "false": 19,
+        "final_rejections": 0,
+        "position_mae_m": 1.2328729110827896,
+        "p95_case_mae_m": 2.4035782666484615
+      },
+      "spatial": {
+        "eligible": 992,
+        "correct": 824,
+        "false": 8,
+        "final_rejections": 0,
+        "position_mae_m": 0.7408080335417048,
+        "p95_case_mae_m": 1.7594115907504446
+      }
+    },
+    "0.25": {
+      "temporal": {
+        "eligible": 1399,
+        "correct": 250,
+        "false": 14,
+        "final_rejections": 0,
+        "position_mae_m": 1.229595630222566,
+        "p95_case_mae_m": 2.4035782666484615
+      },
+      "spatial": {
+        "eligible": 992,
+        "correct": 837,
+        "false": 9,
+        "final_rejections": 0,
+        "position_mae_m": 0.7608416661994052,
+        "p95_case_mae_m": 1.8786304039726929
+      }
+    },
+    "0.5": {
+      "temporal": {
+        "eligible": 1399,
+        "correct": 253,
+        "false": 16,
+        "final_rejections": 0,
+        "position_mae_m": 1.2296415998668164,
+        "p95_case_mae_m": 2.4035782666484615
+      },
+      "spatial": {
+        "eligible": 992,
+        "correct": 854,
+        "false": 5,
+        "final_rejections": 0,
+        "position_mae_m": 0.7645865216885693,
+        "p95_case_mae_m": 1.8579426665020287
+      }
+    }
+  },
+  "test": {
+    "0": {
+      "temporal": {
+        "eligible": 1369,
+        "correct": 270,
+        "false": 10,
+        "final_rejections": 0,
+        "position_mae_m": 1.3308774019504381,
+        "p95_case_mae_m": 4.43660473735683
+      },
+      "spatial": {
+        "eligible": 994,
+        "correct": 839,
+        "false": 7,
+        "final_rejections": 0,
+        "position_mae_m": 0.7634254935972173,
+        "p95_case_mae_m": 1.697022532757969
+      }
+    },
+    "0.5": {
+      "temporal": {
+        "eligible": 1369,
+        "correct": 279,
+        "false": 10,
+        "final_rejections": 0,
+        "position_mae_m": 1.3679140410892612,
+        "p95_case_mae_m": 4.647584575170358
+      },
+      "spatial": {
+        "eligible": 994,
+        "correct": 859,
+        "false": 4,
+        "final_rejections": 0,
+        "position_mae_m": 0.7779960210122231,
+        "p95_case_mae_m": 1.8084415453762224
+      }
+    }
+  },
+  "limitations": [
+    "Only disjoint later half-hour with excluded earlier IDs; not independent days.",
+    "Same-sensor masked identities do not validate between-sensor matching.",
+    "Repeated masks/scenarios are correlated. Acceleration is trusted for only three seconds.",
+    "Production exact trajectory and physics gates are retained."
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "version": "stationary_noise_correction_v1",
+  "parameters": {
+    "negative_speed_limit_mps": 0.1,
+    "position_span_limit_m": 0.1,
+    "trend_limit_mps": 0.05,
+    "step_speed_limit_mps": 0.5
+  },
+  "enabled_sites": [
+    "OBC-AG-SA-C251064",
+    "OBC-AG-SA-C251071",
+    "OBC-AG-SA-C257208",
+    "OBC-AG-SA-C257220",
+    "OBC-AG-SA-C257238",
+    "OBC-AG-SA-C618857",
+    "OBC-AG-SA-C618861"
+  ],
+  "scope": "Finch same-intersection car gaps >1.5 and <=90 seconds; original observations unchanged",
+  "selection_protocol_sha256": "2c79c92b1146570ca8720cb8043b61a9bc405c7fb618e49054ce570363246098",
+  "prospective_reports": [
+    {
+      "file": "data/reconstruction/eight-hour-20261123/finch/cycle-004.json",
+      "sha256": "e5aab693656b655564beb11c85edabc3f6c309a6db9cb9a59ecb8d1731c0eb09"
+    },
+    {
+      "file": "data/reconstruction/eight-hour-20261123/finch/cycle-008.json",
+      "sha256": "fa2c95b4903dea892fe64a678027f0f9ab1d09ea0c5523bbb1709e876c394013"
+    },
+    {
+      "file": "data/reconstruction/eight-hour-20261123/finch/cycle-018.json",
+      "sha256": "3ddaa2f103afde8cf148655235e5eb8d7638a060f3f85fe4c536eaff8ae51be5"
+    }
+  ],
+  "new_masks": 37,
+  "distinct_fragment_ranks": 31,
+  "new_case_mae_m": 0.07868903321738019,
+  "new_case_p95_mae_m": 0.2961874275880792,
+  "limitations": [
+    "Several gap lengths can share a vehicle; counts are correlated.",
+    "No validation of intersensor identity or field-calibrated uncertainty.",
+    "Only compact stationary visible context can correct a small negative endpoint derivative."
+  ],
+  "expansion_validation": {
+    "sites": {
+      "OBC-AG-SA-C251071": {
+        "evaluated": 68,
+        "distinct_new_ids": 14,
+        "new": {
+          "n": 14,
+          "mae_m": 0.09265499965916424,
+          "rmse_m": 0.1345666858731985,
+          "speed_mae_mps": 0.04377915646602748,
+          "stop_time_error_s": 0.19357142857143117,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 0.36032790458230074,
+          "stop_precision": 1.0,
+          "stop_recall": 1.0
+        }
+      },
+      "OBC-AG-SA-C257208": {
+        "evaluated": 68,
+        "distinct_new_ids": 14,
+        "new": {
+          "n": 15,
+          "mae_m": 0.4989520107625886,
+          "rmse_m": 0.6498512352300501,
+          "speed_mae_mps": 0.13255873437986435,
+          "stop_time_error_s": 0.7140000000000327,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 2.0840296224612493,
+          "stop_precision": 1.0,
+          "stop_recall": 1.0
+        }
+      },
+      "OBC-AG-SA-C618857": {
+        "evaluated": 90,
+        "distinct_new_ids": 17,
+        "new": {
+          "n": 21,
+          "mae_m": 0.21679730247530823,
+          "rmse_m": 0.3457342958211665,
+          "speed_mae_mps": 0.0951804190199138,
+          "stop_time_error_s": 0.5947619047618944,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 0.89594114360903,
+          "stop_precision": 1.0,
+          "stop_recall": 1.0
+        }
+      },
+      "OBC-AG-SA-C251064": {
+        "evaluated": 77,
+        "distinct_new_ids": 15,
+        "new": {
+          "n": 18,
+          "mae_m": 0.10126922464120265,
+          "rmse_m": 0.1497201793274045,
+          "speed_mae_mps": 0.10894744214415558,
+          "stop_time_error_s": 0.17722222222222525,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 0.5637170078819227,
+          "stop_precision": 1.0,
+          "stop_recall": 0.9444444444444444
+        }
+      },
+      "OBC-AG-SA-C618861": {
+        "evaluated": 67,
+        "distinct_new_ids": 14,
+        "new": {
+          "n": 18,
+          "mae_m": 0.1609649628128439,
+          "rmse_m": 0.3181207993202141,
+          "speed_mae_mps": 0.10074400237477231,
+          "stop_time_error_s": 0.5594444444444535,
+          "physics_violation": 0.0,
+          "p95_case_mae_m": 0.5258516462950252,
+          "stop_precision": 1.0,
+          "stop_recall": 1.0
+        }
+      }
+    },
+    "protocol_sha256": "660a7b550f7be26afb46c4b32d57bc04b99dfe80908f5437c743a2850c2270ab",
+    "prospective_reports": [
+      {
+        "file": "data/reconstruction/eight-hour-20261123/finch/cycle-040.json",
+        "sha256": "9857f9d7000d0b4517309b20d4e01bd0ee7b4aceffe26d3edb67d83a12edde79"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/finch/cycle-053.json",
+        "sha256": "74fed630884f10a36ce90c5a798dde966d51be961dd336fd56d74ee0661357ea"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/finch/cycle-061.json",
+        "sha256": "2a57502f21080fad251f6f531ee52809cce128721eabbb94e761b38ff3eb2e5e"
+      },
+      {
+        "file": "data/reconstruction/eight-hour-20261123/finch/cycle-086.json",
+        "sha256": "e6f5d8389582f277883127ca240a2bbe45cbfd5f5303561d5f71090a51fc2f9d"
+      }
+    ],
+    "external_recording": {
+      "file": "data/reconstruction/external-capture-review/finch-nov06.json",
+      "sha256": "a011e8d88d7faf43f44515b0c8371ea4067e7f8bd4cc32ef91bd2fd715530eff"
+    }
+  },
+  "withheld_sites": {
+    "OBC-AG-SA-C251055": "Daytime additional-mask MAE 4.07 m and p95 case MAE 17.23 m; overnight improvement insufficient to generalize."
+  }
+}

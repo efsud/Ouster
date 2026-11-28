@@ -1,0 +1,95 @@
+{
+  "state": "complete",
+  "title": "Florida: two-phase hidden-data review \u00b7 24 November 2026",
+  "window": [
+    1795546056.106963,
+    1795547799.120136
+  ],
+  "lines": [
+    "Within intersections: on 3,634 hidden-gap tests from 972 distinct IDs, the previous method reconstructed 1,765 gaps. The candidate reconstructed 1,835, preserving all prior successes. Its 70 added masks represent 51 IDs: mean position error 0.288m, 95th-percentile case mean 0.857m, worst individual position error 9.56m.",
+    "Enabled scope is narrower than the candidate experiment: same-ID car gaps at Plaza Entrance only, longer than 10s and no longer than 10.70s. This scope has 11 held-out IDs, mean position error 0.331m, speed error 0.241m/s and worst individual position error 3.80m. Other sites and durations retain the previous method.",
+    "Between intersections: hiding 20/50/100m roadway sections gave 3,080 correct and 85 wrong baseline matches; the candidate gave 3,089 correct and 86 wrong. It failed the fixed acceptance rule and remains disabled. The existing matcher stays active.",
+    "These are retrospective same-day tests: the local test includes individual dropouts and all-vehicle outage masks. Several masks share an ID. Spatial masking within one sensor does not verify real identities between different sensors. Geometry and cross-sensor timing remain provisional; estimated paths are not measured KPI inputs."
+  ],
+  "figure": "/florida-two-phase-validation.png",
+  "local": {
+    "eligible": 3634,
+    "distinct_ids": 972,
+    "baseline_accepted": 1765,
+    "candidate_accepted": 1835,
+    "new": {
+      "cases": 70,
+      "independent_ids": 51,
+      "quality": {
+        "n": 70,
+        "mae_m": 0.28780140011428984,
+        "rmse_m": 0.3647430305451021,
+        "speed_mae_mps": 0.22966674417649685,
+        "stop_time_error_s": 0.4882857142857249,
+        "physics_violation": 0.0,
+        "p95_case_mae_m": 0.8569111649142706,
+        "stop_precision": 1.0,
+        "stop_recall": 0.9833333333333333
+      }
+    },
+    "enabled_scope": {
+      "site": "OBC-AG-SA-C257227",
+      "duration_gt_s": 10,
+      "duration_lte_s": 10.7,
+      "test_masks": 11,
+      "test_distinct_ids": 11,
+      "position_mae_m": 0.3305996599338122,
+      "speed_mae_mps": 0.24089041085817467,
+      "worst_position_error_m": 3.8002951935536657
+    }
+  },
+  "between": {
+    "deployed": false,
+    "baseline": {
+      "eligible": 4066,
+      "matched": 3165,
+      "correct": 3080,
+      "false": 85,
+      "final_rejections": 0,
+      "correct_unique_ids": 1249,
+      "false_departure_unique_ids": 65,
+      "position_mae_m": 0.9628455782404255,
+      "p95_case_mae_m": 2.1870135363489944
+    },
+    "candidate": {
+      "eligible": 4066,
+      "matched": 3175,
+      "correct": 3089,
+      "false": 86,
+      "final_rejections": 0,
+      "correct_unique_ids": 1262,
+      "false_departure_unique_ids": 65,
+      "position_mae_m": 0.9654169133783529,
+      "p95_case_mae_m": 2.1928470289434965
+    },
+    "added_correct": 39,
+    "lost_correct": 30,
+    "new_wrong": 7,
+    "resolved_wrong": 6
+  },
+  "provenance": {
+    "local/protocol.json": "a0ba8227846e02c9e8c33872db6e64bdffb5cdca32bb6a6e444bbf9c531849b9",
+    "local/selection.json": "3ca6e3755be7083c192d006db0d8d033d3f374905ba55c3ee9823129f4cae411",
+    "local/report.json": "8e8774ed55507bae24d733cbe7c2c1d4586125a732abdc0f86d88f9eed1300c0",
+    "between/revision-002/protocol.json": "abdc348a6eac9b2ef20397886478a069b13486b9b3f7205837f0ea264ee8a82a",
+    "between/revision-002/selection.json": "15cc6bbc6e9d40b62469fa2f9f2217edcd6ede4478f5a7974d7038ed6f1b6a35",
+    "between/revision-002/report.json": "166c427324ddc6c4c259796862e4407ca7ca554e5877b7be58ecf1faf7064936",
+    "holdout-snapshot.json": "be855e84edbb7f46caf6a66f26d1edd1151872ddf16f7ce3b120087258e58eef"
+  },
+  "clock_audit": {
+    "clock_rejected_gaps_over_1_5s": 131,
+    "raw_endpoint_lookups": 262,
+    "raw_frame_sensor_timestamps_equal_metadata": 262,
+    "raw_endpoint_object_ids_present": 262,
+    "raw_endpoints_not_found": 0,
+    "sensor_metadata_mismatches": 0,
+    "gaps_with_display_time_correction_over_0_02s": 37,
+    "rejections_that_pass_with_unrounded_display_times": 0,
+    "rejections_that_pass_with_original_receipt_times": 0
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "terminal_chains": true,
+  "stationary_admission": true,
+  "scope": "Florida only; existing same-ID, clock, lateral, movement and site-exclusion checks remain",
+  "validation": "data/reconstruction/nov23-gap-review",
+  "stationary_test": {
+    "masks": 2601,
+    "distinct_ids": 614,
+    "position_mae_m": 0.024045553,
+    "speed_mae_mps": 0.070437904,
+    "stop_precision": 1.0
+  },
+  "terminal_test": {
+    "correct_before": 787,
+    "correct_after": 787,
+    "wrong_before": 3,
+    "wrong_after": 2
+  },
+  "limitations": [
+    "Same-sensor masked truth, not verified cross-sensor identity",
+    "Stationary result is conditional on quiet endpoints, not all missing trajectories",
+    "No receipt-time repair or inferred traffic signals"
+  ],
+  "evidence_sha256": {
+    "stationary-protocol.json": "038519709dc02d584607cd83e324893e8e9b2744fa24616f8b62389b94b43dc3",
+    "stationary-validation.json": "3ff87e4a8fa34b553a59bb2b81a68e6f1f92f2dcb792c35be87f9002d474e493",
+    "terminal-validation.json": "401bb1420c7f9948990ee5928ba2c98bb8d44f07c3d76d09b8058efd44b668d1",
+    "screenshot-outage.json": "b5b53dc39d4ec5dc98d55e10ec1fbe6d9895472e9c8a2c06eaf7798ebf06338e"
+  }
+}

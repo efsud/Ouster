@@ -1,0 +1,39 @@
+OUSTER CORRIDOR OBSERVATORY — NARRATION SCRIPT
+
+Read the paragraphs below in one continuous recording, with a short pause between them. Speak naturally; video and subtitle timing can be adjusted to your recording. Only read the text below this line.
+
+From LiDAR observations to corridor insight.
+
+Choose Florida or Toronto. This demonstration uses Florida’s active data feed.
+
+Select an intersection, then zoom in to see moving road users.
+
+Road users update from the BlueCity stream. Map positions and alignment are approximate.
+
+Read received phase colors. A phase ID does not establish a verified movement direction.
+
+Explore a saved one-hour recording. The rolling view also refreshes every 30 minutes.
+
+Filter trajectories by travel direction and object type.
+
+Choose intersections, then zoom around the pointer to inspect a specific time window.
+
+Within one intersection, interrupted observations leave gaps.
+
+Enable local estimates: compatible same-session object IDs are connected with constrained curves.
+
+Between intersections, sections of roadway are not observed by LiDAR.
+
+Timing and motion help match candidate tracks. Dashed connections remain estimates.
+
+Gray dashed lines show weaker hypotheses. Uncertain matches are excluded from measured KPIs.
+
+Compare corridor traffic patterns: solid lines are observations; speed colors run from red to green.
+
+The CTM explorer shows how demand and signal timing affect traffic queues.
+
+Change the green duration and rerun the scenario to compare traffic propagation.
+
+This CTM simulation is educational and has not been calibrated for field decisions.
+
+Ouster Corridor Observatory—a traffic analytics research project by Fatemeh Sadeghi.

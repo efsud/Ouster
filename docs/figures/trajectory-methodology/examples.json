@@ -1,0 +1,248 @@
+{
+  "snapshot_generated_at": 1795798101.865132,
+  "snapshot_start": 1795794501.865132,
+  "snapshot_sha256": "3bb3d4a1a56eee08044b23c228d9a15443f46f21e29ae028d3cba38b065eb7aa",
+  "layers_sha256": "1bd2494168eef57e797ed0783df230920e6ce5b26c400ae623f4f7e35a84f879",
+  "recording_date": "2026-11-27",
+  "display_timezone": "America/New_York",
+  "time_basis": "receipt_debursted",
+  "local": {
+    "endpoint_policy": "strict",
+    "endpoint_corrections": [],
+    "identity_key": [
+      "8b7bf19c1f064a7bbe0d55d6ff30a9ef",
+      "244079162"
+    ],
+    "site": "OBC-AG-SA-C257236",
+    "direction": "westbound",
+    "class_type": "2",
+    "frame_gap_basis": "receipt_debursted",
+    "endpoint_classes": [
+      "2",
+      "2"
+    ],
+    "object_id": "244079162",
+    "points": [
+      [
+        3564.52,
+        642.34,
+        5.3557692307685745
+      ],
+      [
+        3564.9885714285715,
+        639.543510194189,
+        6.580467745251689
+      ],
+      [
+        3565.457142857143,
+        636.159459382657,
+        7.863651572259852
+      ],
+      [
+        3565.9257142857145,
+        632.1513209390455,
+        9.24425641876189
+      ],
+      [
+        3566.3942857142856,
+        627.4688841343622,
+        10.74175433295053
+      ],
+      [
+        3566.862857142857,
+        622.0573771819934,
+        12.35614119544808
+      ],
+      [
+        3567.3314285714287,
+        615.8665910425557,
+        14.067945985073267
+      ],
+      [
+        3567.8,
+        608.86,
+        15.838235294121986
+      ]
+    ],
+    "source": "inferred",
+    "method": "endpoint_tangent_constrained_kinematic",
+    "identity": "same_sensor_session_id",
+    "gap_kind": "same_id_fragment_break",
+    "missing_receipt_fraction": 0.0,
+    "gap_s": 3.2800000000002
+  },
+  "between": {
+    "sites": [
+      "OBC-AG-SA-C257225",
+      "OBC-AG-SA-C257206"
+    ],
+    "direction": "eastbound",
+    "class_type": "2",
+    "points": [
+      [
+        3534.3,
+        1136.74,
+        13.778846153841272
+      ],
+      [
+        3534.7823529411767,
+        1143.412086188404,
+        13.8859014566134
+      ],
+      [
+        3535.264705882353,
+        1150.138256973564,
+        14.00309935990242
+      ],
+      [
+        3535.7470588235296,
+        1156.9232388610694,
+        14.129752368777657
+      ],
+      [
+        3536.229411764706,
+        1163.7715803630992,
+        14.265809956711667
+      ],
+      [
+        3536.7117647058826,
+        1170.6878178060235,
+        14.411272123704494
+      ],
+      [
+        3537.194117647059,
+        1177.6764875162112,
+        14.566138869756017
+      ],
+      [
+        3537.6764705882356,
+        1184.7421258200322,
+        14.730410194866357
+      ],
+      [
+        3538.158823529412,
+        1191.8892690438558,
+        14.904086099035498
+      ],
+      [
+        3538.641176470588,
+        1199.1224535140448,
+        15.087166582263192
+      ],
+      [
+        3539.1235294117646,
+        1206.4462155569822,
+        15.279651644549817
+      ],
+      [
+        3539.605882352941,
+        1213.865091499031,
+        15.481541285895208
+      ],
+      [
+        3540.0882352941176,
+        1221.3836176665607,
+        15.692835506299375
+      ],
+      [
+        3540.570588235294,
+        1229.0063303859404,
+        15.913534305762278
+      ],
+      [
+        3541.0529411764705,
+        1236.7377659835402,
+        16.14363768428401
+      ],
+      [
+        3541.535294117647,
+        1244.5824607857292,
+        16.38314564186449
+      ],
+      [
+        3542.0176470588235,
+        1252.5449633046865,
+        16.632108705031204
+      ],
+      [
+        3542.5,
+        1260.63,
+        16.891214177975257
+      ]
+    ],
+    "source": "inferred",
+    "method": "kinematic_0.01",
+    "identity": "unverified_cross_sensor_association",
+    "association_cost": 0.22634627317308517,
+    "ambiguity_margin": 0.2715240854833807,
+    "shape_evidence": null,
+    "endpoint_provenance": {
+      "departure": {
+        "site": "OBC-AG-SA-C257225",
+        "fragment_id": "a4fd826d7f457dbbc154fc17",
+        "source_fragment_indices": [
+          17
+        ],
+        "source_key": [
+          "092ce2e0f44e4f1ca3bb10f4204d8c13",
+          "6040080",
+          "2"
+        ],
+        "identity_scope": "sensor_session_object_only",
+        "class_type": "2",
+        "direction": "eastbound",
+        "observed_endpoint": [
+          3534.3,
+          1136.74,
+          13.59
+        ],
+        "fragment_start": 3524.22,
+        "fragment_end": 3534.3
+      },
+      "arrival": {
+        "site": "OBC-AG-SA-C257206",
+        "fragment_id": "b690669e6187682984440cc2",
+        "source_fragment_indices": [
+          46
+        ],
+        "source_key": [
+          "e4385c5e3a62418b9410b400b4e20fc2",
+          "517711656",
+          "2"
+        ],
+        "identity_scope": "sensor_session_object_only",
+        "class_type": "2",
+        "direction": "eastbound",
+        "observed_endpoint": [
+          3542.5,
+          1260.63,
+          0
+        ],
+        "fragment_start": 3542.5,
+        "fragment_end": 3552.08
+      },
+      "cross_sensor_identity_verified": false
+    }
+  },
+  "screenshots": {
+    "figure_1": {
+      "site": "Essex Ave & SR-436",
+      "direction": "westbound",
+      "visible_window": "11:47:33\u201311:47:56",
+      "visible_local_estimates": 15,
+      "before": "within-before.jpg",
+      "after": "within-after.jpg"
+    },
+    "figure_2": {
+      "sites": [
+        "Palm Springs Dr & SR-436",
+        "Boston Ave & SR-436"
+      ],
+      "direction": "eastbound",
+      "visible_window": "11:47:10\u201311:47:38",
+      "visible_between_estimates": 7,
+      "before": "between-before.jpg",
+      "after": "between-after.jpg"
+    }
+  }
+}

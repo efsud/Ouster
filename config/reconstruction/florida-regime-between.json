@@ -1,0 +1,33 @@
+{
+  "enabled": false,
+  "version": "endpoint_regime_group_anchor_v1",
+  "validation_state": "complete",
+  "parameters": {
+    "vmax": 24.5174,
+    "amin": -6.0,
+    "amax": 4.0
+  },
+  "grouping_version": "observed_trajectory_regime_density_v1",
+  "grouping_config": {
+    "max_observation_gap_s": 1.5,
+    "min_segment_duration_s": 1.5,
+    "min_segment_points": 4,
+    "max_segment_duration_s": 60.0,
+    "stopped_speed_mps": 0.8,
+    "stopped_slope_mps": 1.2,
+    "speed_change_mps": 3.0,
+    "slope_change_mps": 3.5,
+    "max_speed_difference_mps": 3.0,
+    "max_slope_difference_mps": 3.5,
+    "max_time_gap_s": 12.0,
+    "max_passage_lag_s": 20.0,
+    "max_station_gap_m": 35.0,
+    "stopped_station_difference_m": 35.0,
+    "max_lateral_difference_m": 3.0,
+    "min_identities": 3,
+    "envelope_bin_s": 1.0,
+    "classification_margin": 0.05
+  },
+  "weight": 0.25,
+  "evidence": "docs/validation/florida-regime-groups-20261124.json"
+}

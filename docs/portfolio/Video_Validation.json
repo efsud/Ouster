@@ -1,0 +1,39 @@
+{
+  "duration_s": 114.0,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 25,
+  "subtitles_burned_in": true,
+  "audio": "none",
+  "timing": [
+    {
+      "clip": "live",
+      "raw_duration_s": 39.32,
+      "trim_start_s": 7.306630750000004,
+      "output_duration_s": 32.0
+    },
+    {
+      "clip": "history",
+      "raw_duration_s": 64.2,
+      "trim_start_s": 6.1941375410000035,
+      "output_duration_s": 58.0
+    },
+    {
+      "clip": "ctm",
+      "raw_duration_s": 22.08,
+      "trim_start_s": 6.075190500000009,
+      "output_duration_s": 16.0
+    }
+  ],
+  "size_bytes": 16195558,
+  "full_decode_check": "passed",
+  "visual_qa": "Reviewed title, live map, phase panel, trajectory examples, CTM and closing frames",
+  "capture_errors": [],
+  "live_map_frame_change_fraction": 0.0113,
+  "live_motion_sample_seconds": [
+    20,
+    24
+  ]
+}

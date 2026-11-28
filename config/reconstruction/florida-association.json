@@ -1,0 +1,8 @@
+{
+  "method": "strict_physics_v1",
+  "description": "Apply final discrete endpoint speed/acceleration/distance bounds before mutual-best association; keep existing cost, ambiguity and final-optimization checks.",
+  "regression_report_sha256": "bfbd3922730d4a26400c6e115bb69ff1e890ef0265219434b6a1070828681c34",
+  "field_validation": "Unverified identities; additional connections remain estimated",
+  "snapshot_connections_before": 327,
+  "snapshot_connections_after": 331
+}

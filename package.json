@@ -1,0 +1,8 @@
+{
+  "name": "ouster-corridor-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local read-only BlueCity analytics dashboard",
+  "scripts": {"test": "python3 -m unittest discover -s dashboard/tests -v", "start": "python3 -m dashboard.server"},
+  "dependencies": {"leaflet": "1.9.4"}
+}
