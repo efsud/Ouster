@@ -1,0 +1,53 @@
+{
+  "source_audio_sha256": "d95e1d4743a5c89ba830f2456b4230adefe86108b6ce39d258aefdcdef51a393",
+  "source_duration_s": 143.27,
+  "output_duration_s": 119.2,
+  "removed_pause_seconds": 8.79,
+  "pace_factor": 1.118837,
+  "pitch_preserved": true,
+  "voice_synthesis": false,
+  "source_unchanged": true,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 25,
+  "audio": "User recording; gentle filtering and loudness normalization; AAC mono 48 kHz",
+  "subtitle_timing": "Aligned to narration; burned-in; editable SRT sidecar",
+  "recording_metadata_removed": true,
+  "cue_boundaries_s": [
+    0,
+    3.48,
+    10.0,
+    14.96,
+    23.96,
+    30.88,
+    36.96,
+    40.88,
+    46.88,
+    53.24,
+    60.56,
+    65.96,
+    73.48,
+    81.72,
+    89.88,
+    97.64,
+    104.4,
+    111.84,
+    119.2
+  ],
+  "size_bytes": 18434591,
+  "streams": [
+    "h264_video",
+    "aac_audio"
+  ],
+  "audio_duration_s": 118.992667,
+  "decoded_video_frames": 2980,
+  "decoded_audio_samples": 5711872,
+  "decode_integrity": "passed",
+  "final_audio_integrated_lufs": -15.79,
+  "final_audio_true_peak_dbtp": -1.48,
+  "final_audio_loudness_range_lu": 2.7,
+  "narration_content_check": "All 18 sections retained in local automated speech transcription; known project terminology checked against script",
+  "visual_check": "Representative live, phase, reconstruction, CTM and closing frames inspected"
+}

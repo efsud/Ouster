@@ -1,8 +1,18 @@
 # Portfolio walkthrough
 
+## Narrated edition
+
+`Ouster_Corridor_Observatory_With_My_Voice.mp4` adds Fatemeh's own recorded narration and runs **1:59.2**, in 1920 × 1080 at 25 fps with AAC audio. The scenes and burned-in captions follow the narration. `Ouster_Corridor_Observatory_Narrated_Subtitles.srt` contains the editable timed captions. There is no second embedded subtitle track, avoiding duplicated captions in players.
+
+The original 2:23.27 voice recording is unchanged. Editing removed 8.79 seconds from long internal pauses, trimmed the leading/trailing silence, and used a 1.118837× pitch-preserving pace adjustment. Gentle filtering and loudness normalization make the narration clearer. The export uses the supplied voice recording, with no synthesized speech. Private voice-memo metadata and raw audio are not included in the repository.
+
+Validation decoded the complete export, checked all 18 narration sections against local speech transcription, and inspected representative live, reconstruction and closing frames. Measured final audio loudness is −15.79 LUFS, with a −1.48 dBTP peak. `Narration_Validation.json` records the timing and technical checks. The task-specific `scripts/add_portfolio_narration.py` uses the private source audio, local word-timed transcript (`data/portfolio/narration-transcript.json`) and clean screen master (`data/portfolio/assembled.mp4`); these working assets remain outside Git.
+
+## Silent edition
+
 `Ouster_Corridor_Observatory_Walkthrough.mp4` is a 1:54, 1920 × 1080, 25 fps H.264 screen recording with burned-in English subtitles. It is silent, suitable for a portfolio or a muted social-media feed. `Ouster_Corridor_Observatory_Subtitles.srt` contains the editable captions; `Portfolio_Caption.txt` provides an introduction and a short provenance note.
 
-## What the video shows
+## What the silent edition shows
 
 | Time | Feature |
 | --- | --- |
